@@ -1,3 +1,6 @@
 torch #1.4.0, cuda 10.1 works
 fairseq
+fastBPE
+sacremoses
+requests
 
