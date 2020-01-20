@@ -1,3 +1,5 @@
+from pudb import set_trace
+
 #!/usr/bin/env python3 -u
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
@@ -21,6 +23,8 @@ from fairseq import (
 from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
+
+from models.composite_models.composite_models import model_dict
 
 
 logging.basicConfig(
@@ -60,7 +64,9 @@ def main(args, init_distributed=False):
         task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
     # Build model and criterion
-    model = task.build_model(args)
+    model = model_dict[args.model_type].build_model(args, task)
+    #model = task.build_model(args)
+    
     criterion = task.build_criterion(args)
     logger.info(model)
     logger.info('model {}, criterion {}'.format(args.arch, criterion.__class__.__name__))
@@ -269,8 +275,12 @@ def distributed_main(i, args, start_rank=0):
 
 
 def cli_main(modify_parser=None):
+
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
+
+    if not hasattr(args, 'model-type'):
+        args.model_type = 'roberta_triplet'
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
