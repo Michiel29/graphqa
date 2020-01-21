@@ -5,7 +5,7 @@ from fairseq.models import BaseFairseqModel, FairseqLanguageModel
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
 
 from models.encoder.roberta import RobertaEncoder, base_architecture
-from models.inference.triplet import triplet_dict
+from models.inference import inference_dict
 
 @register_model('roberta_triplet')
 class RobertaTripletModel(FairseqLanguageModel):
@@ -37,7 +37,7 @@ class RobertaTripletModel(FairseqLanguageModel):
 
         encoder = RobertaEncoder(args, task.source_dictionary)
         
-        triplet = triplet_dict[args.triplet_type]()
+        triplet = inference_dict[args.triplet_type]()
 
         return cls(args, encoder, triplet)
 
