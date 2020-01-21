@@ -1,1 +1,1 @@
-from .triplet import *
+from .triplet import triplet_dict
