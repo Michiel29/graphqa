@@ -39,7 +39,7 @@ class RobertaTripletModel(FairseqLanguageModel):
 
         encoder = RobertaEncoder(args, task.source_dictionary)
         
-        triplet = triplet_dict[args.triplet_type]
+        triplet = triplet_dict[args.triplet_type]()
 
         return cls(args, encoder, triplet)
 

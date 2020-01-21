@@ -22,5 +22,5 @@ class DistMult(nn.Module):
 
         return score
 
-triplet_dict = {'distmult': DistMult()}
+triplet_dict = {'distmult': DistMult}
 
