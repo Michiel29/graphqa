@@ -1,5 +1,3 @@
-from pudb import set_trace
-
 #!/usr/bin/env python3 -u
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
