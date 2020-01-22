@@ -1,5 +1,3 @@
-from pudb import set_trace
-
 #!/usr/bin/env python3 -u
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
@@ -24,6 +22,7 @@ from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
 
+from tasks.relation_inference import RelationInferenceTask
 from models.composite_models.composite_models import model_dict
 
 
@@ -275,7 +274,6 @@ def distributed_main(i, args, start_rank=0):
 
 
 def cli_main(modify_parser=None):
-
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
 
