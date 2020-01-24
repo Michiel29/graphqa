@@ -24,6 +24,7 @@ from fairseq.meters import StopwatchMeter
 
 from tasks.relation_inference import RelationInferenceTask
 from models.composite_models.composite_models import model_dict
+from utils.config import update_namespace, read_json
 
 
 logging.basicConfig(
@@ -275,7 +276,12 @@ def distributed_main(i, args, start_rank=0):
 
 def cli_main(modify_parser=None):
     parser = options.get_training_parser()
+    parser.add_argument('--config', type=str, help='path to JSON file of experiment configurations')
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
+
+    if hasattr(args, 'config'):
+        config_dict = read_json(args.config)
+        update_namespace(args, config_dict)
 
     if not hasattr(args, 'model-type'):
         args.model_type = 'roberta_triplet'
