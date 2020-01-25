@@ -6,18 +6,13 @@ import numpy as np
 from fairseq.data import (
     data_utils,
     Dictionary,
-    IdDataset,
-    MaskTokensDataset,
-    NestedDictionaryDataset,
-    NumelDataset,
-    NumSamplesDataset,
-    PadDataset,
-    PrependTokenDataset,
-    SortDataset,
-    TokenBlockDataset,
+    iterators,
+    FairseqDataset,
+    PrependDataset
 )
 from fairseq.tasks import FairseqTask, register_task
-from fairseq.data.encoders.utils import get_whole_word_mask
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -29,42 +24,31 @@ class RelationInferenceTask(FairseqTask):
     @staticmethod
     def add_args(parser):
         """Add task-specific arguments to the parser."""
-        parser.add_argument('data', help='colon separated path to data directories list, \
-                            will be iterated upon during epochs in round-robin manner')
-        parser.add_argument('--sample-break-mode', default='complete',
-                            choices=['none', 'complete', 'complete_doc', 'eos'],
-                            help='If omitted or "none", fills each sample with tokens-per-sample '
-                                 'tokens. If set to "complete", splits samples only at the end '
-                                 'of sentence, but may include multiple sentences per sample. '
-                                 '"complete_doc" is similar but respects doc boundaries. '
-                                 'If set to "eos", includes only one sentence per sample.')
+        
+        """Required either in config or cl"""
+        parser.add_argument('--dict_path', help='path to dictionary')
+        parser.add_argument('--data_path', help='path to data')
         parser.add_argument('--tokens-per-sample', default=512, type=int,
                             help='max number of total tokens over all segments '
                                  'per sample for BERT dataset')
-        parser.add_argument('--mask-prob', default=0.15, type=float,
-                            help='probability of replacing a token with mask')
-        parser.add_argument('--leave-unmasked-prob', default=0.1, type=float,
-                            help='probability that a masked token is unmasked')
-        parser.add_argument('--random-token-prob', default=0.1, type=float,
-                            help='probability of replacing a token with a random token')
-        parser.add_argument('--freq-weighted-replacement', default=False, action='store_true',
-                            help='sample random replacement words based on word frequencies')
-        parser.add_argument('--mask-whole-words', default=False, action='store_true',
-                            help='mask whole words; you may also want to set --bpe')
+
+        """Optional"""
+        # optional arguments here
+     
 
     def __init__(self, args, dictionary):
         super().__init__(args)
         self.dictionary = dictionary
         self.seed = args.seed
 
-        # add mask token
-        self.mask_idx = dictionary.add_symbol('<mask>')
+        # add entity mask tokens
+        self.ent1 = dictionary.add_symbol('<ent1>')
+        self.ent2 = dictionary.add_symbol('<ent2>')
+        self.entun = dictionary.add_symbol('<entun>')
 
     @classmethod
     def setup_task(cls, args, **kwargs):
-        paths = args.data.split(os.pathsep)
-        assert len(paths) > 0
-        dictionary = Dictionary.load(os.path.join(paths[0], 'dict.txt'))
+        dictionary = Dictionary.load(args.dict_path)
         logger.info('dictionary: {} types'.format(len(dictionary)))
         return cls(args, dictionary)
 
@@ -73,114 +57,87 @@ class RelationInferenceTask(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-        paths = self.args.data.split(os.pathsep)
-        assert len(paths) > 0
-        data_path = paths[epoch % len(paths)]
-        split_path = os.path.join(data_path, split)
+
+        split_path = os.path.join(self.args.data_path, split)
 
         dataset = data_utils.load_indexed_dataset(
             split_path,
-            self.source_dictionary,
-            self.args.dataset_impl,
+            self.dictionary, 
+            dataset_impl='raw',
             combine=combine,
         )
+
         if dataset is None:
             raise FileNotFoundError('Dataset not found: {} ({})'.format(split, split_path))
 
-        # create continuous blocks of tokens
-        dataset = TokenBlockDataset(
-            dataset,
-            dataset.sizes,
-            self.args.tokens_per_sample - 1,  # one less for <s>
-            pad=self.source_dictionary.pad(),
-            eos=self.source_dictionary.eos(),
-            break_mode=self.args.sample_break_mode,
-        )
-        logger.info('loaded {} blocks from: {}'.format(len(dataset), split_path))
+        # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
+        # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
 
-        # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)
-        dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
+        self.datasets[split] = dataset
 
-        # create masked input and targets
-        mask_whole_words = get_whole_word_mask(self.args, self.source_dictionary) \
-            if self.args.mask_whole_words else None
+    def get_batch_iterator(
+        self, dataset, max_tokens=None, max_sentences=None, max_positions=None,
+        ignore_invalid_inputs=False, required_batch_size_multiple=1,
+        seed=1, num_shards=1, shard_id=0, num_workers=0, epoch=0):
+        """
+        Get an iterator that yields batches of data from the given dataset.
 
-        src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
-            dataset,
-            self.source_dictionary,
-            pad_idx=self.source_dictionary.pad(),
-            mask_idx=self.mask_idx,
-            seed=self.args.seed,
-            mask_prob=self.args.mask_prob,
-            leave_unmasked_prob=self.args.leave_unmasked_prob,
-            random_token_prob=self.args.random_token_prob,
-            freq_weighted_replacement=self.args.freq_weighted_replacement,
-            mask_whole_words=mask_whole_words,
-        )
+        Args:
+            dataset (~fairseq.data.FairseqDataset): dataset to batch
+            max_tokens (int, optional): max number of tokens in each batch
+                (default: None).
+            max_sentences (int, optional): max number of sentences in each
+                batch (default: None).
+            max_positions (optional): max sentence length supported by the
+                model (default: None).
+            ignore_invalid_inputs (bool, optional): don't raise Exception for
+                sentences that are too long (default: False).
+            required_batch_size_multiple (int, optional): require batch size to
+                be a multiple of N (default: 1).
+            seed (int, optional): seed for random number generator for
+                reproducibility (default: 1).
+            num_shards (int, optional): shard the data iterator into N
+                shards (default: 1).
+            shard_id (int, optional): which shard of the data iterator to
+                return (default: 0).
+            num_workers (int, optional): how many subprocesses to use for data
+                loading. 0 means the data will be loaded in the main process
+                (default: 0).
+            epoch (int, optional): the epoch to start the iterator from
+                (default: 0).
+        Returns:
+            ~fairseq.iterators.EpochBatchIterator: a batched iterator over the
+                given dataset split
+        """
 
-        with data_utils.numpy_seed(self.args.seed + epoch):
-            shuffle = np.random.permutation(len(src_dataset))
+        assert isinstance(dataset, FairseqDataset)
 
-        self.datasets[split] = SortDataset(
-            NestedDictionaryDataset(
-                {
-                    'id': IdDataset(),
-                    'net_input': {
-                        'src_tokens': PadDataset(
-                            src_dataset,
-                            pad_idx=self.source_dictionary.pad(),
-                            left_pad=False,
-                        ),
-                        'src_lengths': NumelDataset(src_dataset, reduce=False),
-                    },
-                    'target': PadDataset(
-                        tgt_dataset,
-                        pad_idx=self.source_dictionary.pad(),
-                        left_pad=False,
-                    ),
-                    'nsentences': NumSamplesDataset(),
-                    'ntokens': NumelDataset(src_dataset, reduce=True),
-                },
-                sizes=[src_dataset.sizes],
-            ),
-            sort_order=[
-                shuffle,
-                src_dataset.sizes,
-            ],
+        # get indices ordered by example size
+        with data_utils.numpy_seed(seed):
+            indices = dataset.ordered_indices()
+
+        # filter examples that are too large
+        if max_positions is not None:
+            indices = data_utils.filter_by_size(
+                indices, dataset, max_positions, raise_exception=(not ignore_invalid_inputs),
+            )
+
+        # create mini-batches with given size constraints
+        batch_sampler = data_utils.batch_by_size(
+            indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
+            required_batch_size_multiple=required_batch_size_multiple,
         )
 
-    def build_dataset_for_inference(self, src_tokens, src_lengths, sort=True):
-        src_dataset = PadDataset(
-            TokenBlockDataset(
-                src_tokens,
-                src_lengths,
-                self.args.tokens_per_sample - 1,  # one less for <s>
-                pad=self.source_dictionary.pad(),
-                eos=self.source_dictionary.eos(),
-                break_mode='eos',
-            ),
-            pad_idx=self.source_dictionary.pad(),
-            left_pad=False,
+        # return a reusable, sharded iterator
+        epoch_iter = iterators.EpochBatchIterator(
+            dataset=dataset,
+            collate_fn=dataset.collater,
+            batch_sampler=batch_sampler,
+            seed=seed,
+            num_shards=num_shards,
+            shard_id=shard_id,
+            num_workers=num_workers,
+            epoch=epoch,
         )
-        src_dataset = PrependTokenDataset(src_dataset, self.source_dictionary.bos())
-        src_dataset = NestedDictionaryDataset(
-            {
-                'id': IdDataset(),
-                'net_input': {
-                    'src_tokens': src_dataset,
-                    'src_lengths': NumelDataset(src_dataset, reduce=False),
-                },
-            },
-            sizes=src_lengths,
-        )
-        if sort:
-            src_dataset = SortDataset(src_dataset, sort_order=[src_lengths])
-        return src_dataset
 
-    @property
-    def source_dictionary(self):
-        return self.dictionary
-
-    @property
-    def target_dictionary(self):
-        return self.dictionary
+        return epoch_iter
