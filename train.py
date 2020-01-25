@@ -64,8 +64,7 @@ def main(args, init_distributed=False):
         task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
     # Build model and criterion
-    model = model_dict[args.model_type].build_model(args, task)
-    #model = task.build_model(args)
+    model = task.build_model(args)
     
     criterion = task.build_criterion(args)
     logger.info(model)
