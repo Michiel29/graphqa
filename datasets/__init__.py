@@ -1,1 +1,1 @@
-from rel_inf_dataset import RelInfDataset
+from .rel_inf_dataset import RelInfDataset

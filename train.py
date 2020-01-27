@@ -122,7 +122,7 @@ def main(args, init_distributed=False):
             logger.info('early stop since valid performance hasn\'t improved for last {} runs'.format(args.patience))
             break
 
-        reload_dataset = ':' in getattr(args, 'data', '')
+        reload_dataset = getattr(args, 'reload', False)
         # sharded data: get train iterator for next epoch
         epoch_itr = trainer.get_train_iterator(epoch_itr.epoch, load_dataset=reload_dataset)
     train_meter.stop()
