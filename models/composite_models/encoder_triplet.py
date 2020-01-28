@@ -44,7 +44,7 @@ class EncoderTripletModel(BaseFairseqModel):
     def add_args(parser):
         """Add model-specific arguments to the parser."""
 
-        parser.add_argument('--triplet_type', type='string', default='distmult',
+        parser.add_argument('--triplet_type', type=str, default='distmult',
                             help='type of triplet model to use for inference')
 
     @classmethod
