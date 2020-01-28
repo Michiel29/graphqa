@@ -2,9 +2,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from fairseq import models
+
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
 
+
+import tasks
 
 from models.encoder import encoder_dict
 from models.triplet import triplet_dict

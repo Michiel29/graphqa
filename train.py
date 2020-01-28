@@ -22,8 +22,8 @@ from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
 
-from tasks.relation_inference import RelationInferenceTask
-from models.composite_models.composite_models import model_dict
+import models, tasks
+
 from utils.config import update_namespace, read_json
 
 

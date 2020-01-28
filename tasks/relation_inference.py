@@ -12,9 +12,6 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask, register_task
 
-
-
-
 logger = logging.getLogger(__name__)
 
 @register_task('relation_inference')

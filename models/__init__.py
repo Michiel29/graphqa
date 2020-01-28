@@ -1,3 +1,1 @@
-from .composite_models import * 
-from .encoder import * 
-from .inference import * 
+import models.composite_models

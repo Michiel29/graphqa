@@ -1,1 +1,1 @@
-from .composite_models import RobertaTripletModel
+from .encoder_triplet import EncoderTripletModel
