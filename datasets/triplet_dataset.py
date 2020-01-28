@@ -11,13 +11,12 @@ class TripletDataset(RelInfDataset):
             'mention': [],
             'head': [],
             'tail': [],
-            'target': []
         }
 
         for instance in instances:
 
             """Perform Masking"""
-            mention_samples, ent_samples, targets = self.sample_entities(instance, self.k_negative)
+            mention_samples, ent_samples = self.sample_entities(instance, self.k_negative)
 
             """Retrieve Subgraph"""
             for head, tail in ent_samples:
@@ -25,7 +24,7 @@ class TripletDataset(RelInfDataset):
                 batch['tail'].append(tail)
                 
             batch['mentions'].append(mention_samples)
-            batch['targets'].append(targets)
+
 
         return batch
             

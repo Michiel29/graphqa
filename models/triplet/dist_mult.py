@@ -8,16 +8,12 @@ class DistMult(nn.Module):
         super().__init__()
         self.mode = getattr(args, 'dist_mode', '')
 
-    def forward(self, x_emb):
-
-        head = x_emb['head']
-        tail = x_emb['tail']
-        relation = x_emb['goal']
+    def forward(self, mention, head, tail):
 
         if self.mode == 'head-batch':
-            score = head * (relation * tail)
+            score = head * (mention * tail)
         else:
-            score = (head * relation) * tail
+            score = (head * mention) * tail
 
         score = score.sum(dim = -1)
 
