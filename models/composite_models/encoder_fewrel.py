@@ -19,24 +19,18 @@ class EncoderFewRelModel(BaseFairseqModel):
         super().__init__()
 
         self.args = args
-
         self.encoder = encoder
-
-        self.n_way = args.n_way
         self.enc_dim = args.enc_dim
 
     def forward(self, batch):
 
-        goal_mention = batch['goal_mention']
-        candidate_mentions = batch['candidate_mentions']
+        goal_mention = batch['goal_mention'] # [batch_size, n_tokens]
+        candidate_mentions = batch['candidate_mentions'] # [batch_size, n_way, n_shot, n_tokens]
         batch_size = goal_mention.shape[0] 
        
-        rel_prototypes = torch.zeros(batch_size, self.n_way, self.enc_dim)
-        for idx, rel in enumerate(candidate_mentions.keys()):
-            candidate_mention_encs = self.encoder(candidate_mentions[rel]) # [batch_size, n_way, n_shot, enc_dim]
-            rel_prototypes[:, idx, :]  = torch.mean(candidate_mention_encs, dim=-2) # [batch_size, n_way, enc_dim]
-
         goal_enc = self.encoder(goal_mention).unsqueeze(-1) # [batch_size, enc_dim, 1]
+        candidate_encs = self.encoder(candidate_mentions) # [batch_size, n_way, n_shot, enc_dim]
+        rel_prototypes = torch.mean(candidate_encs, dim=-2) # [batch_size, n_way, enc_dim]
 
         scores = torch.matmul(rel_prototypes, goal_enc).squeeze(-1) # [batch_size, n_way]
 
