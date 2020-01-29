@@ -15,13 +15,13 @@ from models.triplet import triplet_dict
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
 
-    def __init__(self, args, encoder, triplet_model):
+    def __init__(self, args, encoder, triplet_model, n_entities):
         super().__init__()
 
         self.args = args
 
         self.encoder = encoder
-        self.ent_emb = nn.Embedding(args.n_entities, args.entity_dim)
+        self.ent_emb = nn.Embedding(n_entities, args.entity_dim)
         self.triplet_model = triplet_model
 
     def forward(self, batch):
@@ -53,7 +53,9 @@ class EncoderTripletModel(BaseFairseqModel):
         encoder = encoder_dict[args.encoder_type](args)
         triplet_model = triplet_dict[args.triplet_type](args)
 
-        return cls(args, encoder, triplet_model)
+        n_entities = len(task.entity_dictionary)
+
+        return cls(args, encoder, triplet_model, n_entities)
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet')
 def encoder_triplet_architecture(args):
