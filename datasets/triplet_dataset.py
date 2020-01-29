@@ -2,8 +2,12 @@ from datasets import RelInfDataset
 
 class TripletDataset(RelInfDataset):
 
-    def __init__(self, k_negative):
+    def __init__(self, text_data, annotation_data, k_negative, n_entities):
+        self.text_data = text_data
+        self.annotation_data = annotation_data
         self.k_negative = k_negative
+        self.n_entities = n_entities
+
 
     def collater(self, instances):
     
@@ -27,4 +31,13 @@ class TripletDataset(RelInfDataset):
 
 
         return batch
-            
+
+    def num_tokens(self, index):
+        """Return the number of tokens in a sample. This value is used to
+        enforce ``--max-tokens`` during batching."""
+        raise NotImplementedError
+
+    def size(self, index):
+        """Return an example's size as a float or tuple. This value is used when
+        filtering a dataset with ``--max-positions``."""
+        raise NotImplementedError
