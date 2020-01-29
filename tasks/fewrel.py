@@ -11,6 +11,7 @@ from fairseq.data import (
     PrependDataset
 )
 from fairseq.tasks import FairseqTask, register_task
+from datasets.fewrel_dataset import FewRelDataset
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,10 @@ class FewRelTask(FairseqTask):
         parser.add_argument('--tokens-per-sample', default=512, type=int,
                             help='max number of total tokens over all segments '
                                  'per sample for BERT dataset')
+        parser.add_argument('--n_way', help='number of few-shot classes')
+        parser.add_argument('--n_shot', help='number of few-shot examples')
 
+        
         """Optional"""
         # optional arguments here
      
@@ -57,15 +61,28 @@ class FewRelTask(FairseqTask):
 
         split_path = os.path.join(self.args.data_path, split)
 
-        dataset = data_utils.load_indexed_dataset(
-            split_path,
-            self.dictionary, 
-            dataset_impl='raw',
-            combine=combine,
-        )
+        text_path = os.path.join(self.args.data_path, split + '.text')
+        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
 
-        if dataset is None:
-            raise FileNotFoundError('Dataset not found: {} ({})'.format(split, split_path))
+        text_data =  data_utils.load_indexed_dataset(
+            text_path,
+            None,
+            dataset_impl='mmap',
+        )   
+
+        if text_data is None:
+            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
+
+        annotation_data =  data_utils.load_indexed_dataset(
+            annotation_path,
+            None,
+            dataset_impl='mmap',
+        )    
+
+        if annotation_data is None:
+            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
+        
+        dataset = FewRelDataset(text_data, annotation_data, self.args.n_way, self.args.n_shot)
 
         # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
         # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
