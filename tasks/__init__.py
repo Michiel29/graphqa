@@ -1,1 +1,2 @@
 from .relation_inference import RelationInferenceTask
+from .triplet_inference import TripletInferenceTask
