@@ -1,6 +1,6 @@
 import logging
 import os
-
+from collections import namedtuple
 import numpy as np
 
 from fairseq.data import (
@@ -10,11 +10,10 @@ from fairseq.data import (
     FairseqDataset,
     PrependDataset
 )
-from fairseq.tasks import FairseqTask, register_task
+from fairseq.tasks import FairseqTask
 
 logger = logging.getLogger(__name__)
 
-@register_task('relation_inference')
 class RelationInferenceTask(FairseqTask):
     """Task for training inference models."""
 
@@ -23,19 +22,23 @@ class RelationInferenceTask(FairseqTask):
         """Add task-specific arguments to the parser."""
         
         """Required either in config or cl"""
-        parser.add_argument('--dict_path', help='path to dictionary')
-        parser.add_argument('--data_path', help='path to data')
+        parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--tokens-per-sample', default=512, type=int,
                             help='max number of total tokens over all segments '
                                  'per sample for BERT dataset')
+
+        parser.add_argument('--k-negative', default=1, type=int,
+                            help='number of negative samples per mention')                                 
+
 
         """Optional"""
         # optional arguments here
      
 
-    def __init__(self, args, dictionary):
+    def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
         self.dictionary = dictionary
+        self.entity_dictionary = entity_dictionary
         self.seed = args.seed
 
         # add entity mask tokens
@@ -45,32 +48,20 @@ class RelationInferenceTask(FairseqTask):
 
     @classmethod
     def setup_task(cls, args, **kwargs):
-        dictionary = Dictionary.load(args.dict_path)
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = Dictionary.load(dict_path)
+
+        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
+        entity_dictionary = Dictionary.load(entity_dict_path)
+
         logger.info('dictionary: {} types'.format(len(dictionary)))
-        return cls(args, dictionary)
+        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
+
+        return cls(args, dictionary, entity_dictionary)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        """Load a given dataset split.
-        Args:
-            split (str): name of the split (e.g., train, valid, test)
-        """
 
-        split_path = os.path.join(self.args.data_path, split)
-
-        dataset = data_utils.load_indexed_dataset(
-            split_path,
-            self.dictionary, 
-            dataset_impl='raw',
-            combine=combine,
-        )
-
-        if dataset is None:
-            raise FileNotFoundError('Dataset not found: {} ({})'.format(split, split_path))
-
-        # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
-        # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
-
-        self.datasets[split] = dataset
+        raise NotImplementedError
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,
@@ -111,7 +102,7 @@ class RelationInferenceTask(FairseqTask):
 
         # get indices ordered by example size
         with data_utils.numpy_seed(seed):
-            indices = dataset.ordered_indices()
+            indices = dataset.text_data.ordered_indices()
 
         # filter examples that are too large
         if max_positions is not None:
@@ -121,7 +112,7 @@ class RelationInferenceTask(FairseqTask):
 
         # create mini-batches with given size constraints
         batch_sampler = data_utils.batch_by_size(
-            indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
+            indices, dataset.sizes, max_tokens=max_tokens, max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
 
