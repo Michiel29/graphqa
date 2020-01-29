@@ -10,7 +10,17 @@ def update_namespace(namespace, input_dict):
         if isinstance(value, dict):
             update_namespace(namespace, value)
         else:
-            setattr(namespace, key, value)
+            if not hasattr(namespace, key):
+                setattr(namespace, key, value)
+
+def modify_factory(config):
+
+    def parser_modifier(parser):
+        for action in parser._actions:
+            if action.dest in config:
+                setattr(action, 'default', config[action.dest])
+    
+    return parser_modifier            
 
         
 

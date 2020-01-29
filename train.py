@@ -11,6 +11,7 @@ import logging
 import math
 import random
 import sys
+import argparse
 
 import numpy as np
 import torch
@@ -22,9 +23,10 @@ from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
 
-import models, tasks
+import models
+import tasks as custom_tasks
 
-from utils.config import update_namespace, read_json
+from utils.config import update_namespace, read_json, modify_factory
 
 
 logging.basicConfig(
@@ -39,8 +41,6 @@ logger = logging.getLogger('fairseq_cli.train')
 def main(args, init_distributed=False):
     utils.import_user_module(args)
 
-    assert args.max_tokens is not None or args.max_sentences is not None, \
-        'Must specify batch size either with --max-tokens or --max-sentences'
 
     # Initialize CUDA and distributed training
     if torch.cuda.is_available() and not args.cpu:
@@ -273,17 +273,18 @@ def distributed_main(i, args, start_rank=0):
     main(args, init_distributed=True)
 
 
-def cli_main(modify_parser=None):
+def cli_main():
+
     parser = options.get_training_parser()
     parser.add_argument('--config', type=str, help='path to JSON file of experiment configurations')
-    args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
+    pre_parsed_args = parser.parse_args()
 
-    if args.config:
-        config_dict = read_json(args.config)
-        update_namespace(args, config_dict)
+    config_dict = read_json(pre_parsed_args.config) if pre_parsed_args.config else {}
+    parser_modifier = modify_factory(config_dict)
 
-    if not hasattr(args, 'model-type'):
-        args.model_type = 'roberta_triplet'
+    args = options.parse_args_and_arch(parser, modify_parser=parser_modifier)
+
+    update_namespace(args, config_dict)
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
