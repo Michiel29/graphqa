@@ -23,7 +23,7 @@ from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
 
-import models
+import models, criterions
 import tasks as custom_tasks
 
 from utils.config import update_namespace, read_json, modify_factory

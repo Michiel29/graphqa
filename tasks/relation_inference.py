@@ -37,7 +37,6 @@ class RelationInferenceTask(FairseqTask):
 
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
-        self.dictionary = dictionary
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
 
@@ -45,6 +44,9 @@ class RelationInferenceTask(FairseqTask):
         self.ent1 = dictionary.add_symbol('<ent1>')
         self.ent2 = dictionary.add_symbol('<ent2>')
         self.entun = dictionary.add_symbol('<entun>')
+
+        self.dictionary = dictionary
+
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -102,7 +104,7 @@ class RelationInferenceTask(FairseqTask):
 
         # get indices ordered by example size
         with data_utils.numpy_seed(seed):
-            indices = dataset.text_data.ordered_indices()
+            indices = dataset.ordered_indices()
 
         # filter examples that are too large
         if max_positions is not None:
@@ -112,7 +114,7 @@ class RelationInferenceTask(FairseqTask):
 
         # create mini-batches with given size constraints
         batch_sampler = data_utils.batch_by_size(
-            indices, dataset.sizes, max_tokens=max_tokens, max_sentences=max_sentences,
+            indices, dataset.size, max_tokens=max_tokens, max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
 
@@ -129,3 +131,7 @@ class RelationInferenceTask(FairseqTask):
         )
 
         return epoch_iter
+
+    @property
+    def source_dictionary(self):
+        return self.dictionary

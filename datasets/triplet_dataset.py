@@ -1,3 +1,4 @@
+import numpy as np
 from datasets import RelInfDataset
 
 class TripletDataset(RelInfDataset):
@@ -15,6 +16,7 @@ class TripletDataset(RelInfDataset):
             'mention': [],
             'head': [],
             'tail': [],
+            'target': np.zeros(len(instances))
         }
 
         for instance in instances:
@@ -31,13 +33,3 @@ class TripletDataset(RelInfDataset):
 
 
         return batch
-
-    def num_tokens(self, index):
-        """Return the number of tokens in a sample. This value is used to
-        enforce ``--max-tokens`` during batching."""
-        raise NotImplementedError
-
-    def size(self, index):
-        """Return an example's size as a float or tuple. This value is used when
-        filtering a dataset with ``--max-positions``."""
-        raise NotImplementedError

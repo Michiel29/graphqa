@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from fairseq import models
 
 from fairseq.models import register_model, register_model_architecture
-from fairseq.models import BaseFairseqModel, roberta
+from fairseq.models import BaseFairseqModel
+from fairseq.models.roberta import RobertaModel
 
 
 import tasks
@@ -32,12 +33,9 @@ class EncoderTripletModel(BaseFairseqModel):
         tail_emb = self.emb(batch['tail'])
 
         self.score = self.triplet_model(mention_encoding, head_emb, tail_emb)
-
         score = self.triplet_model(batch['head'], mention_encoding, batch['tail'])
-        normalized_scores = F.softmax(score, dim=-1)
-        positive_scores = normalized_scores[Ellipsis, 0]
 
-        return positive_scores
+        return score
 
 
     @staticmethod
@@ -47,10 +45,13 @@ class EncoderTripletModel(BaseFairseqModel):
         parser.add_argument('--triplet_type', type=str, default='distmult',
                             help='type of triplet model to use for inference')
 
+        RobertaModel.add_args(parser)
+
+
     @classmethod
     def build_model(cls, args, task):
         
-        encoder = encoder_dict[args.encoder_type](args)
+        encoder = RobertaModel.build_model(args, task) 
         triplet_model = triplet_dict[args.triplet_type](args)
 
         n_entities = len(task.entity_dictionary)

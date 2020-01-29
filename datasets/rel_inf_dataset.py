@@ -1,6 +1,9 @@
-from fairseq.data import FairseqDataset
+import torch
 
+import numpy as np
 import numpy.random as rd
+
+from fairseq.data import FairseqDataset
 
 class RelInfDataset(FairseqDataset):
 
@@ -25,17 +28,42 @@ class RelInfDataset(FairseqDataset):
     def size(self, index):
         return self.text_data.sizes[index]
 
+    def ordered_indices(self):
+        order = [np.arange(len(self))]
+        order.append(self.text_data.sizes)        
+        indices = np.lexsort(order)
+
+        return indices
+    
     def sample_entities(self, instance, k_negative):
 
         # Need to sort out random seed properly
 
-        mention_samples = []
+        mention = instance['mention']
+        annotation = instance['annotation']
+
+        entities = torch.split(annotation, 3)
+
+        mention_entity_ids = rd.choice(len(entities), 2, replace=False)
+        # check indexing here
+        mention_entities = entities[mention_entity_ids]
+
+        # for entity in mention_entities: 
+        #     mention[]
+
+
+
+
         ent_samples = [] 
+        mention_samples = []
 
-        entity_to_replace = rd.binomial(k_negative, 0.5)
-        replacement_entities = rd.randint(self.n_entities, size=k_negative)
+        # entity_to_replace = rd.binomial(k_negative, 0.5)
+        # replacement_entities = rd.randint(self.n_entities, size=k_negative)
 
-        # # heads = 
+        # heads = []
+        tails = []
+
+        
 
         # instance['mention']
         # instance['annotation']
