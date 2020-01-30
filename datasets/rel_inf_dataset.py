@@ -33,7 +33,9 @@ class RelInfDataset(FairseqDataset):
 
     def ordered_indices(self):
         """Sorts by sentence length, randomly shuffled within sentences of """
-        order = [np.random.shuffle(np.arange(len(self)))]
+        order = np.arange(len(self))
+        np.random.shuffle(order)
+        order = [order]
         order.append(self.text_data.sizes)        
         indices = np.lexsort(order)
 
