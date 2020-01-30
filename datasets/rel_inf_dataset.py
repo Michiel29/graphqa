@@ -7,14 +7,13 @@ from fairseq.data import FairseqDataset
 
 class RelInfDataset(FairseqDataset):
 
-    def __init__(self, text_data, annotation_data, k_negative, n_entities, ent_tokens, ent_un_token):
+    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary):
         self.text_data = text_data
         self.annotation_data = annotation_data
         self.k_negative = k_negative
         self.n_entities = n_entities
 
-        self.ent_tokens = ent_tokens
-        self.ent_un_token = ent_un_token
+        self.dictionary = dictionary
 
     def __getitem__(self, index):
         item_dict = {
@@ -51,17 +50,17 @@ class RelInfDataset(FairseqDataset):
         mention_entity_ids = rd.choice(len(entities), 2, replace=False)
         mention_entities = [entities[idx] for idx in mention_entity_ids]
 
+        ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
+
         # remove entity tokens from mention
         for i, entity in enumerate(mention_entities): 
             entity_slice = slice(entity[0], entity[1])
             mention[entity_slice] = -1
 
             # replace with appropriate head/tail ent token
-            mention[entity[0]] = self.ent_tokens[i]
+            mention[entity[0]] = ent_tokens[i]
 
         mention = mention[mention!=-1]        
-
-        ent_samples = []
 
         entity_to_replace = rd.binomial(self.k_negative, 0.5, size=self.k_negative)
         replacement_entities = rd.randint(self.n_entities, size=self.k_negative)
@@ -69,13 +68,10 @@ class RelInfDataset(FairseqDataset):
         head_ent = mention_entities[0][2].item()
         tail_ent = mention_entities[1][2].item()
 
-        heads = [head_ent] + [head_ent if entity_to_replace[i]==1 else replacement_entities[i] for i in range(self.k_negative)]
-        
+        heads = [head_ent] + [head_ent if entity_to_replace[i]==1 else replacement_entities[i] for i in range(self.k_negative)] 
         tails = [tail_ent] + [tail_ent if entity_to_replace[i]==0 else replacement_entities[i] for i in range(self.k_negative)]
-
-        ent_samples = [(heads[i], tails[i]) for i in range(self.k_negative + 1)]
     
-        return mention, ent_samples
+        return mention, heads, tails
 
     def collater(self, instances):
         raise NotImplementedError        

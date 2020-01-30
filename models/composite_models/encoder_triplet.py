@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
 
 from fairseq import models
 
@@ -32,19 +31,12 @@ class EncoderTripletModel(BaseFairseqModel):
 
     def forward(self, batch):
 
-        batch_size = len(batch['target'])
-
-        mention_tokens = batch['mention']
-        max_len = max([len(x) for x in mention_tokens])
-        padded_mention_tokens = pad_sequence(mention_tokens, batch_first=True, padding_value=1) 
-        mention_tokens_enc, extra = self.encoder(padded_mention_tokens, features_only=True)
-        mention_enc = self.bag_of_words(mention_tokens_enc)
+        mention_enc, _ = self.encoder(batch['mention'], features_only=True)
+        mention_enc = self.bag_of_words(mention_enc)
         mention_enc = self.mention_linear(mention_enc)
 
-        head_idx = torch.LongTensor(batch['head']).cuda()
-        tail_idx = torch.LongTensor(batch['tail']).cuda()
-        head_emb = self.entity_embedder(head_idx).reshape(batch_size, -1, self.entity_dim)
-        tail_emb = self.entity_embedder(tail_idx).reshape(batch_size, -1, self.entity_dim)
+        head_emb = self.entity_embedder(batch['head'])
+        tail_emb = self.entity_embedder(batch['tail'])
 
         multiply_view = [-1] * len(head_emb.shape)
         multiply_view[-2] = head_emb.shape[-2]

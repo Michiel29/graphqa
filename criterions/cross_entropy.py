@@ -38,7 +38,7 @@ class CrossEntropy(FairseqCriterion):
         """        
 
         model_output = model(sample)
-        target = torch.cuda.LongTensor(sample['target'])
+        target = sample['target']
         loss = F.cross_entropy(model_output, target, reduce=reduce)
 
         sample_size = target.numel()

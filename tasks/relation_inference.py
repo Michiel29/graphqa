@@ -5,12 +5,14 @@ import numpy as np
 
 from fairseq.data import (
     data_utils,
-    Dictionary,
     iterators,
     FairseqDataset,
-    PrependDataset
+    PrependDataset,
+    Dictionary
 )
 from fairseq.tasks import FairseqTask
+
+from utils.data_utils import CustomDictionary
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +54,7 @@ class RelationInferenceTask(FairseqTask):
     @classmethod
     def setup_task(cls, args, **kwargs):
         dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = Dictionary.load(dict_path)
+        dictionary = CustomDictionary.load(dict_path)
 
         entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
         entity_dictionary = Dictionary.load(entity_dict_path)
