@@ -1,0 +1,12 @@
+{
+    "task": "triplet_inference",
+    "arch": "encoder_triplet",
+    "data_path": "/home/msdejong/research/self_inference/data/bin_sample/",
+
+
+    "entity_dim": 256,
+    "num_workers": 0,
+    "max_tokens": 100,
+
+    "criterion": "cross_entropy_custom"
+}
