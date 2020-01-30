@@ -1,7 +1,7 @@
 {
     "task": "triplet_inference",
     "arch": "encoder_triplet",
-    "data_path": "/home/msdejong/research/self_inference/data/bin_sample/",
+    "data_path": "/data1/aarchan/nki/bin_sample/",
 
 
     "entity_dim": 256,

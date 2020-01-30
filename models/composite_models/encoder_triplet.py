@@ -1,5 +1,7 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 
 from fairseq import models
 
@@ -7,10 +9,7 @@ from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel
 from fairseq.models.roberta import RobertaModel
 
-
 import tasks
-
-from models.encoder import encoder_dict
 from models.triplet import triplet_dict
 
 @register_model('encoder_triplet')
@@ -21,25 +20,38 @@ class EncoderTripletModel(BaseFairseqModel):
 
         self.args = args
 
+        self.entity_dim = args.entity_dim
+
         self.encoder = encoder
-        self.ent_emb = nn.Embedding(n_entities, args.entity_dim)
+        self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
+        self.mention_linear = nn.Linear(768, args.entity_dim)
         self.triplet_model = triplet_model
+
+    def bag_of_words(self, x):
+        return torch.mean(x, dim=-2)
 
     def forward(self, batch):
 
-        mention_encoding = self.encoder(batch['mention']).unsqueeze(-2)
+        batch_size = len(batch['target'])
 
-        head_emb = self.emb(batch['head'])
-        tail_emb = self.emb(batch['tail'])
+        mention_tokens = batch['mention']
+        max_len = max([len(x) for x in mention_tokens])
+        padded_mention_tokens = pad_sequence(mention_tokens, batch_first=True, padding_value=1) 
+        mention_tokens_enc, extra = self.encoder(padded_mention_tokens, features_only=True)
+        mention_enc = self.bag_of_words(mention_tokens_enc)
+        mention_enc = self.mention_linear(mention_enc)
 
-        multiply_view = [-1] * len(mention_encoding.size) 
-        multiply_view[-2] = head_emb.size[-2]
+        head_idx = torch.LongTensor(batch['head']).cuda()
+        tail_idx = torch.LongTensor(batch['tail']).cuda()
+        head_emb = self.entity_embedder(head_idx).reshape(batch_size, -1, self.entity_dim)
+        tail_emb = self.entity_embedder(tail_idx).reshape(batch_size, -1, self.entity_dim)
+
+        multiply_view = [-1] * len(head_emb.shape)
+        multiply_view[-2] = head_emb.shape[-2]
+        mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view)
+
+        score = self.triplet_model(mention_enc, head_emb, tail_emb)
         
-        mention_encoding = mention_encoding.expand(multiply_view)
-        
-        self.score = self.triplet_model(mention_encoding, head_emb, tail_emb)
-        score = self.triplet_model(batch['head'], mention_encoding, batch['tail'])
-
         return score
 
 
