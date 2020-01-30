@@ -27,11 +27,16 @@ class EncoderTripletModel(BaseFairseqModel):
 
     def forward(self, batch):
 
-        mention_encoding = self.encoder(batch['mention'])
+        mention_encoding = self.encoder(batch['mention']).unsqueeze(-2)
 
         head_emb = self.emb(batch['head'])
         tail_emb = self.emb(batch['tail'])
 
+        multiply_view = [-1] * len(mention_encoding.size) 
+        multiply_view[-2] = head_emb.size[-2]
+        
+        mention_encoding = mention_encoding.expand(multiply_view)
+        
         self.score = self.triplet_model(mention_encoding, head_emb, tail_emb)
         score = self.triplet_model(batch['head'], mention_encoding, batch['tail'])
 

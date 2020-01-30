@@ -49,7 +49,7 @@ class TripletInferenceTask(RelationInferenceTask):
             raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
 
 
-        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary))
+        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.ent_tokens, self.un_ent_token)
         
         # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
         # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
