@@ -1,6 +1,6 @@
 {
     "task": "triplet_inference",
-    "arch": "encoder_triplet",
+    "arch": "encoder_triplet__roberta_base",
     "data_path": "/data1/aarchan/nki/bin_sample/",
 
 
@@ -12,7 +12,9 @@
 
     "num_workers": 0,
     "max_tokens": 1000,
+    "max_update": 100,
     "save_dir": "../checkpoints",
+    "restore_file": "/data1/aarchan/roberta/roberta.base/model.pt",
 
     "criterion": "cross_entropy_custom"
 }
