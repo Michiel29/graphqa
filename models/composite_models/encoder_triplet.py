@@ -22,7 +22,6 @@ class EncoderTripletModel(BaseFairseqModel):
 
         self.entity_dim = args.entity_dim
         self.encoder_embed_dim = args.encoder_embed_dim
-        self.encoder_output_layer_type = args.encoder_output_layer_type
 
         self.encoder = encoder
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
@@ -30,7 +29,7 @@ class EncoderTripletModel(BaseFairseqModel):
         self.triplet_model = triplet_model
 
     def forward(self, batch):
-        mention_enc, _ = self.encoder(batch['mention'], self.encoder_output_layer_type)
+        mention_enc, _ = self.encoder(batch['mention'])
         mention_enc = self.mention_linear(mention_enc)
 
         head_emb = self.entity_embedder(batch['head'])
