@@ -1,7 +1,7 @@
 {
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_base",
-    "data_path": "/data1/aarchan/nki/bin_sample/",
+    "data_path": "../data/nki/bin_sample/",
 
 
     "entity_dim": 256,
@@ -10,11 +10,17 @@
     "encoder_embed_dim": 768,
     "encoder_output_layer_type": "bag_of_words",
 
+    "max_update": 125000,
+    "max_sentences": 2e4,
+    "max_positions": 512, 
+    "max_tokens": 2e5,
+    "required-batch-size-multiple": 1,
+
+    "save_dir": "../save/checkpoints",
+    "restore_file": "../data/roberta/roberta.base/model.pt",
+
     "num_workers": 0,
-    "max_tokens": 1000,
-    "max_update": 100,
-    "save_dir": "../checkpoints",
-    "restore_file": "/data1/aarchan/roberta/roberta.base/model.pt",
+    "ddp_backend": "no_c10d",
 
     "criterion": "cross_entropy_custom"
 }
