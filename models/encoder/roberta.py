@@ -1,6 +1,7 @@
 import torch
 from fairseq.models.roberta import RobertaModel, RobertaEncoder
 from fairseq.checkpoint_utils import load_checkpoint_to_cpu
+from models.encoder.encoder_heads import encoder_head_dict
 
 class RobertaWrapper(RobertaModel):
 
@@ -11,9 +12,9 @@ class RobertaWrapper(RobertaModel):
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
 
-        self.output_layer_dict = {'bag_of_words': self.bag_of_words}
+        self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args)
 
-    def forward(self, src_tokens, layer_type, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
         """
         Args:
             src_tokens (LongTensor): input tokens of shape `(batch, src_len)`
@@ -33,14 +34,8 @@ class RobertaWrapper(RobertaModel):
         """
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
         if not features_only:
-            x = self.output_layer(x, layer_type)
+            x = self.custom_output_layer(x)
         return x, extra
-    
-    def output_layer(self, x, output_layer_type):
-        return self.output_layer_dict[output_layer_type](x)
-    
-    def bag_of_words(self, x):
-        return torch.mean(x, dim=-2)
 
     def load_from_pretrained(self, filename, args):
             
