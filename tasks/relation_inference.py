@@ -41,13 +41,6 @@ class RelationInferenceTask(FairseqTask):
         super().__init__(args)
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
-
-        # add entity mask tokens
-        tail_ent = dictionary.add_symbol('<head_ent>')
-        head_ent = dictionary.add_symbol('<tail_ent>')
-        self.ent_tokens = [head_ent, tail_ent]
-        self.un_ent_token = dictionary.add_symbol('<un_ent>')
-
         self.dictionary = dictionary
 
 
