@@ -9,12 +9,17 @@
     "encoder_embed_dim": 768,
     "encoder_output_layer_type": "bag_of_words",
 
+    "max_update": 125000,
+    "max_sentences": 2e4,
+    "max_positions": 512, 
+    "max_tokens": 2e5,
+    "required-batch-size-multiple": 1,
+
     "num_workers": 0,
-    "max_tokens": 1000,
-    "max_update": 100,
-    "save_dir": "../checkpoints",
+    "save_dir": "../save/checkpoints",
     "restore_file": false,
     "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
+    "ddp_backend": "no_c10d",
 
     "criterion": "cross_entropy_custom"
 }
