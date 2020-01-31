@@ -12,6 +12,7 @@
 
     "num_workers": 0,
     "max_tokens": 1000,
+    "save_dir": "../checkpoints",
 
     "criterion": "cross_entropy_custom"
 }
