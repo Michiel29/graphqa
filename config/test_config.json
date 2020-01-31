@@ -1,12 +1,11 @@
 {
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_base",
-    "data_path": "/data1/aarchan/nki/bin_sample/",
-
+    "data_path": "../data/bin_sample",
 
     "entity_dim": 256,
 
-    "encoder_layers": 0,
+    "encoder_layers": 1,
     "encoder_embed_dim": 768,
     "encoder_output_layer_type": "bag_of_words",
 
@@ -14,7 +13,8 @@
     "max_tokens": 1000,
     "max_update": 100,
     "save_dir": "../checkpoints",
-    "restore_file": "/data1/aarchan/roberta/roberta.base/model.pt",
+    "restore_file": false,
+    "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
 
     "criterion": "cross_entropy_custom"
 }
