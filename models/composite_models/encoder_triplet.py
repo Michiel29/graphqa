@@ -6,10 +6,10 @@ from fairseq import models
 
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel
-from fairseq.models.roberta import RobertaModel
 
 import tasks
 from models.triplet import triplet_dict
+from models.encoder.roberta import RobertaWrapper
 
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
@@ -20,19 +20,16 @@ class EncoderTripletModel(BaseFairseqModel):
         self.args = args
 
         self.entity_dim = args.entity_dim
+        self.encoder_embed_dim = args.encoder_embed_dim
+        self.encoder_output_layer_type = args.encoder_output_layer_type
 
         self.encoder = encoder
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
-        self.mention_linear = nn.Linear(768, args.entity_dim)
+        self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
         self.triplet_model = triplet_model
 
-    def bag_of_words(self, x):
-        return torch.mean(x, dim=-2)
-
     def forward(self, batch):
-
-        mention_enc, _ = self.encoder(batch['mention'], features_only=True)
-        mention_enc = self.bag_of_words(mention_enc)
+        mention_enc, _ = self.encoder(batch['mention'], self.encoder_output_layer_type)
         mention_enc = self.mention_linear(mention_enc)
 
         head_emb = self.entity_embedder(batch['head'])
@@ -54,15 +51,14 @@ class EncoderTripletModel(BaseFairseqModel):
         parser.add_argument('--triplet_type', type=str, default='distmult',
                             help='type of triplet model to use for inference')
 
-        RobertaModel.add_args(parser)
+        RobertaWrapper.add_args(parser)
 
 
     @classmethod
     def build_model(cls, args, task):
         
-        encoder = RobertaModel.build_model(args, task) 
+        encoder = RobertaWrapper.build_model(args, task)
         triplet_model = triplet_dict[args.triplet_type](args)
-
         n_entities = len(task.entity_dictionary)
 
         return cls(args, encoder, triplet_model, n_entities)

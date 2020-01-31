@@ -5,8 +5,13 @@
 
 
     "entity_dim": 256,
+
+    "encoder_layers": 0,
+    "encoder_embed_dim": 768,
+    "encoder_output_layer_type": "bag_of_words",
+
     "num_workers": 0,
-    "max_tokens": 100,
+    "max_tokens": 1000,
 
     "criterion": "cross_entropy_custom"
 }
