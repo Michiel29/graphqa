@@ -26,8 +26,9 @@ class CustomDictionary(Dictionary):
 
 class EntityDictionary(Dictionary):
     def __init__(self):
-        pass
-
+        self.symbols = []
+        self.count = []
+        self.indices = {}
 
 
 
