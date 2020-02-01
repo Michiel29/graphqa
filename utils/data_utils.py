@@ -24,5 +24,10 @@ class CustomDictionary(Dictionary):
     def unk_ent(self):
         return self.unk_ent_index
 
+class EntityDictionary(Dictionary):
+    def __init__(self):
+        pass
+
+
 
 

@@ -12,7 +12,7 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask
 
-from utils.data_utils import CustomDictionary
+from utils.data_utils import CustomDictionary, EntityDictionary
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class RelationInferenceTask(FairseqTask):
         dictionary = CustomDictionary.load(dict_path)
 
         entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-        entity_dictionary = Dictionary.load(entity_dict_path)
+        entity_dictionary = EntityDictionary.load(entity_dict_path)
 
         logger.info('dictionary: {} types'.format(len(dictionary)))
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
