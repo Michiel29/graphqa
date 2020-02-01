@@ -9,9 +9,11 @@ class CustomDictionary(Dictionary):
         self.tail_token = tail_token
         self.unk_ent_token = unk_ent_token
 
+    def add_from_file(self, f):
+        Dictionary.add_from_file(self, f)
         self.head_index = self.add_symbol(self.head_token)
         self.tail_index = self.add_symbol(self.tail_token)
-        self.unk_ent_index = self.add_symbol(unk_ent_token)
+        self.unk_ent_index = self.add_symbol(self.unk_ent_token)        
 
     def head(self):
         return self.head_index
