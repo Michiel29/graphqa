@@ -8,7 +8,7 @@ from fairseq.data import (
     Dictionary,
     iterators,
     FairseqDataset,
-    PrependDataset
+    PrependTokenDataset
 )
 from fairseq.tasks import FairseqTask, register_task
 
@@ -48,10 +48,8 @@ class TripletInferenceTask(RelationInferenceTask):
         if annotation_data is None:
             raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
 
+        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
 
         dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
         
-        # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
-        # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
-
         self.datasets[split] = dataset
