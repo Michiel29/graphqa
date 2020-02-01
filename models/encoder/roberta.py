@@ -8,7 +8,7 @@ class RobertaWrapper(RobertaModel):
     def __init__(self, args, task):
         super().__init__(args, task)
 
-        pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None) 
+        pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
 
@@ -25,7 +25,7 @@ class RobertaWrapper(RobertaModel):
                 intermediate hidden states (default: False).
         Returns:
             tuple:
-                - x:  
+                - x:
                     - bag_of_words: `(batch, encoder_embed_dim)`
                 - extra:
                     a dictionary of additional data, where 'inner_states'
@@ -38,13 +38,13 @@ class RobertaWrapper(RobertaModel):
         return x, extra
 
     def load_from_pretrained(self, filename, args):
-            
-        state_dict = load_checkpoint_to_cpu(filename)["model"]        
+
+        state_dict = load_checkpoint_to_cpu(filename)['model']
 
         model_vocab_size = self.decoder.sentence_encoder.embed_tokens.weight.shape[0]
         ckpt_vocab_size = state_dict['decoder.sentence_encoder.embed_tokens.weight'].shape[0]
         diff = model_vocab_size - ckpt_vocab_size
-  
+
         new_state_dict = {}
         for n, c in state_dict.items():
             if n in ['decoder.sentence_encoder.embed_tokens.weight', 'decoder.lm_head.weight'] and diff > 0:
@@ -61,15 +61,15 @@ class RobertaWrapper(RobertaModel):
 
         missing_keys, unexpected_keys = super().load_state_dict(new_state_dict, strict=False, args=args)
         print('missing_keys: {}'.format(missing_keys))
-        print('unexpected_keys: {}'.format(unexpected_keys))     
+        print('unexpected_keys: {}'.format(unexpected_keys))
 
 
 def base_architecture(args):
 
-    args.encoder_layers = getattr(args, 'encoder_layers', 12) 
+    args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 3072)
-    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 12) 
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 12)
 
     args.activation_fn = getattr(args, 'activation_fn', 'gelu')
     args.pooler_activation_fn = getattr(args, 'pooler_activation_fn', 'tanh')
@@ -79,16 +79,11 @@ def base_architecture(args):
     args.activation_dropout = getattr(args, 'activation_dropout', 0.0)
     args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
     args.encoder_layers_to_keep = getattr(args, 'encoder_layers_to_keep', None)
-    args.encoder_layerdrop = getattr(args, 'encoder_layerdrop', 0.0)    
+    args.encoder_layerdrop = getattr(args, 'encoder_layerdrop', 0.0)
 
 def large_architecture(args):
-    args.encoder_layers = getattr(args, 'encoder_layers', 24) 
+    args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 4096)
-    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16) 
-    base_architecture(args)    
-
-         
-
-
-
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
+    base_architecture(args)
