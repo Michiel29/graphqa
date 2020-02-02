@@ -26,7 +26,7 @@ class EncoderFewRelModel(BaseFairseqModel):
 
         goal_mention = batch['goal_mention'] # [batch_size, n_tokens]
         candidate_mentions = batch['candidate_mentions'] # [batch_size, n_way, n_shot, n_tokens]
-        batch_size = goal_mention.shape[0] 
+        batch_size = batch['batch_size']
        
         goal_enc = self.encoder(goal_mention).unsqueeze(-1) # [batch_size, enc_dim, 1]
         candidate_encs = self.encoder(candidate_mentions) # [batch_size, n_way, n_shot, enc_dim]

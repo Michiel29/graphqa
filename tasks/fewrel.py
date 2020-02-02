@@ -8,10 +8,12 @@ from fairseq.data import (
     Dictionary,
     iterators,
     FairseqDataset,
-    PrependDataset
+    PrependTokenDataset
 )
 from fairseq.tasks import FairseqTask, register_task
 from datasets.fewrel_dataset import FewRelDataset
+
+from utils.data_utils import CustomDictionary
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,6 @@ class FewRelTask(FairseqTask):
         """Add task-specific arguments to the parser."""
         
         """Required either in config or cl"""
-        parser.add_argument('--dict_path', help='path to dictionary')
         parser.add_argument('--data_path', help='path to data')
         parser.add_argument('--tokens-per-sample', default=512, type=int,
                             help='max number of total tokens over all segments '
@@ -42,14 +43,13 @@ class FewRelTask(FairseqTask):
         self.dictionary = dictionary
         self.seed = args.seed
 
-        # add entity mask tokens
-        self.ent1 = dictionary.add_symbol('<ent1>')
-        self.ent2 = dictionary.add_symbol('<ent2>')
-        self.entun = dictionary.add_symbol('<entun>')
+        #  temp for testing remove 
+        self.entity_dictionary = dictionary
 
     @classmethod
     def setup_task(cls, args, **kwargs):
-        dictionary = Dictionary.load(args.dict_path)
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
         logger.info('dictionary: {} types'.format(len(dictionary)))
         return cls(args, dictionary)
 
@@ -63,6 +63,7 @@ class FewRelTask(FairseqTask):
 
         text_path = os.path.join(self.args.data_path, split + '.text')
         annotation_path = os.path.join(self.args.data_path, split + '.annotations')
+        relation_path = os.path.join(self.args.data_path, split + '.relations')
 
         text_data =  data_utils.load_indexed_dataset(
             text_path,
@@ -73,19 +74,28 @@ class FewRelTask(FairseqTask):
         if text_data is None:
             raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
 
-        annotation_data =  data_utils.load_indexed_dataset(
+        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
+
+        annotation_data = data_utils.load_indexed_dataset(
             annotation_path,
             None,
             dataset_impl='mmap',
         )    
 
         if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
-        
-        dataset = FewRelDataset(text_data, annotation_data, self.args.n_way, self.args.n_shot)
+            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))        
 
-        # prepend beginning-of-sentence token (<s>, equiv. to [CLS] in BERT)  (do we need this?)
-        # dataset = PrependTokenDataset(dataset, self.source_dictionary.bos())
+        relation_data = data_utils.load_indexed_dataset(
+            relation_path,
+            None,
+            dataset_impl='mmap',
+        )    
+
+        if relation_data is None:
+            raise FileNotFoundError('Dataset (relations) not found: {}'.format(relation_path))        
+
+        
+        dataset = FewRelDataset(text_data, annotation_data, relation_data, self.dictionary, self.args.n_way, self.args.k_shot, self.args.dataset_size)
 
         self.datasets[split] = dataset
 
@@ -155,3 +165,7 @@ class FewRelTask(FairseqTask):
         )
 
         return epoch_iter
+
+    @property
+    def source_dictionary(self):
+        return self.dictionary
