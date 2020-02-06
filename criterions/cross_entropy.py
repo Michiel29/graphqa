@@ -6,9 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 
-
-
-from fairseq import utils
+from fairseq import utils, metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
 
 @register_criterion('cross_entropy_custom')
@@ -39,7 +37,7 @@ class CrossEntropy(FairseqCriterion):
 
         model_output = model(sample)
         target = sample['target']
-        loss = F.cross_entropy(model_output, target, reduce=reduce)
+        loss = F.cross_entropy(model_output, target, reduction='mean' if reduce else 'none')
 
         sample_size = target.numel()
         logging_output = {
@@ -50,13 +48,19 @@ class CrossEntropy(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def aggregate_logging_outputs(logging_outputs):
+    def reduce_metrics(logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
-        loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
-        sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-        agg_output = {
-            'loss': loss_sum / sample_size / math.log(2),
-            'sample_size': sample_size,
-        }
 
-        return agg_output
+        loss_sum = sum(log.get('loss', 0) * log.get('sample_size', 0) for log in logging_outputs)
+        sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
+        metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
+
+
+    @staticmethod
+    def logging_outputs_can_be_summed() -> bool:
+        """
+        Whether the logging outputs returned by `forward` can be summed
+        across workers prior to calling `reduce_metrics`. Setting this
+        to True will improves distributed training speed.
+        """
+        return False
