@@ -12,13 +12,13 @@ from fairseq.data import FairseqDataset
 class FewRelDataset(FairseqDataset):
 
     def __init__(self, text_data, annotation_data, relation_data, 
-    dictionary, n_way, k_shot, dataset_size):
+    dictionary, n_way, n_shot, dataset_size):
         self.text_data = text_data
         self.annotation_data = annotation_data
         self.relation_data = relation_data
         self.dictionary = dictionary
         self.n_way = n_way
-        self.k_shot = k_shot
+        self.n_shot = n_shot
 
 
         self.processed_mentions = []
@@ -48,7 +48,7 @@ class FewRelDataset(FairseqDataset):
             positive_relation = sample_relations[0]
             negative_relations = sample_relations[1:]
 
-            positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.k_shot + 1, replace=False)
+            positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
             
             goal_mention_idx = positive_mention_idxs[0]
             
@@ -56,7 +56,7 @@ class FewRelDataset(FairseqDataset):
 
             for rel in negative_relations:
 
-                rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.k_shot, replace=False)
+                rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                 exemplars += list(rel_examplar_idxs)
 
             all_ids = [goal_mention_idx] + [idx for idx in exemplars]
@@ -113,8 +113,6 @@ class FewRelDataset(FairseqDataset):
 
         padded_mention = pad_sequence(mention, batch_first=True, padding_value=self.dictionary.pad())
         padded_exemplars = pad_sequence(exemplars, batch_first=True, padding_value=self.dictionary.pad())
-
-        padded_exemplars = torch.reshape(padded_exemplars, (batch_size, self.n_way, self.k_shot, -1))
 
         batch = {}
 

@@ -6,11 +6,8 @@ from fairseq import models
 
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture
 
-
-import tasks
-
-from models.encoder import encoder_dict
 
 @register_model('encoder_fewrel')
 class EncoderFewRelModel(BaseFairseqModel):
@@ -18,28 +15,35 @@ class EncoderFewRelModel(BaseFairseqModel):
     def __init__(self, args, encoder):
         super().__init__()
 
-        self.args = args
         self.encoder = encoder
-        self.enc_dim = args.enc_dim
+        self.enc_dim = args.encoder_embed_dim
+        self.n_way = args.n_way
+        self.n_shot = args.n_shot
 
     def forward(self, batch):
 
-        goal_mention = batch['goal_mention'] # [batch_size, n_tokens]
-        candidate_mentions = batch['candidate_mentions'] # [batch_size, n_way, n_shot, n_tokens]
+        goal_mention = batch['mention'] # [batch_size, n_tokens]
+        exemplars = batch['exemplars'] # [batch_size, n_way, n_shot, n_tokens]
         batch_size = batch['batch_size']
        
-        goal_enc = self.encoder(goal_mention).unsqueeze(-1) # [batch_size, enc_dim, 1]
-        candidate_encs = self.encoder(candidate_mentions) # [batch_size, n_way, n_shot, enc_dim]
-        rel_prototypes = torch.mean(candidate_encs, dim=-2) # [batch_size, n_way, enc_dim]
+        goal_enc, _ = self.encoder(goal_mention)
+        goal_enc = goal_enc.unsqueeze(-1) # [batch_size, enc_dim, 1]
+        exemplar_encs, _ = self.encoder(exemplars) # [batch_size, n_way, n_shot, enc_dim]
+        reshaped_exemplar_encs = torch.reshape(exemplar_encs, (batch_size, self.n_way, self.n_shot, -1))
 
-        scores = torch.matmul(rel_prototypes, goal_enc).squeeze(-1) # [batch_size, n_way]
+        class_encs = torch.mean(reshaped_exemplar_encs, dim=-2) # [batch_size, n_way, enc_dim]
+
+        scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
 
         return scores
 
     @classmethod
     def build_model(cls, args, task):
         
-        encoder = encoder_dict[args.encoder_type](args)
-
+        encoder = RobertaWrapper.build_model(args, task)
         return cls(args, encoder)
 
+
+@register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_base')
+def fewrel_base_architecture(args):
+    base_architecture(args)

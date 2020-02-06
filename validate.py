@@ -1,16 +1,17 @@
 #!/usr/bin/env python3 -u
-#!/usr/bin/env python3 -u
-# Copyright (c) Facebook, Inc. and its affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
 
+import os
 import logging
 import sys
 
 import torch
 
-from fairseq import checkpoint_utils, metrics, options, progress_bar, utils
+from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
+
+from utils.config import update_namespace, read_json, modify_factory
+
+import models, criterions
+import tasks as custom_tasks
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -21,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger('fairseq_cli.train')
 
 
-def main(args, override_args=None):
+def main(args):
     utils.import_user_module(args)
 
     assert args.max_tokens is not None or args.max_sentences is not None, \
@@ -30,32 +31,41 @@ def main(args, override_args=None):
     use_fp16 = args.fp16
     use_cuda = torch.cuda.is_available() and not args.cpu
 
-    if override_args is not None:
-        overrides = vars(override_args)
-        overrides.update(eval(getattr(override_args, 'model_overrides', '{}')))
+
+    # Setup task, e.g., translation, language modeling, etc.
+    task = tasks.setup_task(args)  
+
+    # Load model
+    load_checkpoint = getattr(args, 'load_checkpoint', None)
+
+    if load_checkpoint:
+        logger.info('loading model(s) from {}'.format(load_checkpoint))
+        if not os.path.exists(load_checkpoint):
+            raise IOError("Model file not found: {}".format(load_checkpoint))
+        state = checkpoint_utils.load_checkpoint_to_cpu(load_checkpoint)
+
+        args = state["args"]
+        if task is None:
+            task = tasks.setup_task(args)
+
+        # build model for ensemble
+        model = task.build_model(args)
+        model.load_state_dict(state["model"], strict=True, args=args)
+
     else:
-        overrides = None
+        model = task.build_model(args)
 
-    # Load ensemble
-    logger.info('loading model(s) from {}'.format(args.path))
-    models, model_args, task = checkpoint_utils.load_model_ensemble_and_task(
-        [args.path],
-        arg_overrides=overrides,
-    )
-    model = models[0]
-
-    # Move models to GPU
-    for model in models:
-        if use_fp16:
-            model.half()
-        if use_cuda:
-            model.cuda()
+    # Move model to GPU
+    if use_fp16:
+        model.half()
+    if use_cuda:
+        model.cuda()
 
     # Print args
-    logger.info(model_args)
+    logger.info(args)
 
     # Build criterion
-    criterion = task.build_criterion(model_args)
+    criterion = task.build_criterion(args)
     criterion.eval()
 
     # Load valid dataset (we load training data below, based on the latest checkpoint)
@@ -73,7 +83,7 @@ def main(args, override_args=None):
             max_sentences=args.max_sentences,
             max_positions=utils.resolve_max_positions(
                 task.max_positions(),
-                *[m.max_positions() for m in models],
+                model.max_positions(),
             ),
             ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
             required_batch_size_multiple=args.required_batch_size_multiple,
@@ -102,13 +112,17 @@ def main(args, override_args=None):
 
 def cli_main():
     parser = options.get_validation_parser()
-    args = options.parse_args_and_arch(parser)
+    parser.add_argument('--config', type=str, help='path to JSON file of experiment configurations')
+    pre_parsed_args = parser.parse_args()
 
-    # only override args that are explicitly given on the command line
-    override_parser = options.get_validation_parser()
-    override_args = options.parse_args_and_arch(override_parser, suppress_defaults=True)
+    config_dict = read_json(pre_parsed_args.config) if pre_parsed_args.config else {}
+    parser_modifier = modify_factory(config_dict)
 
-    main(args, override_args)
+    args = options.parse_args_and_arch(parser, modify_parser=parser_modifier)
+
+    update_namespace(args, config_dict)
+
+    main(args)
 
 
 if __name__ == '__main__':

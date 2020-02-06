@@ -95,7 +95,7 @@ class FewRelTask(FairseqTask):
             raise FileNotFoundError('Dataset (relations) not found: {}'.format(relation_path))        
 
         
-        dataset = FewRelDataset(text_data, annotation_data, relation_data, self.dictionary, self.args.n_way, self.args.k_shot, self.args.dataset_size)
+        dataset = FewRelDataset(text_data, annotation_data, relation_data, self.dictionary, self.args.n_way, self.args.n_shot, self.args.dataset_size)
 
         self.datasets[split] = dataset
 

@@ -1,1 +1,2 @@
 from .encoder_triplet import EncoderTripletModel
+from .encoder_fewrel import EncoderFewRelModel
