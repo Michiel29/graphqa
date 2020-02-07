@@ -1,3 +1,4 @@
+from pudb import set_trace
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,11 +12,12 @@ import tasks
 from models.triplet import triplet_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture
 
+from utils.diagnostic_utils import inspect_batch
 
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
 
-    def __init__(self, args, encoder, triplet_model, n_entities):
+    def __init__(self, args, encoder, triplet_model, n_entities, task):
         super().__init__()
 
         self.args = args
@@ -27,6 +29,8 @@ class EncoderTripletModel(BaseFairseqModel):
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
         self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
         self.triplet_model = triplet_model
+
+        self.task = task
 
     def forward(self, batch):
         mention_enc, _ = self.encoder(batch['mention'])
@@ -40,7 +44,9 @@ class EncoderTripletModel(BaseFairseqModel):
         mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view)
 
         score = self.triplet_model(mention_enc, head_emb, tail_emb)
-        
+     
+        #inspect_batch(batch, self.task, score)        
+
         return score
 
     @staticmethod
@@ -59,7 +65,7 @@ class EncoderTripletModel(BaseFairseqModel):
         triplet_model = triplet_dict[args.triplet_type](args)
         n_entities = len(task.entity_dictionary)
 
-        return cls(args, encoder, triplet_model, n_entities)
+        return cls(args, encoder, triplet_model, n_entities, task)
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_base')
 def triplet_base_architecture(args):

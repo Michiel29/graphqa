@@ -10,7 +10,6 @@ class TripletDataset(RelInfDataset):
         super().__init__(text_data, annotation_data, k_negative, n_entities, dictionary)
 
     def collater(self, instances):
-    
 
         mentions = []
         heads = []
