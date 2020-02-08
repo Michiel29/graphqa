@@ -2,6 +2,7 @@ from fairseq.data import Dictionary
 
 
 class CustomDictionary(Dictionary):
+    """Dictionary with entity tokens"""
 
     def __init__(self, head_token='<head>', tail_token = '<tail>', unk_ent_token='<unk_ent>'):
         super().__init__()
@@ -25,6 +26,7 @@ class CustomDictionary(Dictionary):
         return self.unk_ent_index
 
 class EntityDictionary(Dictionary):
+    """Dictionary with no special tokens"""
     def __init__(self):
         self.symbols = []
         self.count = []
