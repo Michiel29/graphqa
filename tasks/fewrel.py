@@ -27,11 +27,8 @@ class FewRelTask(FairseqTask):
         
         """Required either in config or cl"""
         parser.add_argument('--data_path', help='path to data')
-        parser.add_argument('--tokens-per-sample', default=512, type=int,
-                            help='max number of total tokens over all segments '
-                                 'per sample for BERT dataset')
-        parser.add_argument('--n_way', help='number of few-shot classes')
-        parser.add_argument('--n_shot', help='number of few-shot examples')
+        parser.add_argument('--n_way', default=5, help='number of few-shot classes')
+        parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
 
         
         """Optional"""

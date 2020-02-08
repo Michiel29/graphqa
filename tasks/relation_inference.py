@@ -25,10 +25,6 @@ class RelationInferenceTask(FairseqTask):
         
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
-        parser.add_argument('--tokens-per-sample', default=512, type=int,
-                            help='max number of total tokens over all segments '
-                                 'per sample for BERT dataset')
-
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')                                 
 
