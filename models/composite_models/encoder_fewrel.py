@@ -47,3 +47,7 @@ class EncoderFewRelModel(BaseFairseqModel):
 @register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_base')
 def fewrel_base_architecture(args):
     base_architecture(args)
+
+@register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_large')
+def roberta_large_architecture(args):
+    large_architecture(args)

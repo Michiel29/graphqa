@@ -9,7 +9,7 @@ import torch
 from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
 
 from utils.config import update_namespace, read_json, modify_factory
-from utils.loading import component_state
+from utils.loading import select_component_state
 
 import models, criterions
 import tasks as custom_tasks
@@ -55,7 +55,7 @@ def main(args):
 
         model_state = state["model"]
         if load_component_prefix:
-            model_state = component_state(model_state, load_component_prefix)            
+            model_state = select_component_state(model_state, load_component_prefix)            
 
         # build model for ensemble
         model = task.build_model(args)
