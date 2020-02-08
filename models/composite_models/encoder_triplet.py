@@ -32,17 +32,17 @@ class EncoderTripletModel(BaseFairseqModel):
         self.task = task
 
     def forward(self, batch):
-        mention_enc, _ = self.encoder(batch['mention'])
-        mention_enc = self.mention_linear(mention_enc)
+        mention_enc, _ = self.encoder(batch['mention']) # [batch_size, enc_dim]
+        mention_enc = self.mention_linear(mention_enc) # [batch_size, ent_dim]
 
-        head_emb = self.entity_embedder(batch['head'])
-        tail_emb = self.entity_embedder(batch['tail'])
+        head_emb = self.entity_embedder(batch['head']) # [batch_size, (1 + k_negative), ent_dim]
+        tail_emb = self.entity_embedder(batch['tail']) # [batch_size, (1 + k_negative), ent_dim]
 
         multiply_view = [-1] * len(head_emb.shape)
         multiply_view[-2] = head_emb.shape[-2]
-        mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view)
+        mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
-        score = self.triplet_model(mention_enc, head_emb, tail_emb)
+        score = self.triplet_model(mention_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
      
         #inspect_batch(batch, self.task, score)        
 
