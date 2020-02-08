@@ -9,6 +9,7 @@ import torch
 from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
 
 from utils.config import update_namespace, read_json, modify_factory
+from utils.loading import component_state
 
 import models, criterions
 import tasks as custom_tasks
@@ -38,19 +39,27 @@ def main(args):
     # Load model
     load_checkpoint = getattr(args, 'load_checkpoint', None)
 
+
+
     if load_checkpoint:
         logger.info('loading model(s) from {}'.format(load_checkpoint))
         if not os.path.exists(load_checkpoint):
             raise IOError("Model file not found: {}".format(load_checkpoint))
         state = checkpoint_utils.load_checkpoint_to_cpu(load_checkpoint)
 
-        args = state["args"]
+        checkpoint_args = state["args"]
         if task is None:
             task = tasks.setup_task(args)
 
+        load_component_prefix = getattr(args, 'load_component_prefix', None)
+
+        model_state = state["model"]
+        if load_component_prefix:
+            model_state = component_state(model_state, load_component_prefix)            
+
         # build model for ensemble
         model = task.build_model(args)
-        model.load_state_dict(state["model"], strict=True, args=args)
+        model.load_state_dict(model_state, strict=True, args=args)
 
     else:
         model = task.build_model(args)

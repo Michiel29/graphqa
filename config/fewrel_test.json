@@ -19,9 +19,10 @@
 
     "num_workers": 0,
     "save_dir": "../save/checkpoints",
-    "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
-    "restore_file": false,
+    "load_checkpoint": "../save/checkpoints/checkpoint1.pt",
     "ddp_backend": "no_c10d",
+
+    "load_component_prefix": "encoder",
 
     "criterion": "cross_entropy_custom"
     
