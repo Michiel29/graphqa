@@ -3,4 +3,5 @@ fairseq
 fastBPE
 sacremoses
 requests
+commentjson
 
