@@ -10,9 +10,9 @@
     "encoder_output_layer_type": "bag_of_words",
 
     "max_update": 125000,
-    "max_sentences": 2e4,
+    "max_sentences": 16,
     "max_positions": 512, 
-    "max_tokens": 2e5,
+    "max_tokens": 1000,
     "required-batch-size-multiple": 1,
 
     "num_workers": 0,

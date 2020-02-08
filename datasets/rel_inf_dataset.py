@@ -73,6 +73,7 @@ class RelInfDataset(FairseqDataset):
 
         heads = [head_ent] + [head_ent if entity_to_replace[i]==1 else replacement_entities[i] for i in range(self.k_negative)] 
         tails = [tail_ent] + [tail_ent if entity_to_replace[i]==0 else replacement_entities[i] for i in range(self.k_negative)]
+
     
         return mention, heads, tails
 
