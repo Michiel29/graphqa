@@ -25,8 +25,11 @@ class FewRelDataset(FairseqDataset):
 
         self.relation_index = defaultdict(list)
 
+        # correct entity positions for bos token
         bos_offset = int(hasattr(self.text_data, 'token'))
 
+        # construct 1. list of processed mentions with entities masked and
+        # 2. dictionary of relation label: list of indices in processed mentions that have that label
         for idx in range(len(relation_data)):
             self.relation_index[relation_data[idx].item()].append(idx)
 
@@ -47,24 +50,27 @@ class FewRelDataset(FairseqDataset):
             
             exemplars = []
 
+            # sample n_way relation types and choose the first one as correct label
             sample_relations = rd.choice(list(self.relation_index.keys()), size=self.n_way, replace=False)
             positive_relation = sample_relations[0]
             negative_relations = sample_relations[1:]
 
+            # sample goal sentence + n_shot exemplar sentences for correct class
             positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
             
             goal_mention_idx = positive_mention_idxs[0]
-            
             exemplars += list(positive_mention_idxs[1:])
-
+            
+            # sample n_shot exemplar sentences for other classes
             for rel in negative_relations:
-
                 rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                 exemplars += list(rel_examplar_idxs)
 
             all_ids = [goal_mention_idx] + [idx for idx in exemplars]
             total_tokens = sum([len(self.processed_mentions[idx]) for idx in all_ids])
 
+
+            # generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
             id_dict = { 
             'mention_id': goal_mention_idx,
             'exemplars': exemplars,
@@ -78,6 +84,7 @@ class FewRelDataset(FairseqDataset):
     def __getitem__(self, index):
         id_dict = self.data[index]
         
+        # Convert mention ids to actual mentions
         item_dict = {}
         item_dict['mention'] = self.processed_mentions[id_dict['mention_id']]
         item_dict['exemplars'] = [self.processed_mentions[mention_id] for mention_id in id_dict['exemplars']]
