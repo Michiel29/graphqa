@@ -24,6 +24,9 @@ class FewRelDataset(FairseqDataset):
         self.processed_mentions = []
 
         self.relation_index = defaultdict(list)
+
+        bos_offset = int(hasattr(self.text_data, 'token'))
+
         for idx in range(len(relation_data)):
             self.relation_index[relation_data[idx].item()].append(idx)
 
@@ -31,9 +34,9 @@ class FewRelDataset(FairseqDataset):
             mention = text_data[idx]
             ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
             for entity_annotation in annotation:
-                ent_slice = slice(entity_annotation[0], entity_annotation[1])
+                ent_slice = slice(entity_annotation[0] + bos_offset, entity_annotation[1] + bos_offset)
                 mention[ent_slice] = -1
-                mention[entity_annotation[0]] = ent_tokens[entity_annotation[2]]
+                mention[entity_annotation[0] + bos_offset] = ent_tokens[entity_annotation[2]]
             
             self.processed_mentions.append(mention[mention!=-1])
 
