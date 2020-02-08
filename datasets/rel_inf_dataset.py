@@ -53,7 +53,7 @@ class RelInfDataset(FairseqDataset):
         mention_entity_ids = rd.choice(len(entities), 2, replace=False)
         mention_entities = [entities[idx] for idx in mention_entity_ids]
 
-        bos_offset = int(hasattr(self, 'token'))
+        bos_offset = int(hasattr(self.text_data, 'token'))
 
         ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
 
