@@ -11,6 +11,9 @@ class RobertaWrapper(RobertaModel):
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
+        self.padding_idx = task.dictionary.pad()
+        self.head_idx = task.dictionary.head()
+        self.tail_idx = task.dictionary.tail()
 
         self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args)
 
@@ -34,7 +37,8 @@ class RobertaWrapper(RobertaModel):
         """
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
         if not features_only:
-            x = self.custom_output_layer(x)
+            padding_mask = (src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)
+            x = self.custom_output_layer(x, padding_mask)
         return x, extra
 
     def load_from_pretrained(self, filename, args):

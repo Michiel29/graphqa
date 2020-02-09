@@ -11,27 +11,37 @@ from fairseq.data import FairseqDataset
 
 class FewRelDataset(FairseqDataset):
 
-    def __init__(self, text_data, annotation_data, relation_data, 
-    dictionary, n_way, n_shot, dataset_size):
+    def __init__(
+        self,
+        text_data,
+        annotation_data,
+        relation_data,
+        dictionary,
+        n_way,
+        n_shot,
+        dataset_size,
+    ):
         self.text_data = text_data
         self.annotation_data = annotation_data
         self.relation_data = relation_data
         self.dictionary = dictionary
         self.n_way = n_way
         self.n_shot = n_shot
-
+        self.dataset_size = dataset_size
 
         self.processed_mentions = []
-
         self.relation_index = defaultdict(list)
 
-        # correct entity positions for bos token
-        bos_offset = int(hasattr(self.text_data, 'token'))
+        # Correct entity positions for bos token
+        bos_offset = int(hasattr(self.text_data,'token'))
 
-        # construct 1. list of processed mentions with entities masked and
-        # 2. dictionary of relation label: list of indices in processed mentions that have that label
-        for idx in range(len(relation_data)):
-            self.relation_index[relation_data[idx].item()].append(idx)
+        # Construct
+        # 1. List of processed mentions with entities masked out
+        # self.processed_mentions: list of sentences (from self.text_data) with entities masked out
+        # 2. Dictionary of relation label: list of indices in processed mentions that have that label
+        # self.relation_index: relation_type_idx -> list[indices for self.processed_mentions]
+        for idx in range(len(self.relation_data)):
+            self.relation_index[self.relation_data[idx].item()].append(idx)
 
             annotation = annotation_data[idx].split(3)
             mention = text_data[idx]
@@ -40,28 +50,35 @@ class FewRelDataset(FairseqDataset):
                 ent_slice = slice(entity_annotation[0] + bos_offset, entity_annotation[1] + bos_offset)
                 mention[ent_slice] = -1
                 mention[entity_annotation[0] + bos_offset] = ent_tokens[entity_annotation[2]]
-            
+            # Mention has all entities spans replaced by ENTITY_HEAD, ENTITY_TAIL
             self.processed_mentions.append(mention[mention!=-1])
 
 
         self.data = []
 
-        for _ in range(dataset_size):
-            
+        # Exact validation set depends on the sampling being used. Thus, we
+        # 1. Save the current random generation state
+        # 2. Set random seed to be a paricular constant
+        # 3. We restore random state after the data generation has finished.
+        old_rd_state = rd.get_state()
+        rd.seed(31415)
+
+        for _ in range(self.dataset_size):
+
             exemplars = []
 
-            # sample n_way relation types and choose the first one as correct label
+            # Sample n_way relation types and choose the first one as correct label
             sample_relations = rd.choice(list(self.relation_index.keys()), size=self.n_way, replace=False)
             positive_relation = sample_relations[0]
             negative_relations = sample_relations[1:]
 
-            # sample goal sentence + n_shot exemplar sentences for correct class
+            # Sample goal sentence + n_shot exemplar sentences for correct class
             positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
-            
+
             goal_mention_idx = positive_mention_idxs[0]
             exemplars += list(positive_mention_idxs[1:])
-            
-            # sample n_shot exemplar sentences for other classes
+
+            # Sample n_shot exemplar sentences for other classes
             for rel in negative_relations:
                 rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                 exemplars += list(rel_examplar_idxs)
@@ -69,21 +86,21 @@ class FewRelDataset(FairseqDataset):
             all_ids = [goal_mention_idx] + [idx for idx in exemplars]
             total_tokens = sum([len(self.processed_mentions[idx]) for idx in all_ids])
 
+            # Generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
+            self.data.append({
+                'mention_id': goal_mention_idx,
+                'exemplars': exemplars,
+                'size': total_tokens,
+            })
 
-            # generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
-            id_dict = { 
-            'mention_id': goal_mention_idx,
-            'exemplars': exemplars,
-            'size': total_tokens
-            }   
-
-            self.data.append(id_dict)
+        # Restore the random state back
+        rd.set_state(old_rd_state)
 
         self.sizes = np.array([instance['size'] for instance in self.data])
 
     def __getitem__(self, index):
         id_dict = self.data[index]
-        
+
         # Convert mention ids to actual mentions
         item_dict = {}
         item_dict['mention'] = self.processed_mentions[id_dict['mention_id']]
@@ -105,7 +122,7 @@ class FewRelDataset(FairseqDataset):
         order = np.arange(len(self))
         np.random.shuffle(order)
         order = [order]
-        order.append(self.sizes)        
+        order.append(self.sizes)
         indices = np.lexsort(order)
 
         return indices
@@ -130,11 +147,12 @@ class FewRelDataset(FairseqDataset):
         batch['exemplars'] = padded_exemplars
         batch['target'] = torch.zeros(len(instances), dtype=torch.long)
         batch['batch_size'] = len(instances)
+        batch['ntokens'] = padded_exemplars.numel()
+        batch['nsentences'] = len(padded_exemplars)
 
         return batch
 
     @property
     def supports_prefetch(self):
         """Whether this dataset supports prefetching."""
-        return False 
-
+        return False
