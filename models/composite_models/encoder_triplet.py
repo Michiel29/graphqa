@@ -42,11 +42,11 @@ class EncoderTripletModel(BaseFairseqModel):
         multiply_view[-2] = head_emb.shape[-2]
         mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
-        score = self.triplet_model(mention_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
+        scores = self.triplet_model(mention_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
      
-        #inspect_batch(batch, self.task, score)        
+        #inspect_batch(batch, self.task, scores)        
 
-        return score
+        return scores
 
     @staticmethod
     def add_args(parser):

@@ -2,7 +2,7 @@
     "task": "fewrel",
     "data_path": "../data/fewrel/bin",
     "n_way": 5,
-    "n_shot": 1,
+    "n_shot": 3,
     "dataset_size": 500,
 
     "arch": "encoder_fewrel__roberta_base",
