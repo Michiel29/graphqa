@@ -25,13 +25,13 @@ class EncoderFewRelModel(BaseFairseqModel):
         goal_mention = batch['mention'] # [batch_size, n_tokens]
         exemplars = batch['exemplars'] # [batch_size, n_way * n_shot, n_tokens]
         batch_size = batch['batch_size']
-       
+
         goal_enc, _ = self.encoder(goal_mention)
         goal_enc = goal_enc.unsqueeze(-1) # [batch_size, enc_dim, 1]
         exemplar_encs, _ = self.encoder(exemplars) # [batch_size, n_way * n_shot, enc_dim]
         reshaped_exemplar_encs = torch.reshape(exemplar_encs, (batch_size, self.n_way, self.n_shot, -1))
 
-        class_encs = torch.mean(reshaped_exemplar_encs, dim=-2) # [batch_size, n_way, enc_dim]
+        class_encs = torch.mean(reshaped_exemplar_encs, dim=2) # [batch_size, n_way, enc_dim]
 
         scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
 
@@ -39,7 +39,7 @@ class EncoderFewRelModel(BaseFairseqModel):
 
     @classmethod
     def build_model(cls, args, task):
-        
+
         encoder = RobertaWrapper.build_model(args, task)
         return cls(args, encoder)
 

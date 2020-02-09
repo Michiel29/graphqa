@@ -33,22 +33,23 @@ class CrossEntropy(FairseqCriterion):
         1) the loss
         2) the sample size, which is used as the denominator for the gradient
         3) logging outputs to display while training
-        """        
+        """
 
         model_output = model(sample)
         target = sample['target']
         loss = F.cross_entropy(model_output, target, reduction='mean' if reduce else 'none')
 
-        predicted_class = torch.argmax(model_output, dim=-1)
-        accuracy = torch.eq(predicted_class, target).float().mean()
+        predicted_class = torch.argmax(model_output, dim=1)
+        accuracy = (predicted_class == target).float().mean()
 
         sample_size = target.numel()
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
             'sample_size': sample_size,
-            'accuracy': accuracy
+            'accuracy': accuracy,
+            'ntokens': sample['ntokens'],
+            'nsentences': sample['nsentences'],
         }
-
         return loss, sample_size, logging_output
 
     @staticmethod
@@ -58,6 +59,9 @@ class CrossEntropy(FairseqCriterion):
         loss_sum = sum(log.get('loss', 0) * log.get('sample_size', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
         accuracy_sum = sum(log.get('accuracy', 0) * log.get('sample_size', 0) for log in logging_outputs)
+
+        ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
+        nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
 
         metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
         metrics.log_scalar('accuracy', accuracy_sum / sample_size, sample_size, round=3)

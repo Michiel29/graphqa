@@ -34,7 +34,7 @@ def main(args):
 
 
     # Setup task, e.g., translation, language modeling, etc.
-    task = tasks.setup_task(args)  
+    task = tasks.setup_task(args)
 
     # Load model
     load_checkpoint = getattr(args, 'load_checkpoint', None)
@@ -55,7 +55,7 @@ def main(args):
 
         model_state = state["model"]
         if load_component_prefix:
-            model_state = select_component_state(model_state, load_component_prefix)            
+            model_state = select_component_state(model_state, load_component_prefix)
 
         # build model for ensemble
         model = task.build_model(args)
