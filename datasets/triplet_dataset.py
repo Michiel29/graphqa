@@ -23,7 +23,7 @@ class TripletDataset(RelInfDataset):
             heads.append(instance_heads)
             tails.append(instance_tails)
 
-        padded_mention = pad_sequence(mentions, batch_first=True, padding_value=self.dictionary.pad()) 
+        padded_mention = pad_sequence(mentions, batch_first=True, padding_value=self.dictionary.pad())
 
         batch = {}
         batch['mention'] = padded_mention
@@ -31,5 +31,7 @@ class TripletDataset(RelInfDataset):
         batch['tail'] = torch.LongTensor(tails)
         batch['target'] = torch.zeros(len(instances), dtype=torch.long)
         batch['batch_size'] = len(instances)
+        batch['ntokens'] = sum(len(m) for m in mentions)
+        batch['nsentences'] = len(instances)
 
         return batch
