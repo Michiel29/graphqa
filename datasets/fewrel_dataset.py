@@ -147,7 +147,7 @@ class FewRelDataset(FairseqDataset):
         batch['exemplars'] = padded_exemplars
         batch['target'] = torch.zeros(len(instances), dtype=torch.long)
         batch['batch_size'] = len(instances)
-        batch['ntokens'] = padded_exemplars.numel()
+        batch['ntokens'] = sum(len(m) for m in mention)
         batch['nsentences'] = len(padded_exemplars)
 
         return batch

@@ -27,6 +27,7 @@ import models, criterions
 import tasks as custom_tasks
 
 from utils.config import update_namespace, read_json, modify_factory
+from utils.checkpoint_utils import generate_save_dir
 
 
 logging.basicConfig(
@@ -285,6 +286,8 @@ def cli_main():
     args = options.parse_args_and_arch(parser, modify_parser=parser_modifier)
 
     update_namespace(args, config_dict)
+
+    setattr(args, 'save_dir', generate_save_dir(args))
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

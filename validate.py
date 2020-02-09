@@ -9,7 +9,7 @@ import torch
 from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
 
 from utils.config import update_namespace, read_json, modify_factory
-from utils.loading import select_component_state
+from utils.checkpoint_utils import select_component_state
 
 import models, criterions
 import tasks as custom_tasks
