@@ -5,15 +5,15 @@ from models.encoder.encoder_heads import encoder_head_dict
 
 class RobertaWrapper(RobertaModel):
 
-    def __init__(self, args, task):
-        super().__init__(args, task)
+    def __init__(self, args, encoder):
+        super().__init__(args, encoder)
 
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
-        self.padding_idx = task.dictionary.pad()
-        self.head_idx = task.dictionary.head()
-        self.tail_idx = task.dictionary.tail()
+        self.padding_idx = encoder.dictionary.pad()
+        self.head_idx = encoder.dictionary.head()
+        self.tail_idx = encoder.dictionary.tail()
 
         self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args)
 
