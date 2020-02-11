@@ -167,6 +167,18 @@ class WikiProcessor(object):
         #         assert not intersect(start_i, end_i, start_j, end_j)
         return new_annotations, num_filtered
 
+    def filter_by_entity_vocab(self, annotations):
+        global entities
+        assert entities is not None
+        new_annotations = []
+        num_filtered = 0
+        for annotation in annotations:
+            if annotation['uri'] in entities:
+                new_annotations.append(annotation)
+            else:
+                num_filtered += 1
+        return new_annotations, num_filtered
+
     def split_into_sentences(self, text):
         offset = 0
         for paragraph in text.split('\n'):
@@ -293,6 +305,7 @@ class WikiProcessor(object):
         num_annotations, num_sentences = 0, 0
         num_filtered_xao = 0
         num_filtered_by_candidate_set, num_filtered_by_human_annotations, num_filtered_by_self_overlaps = 0, 0, 0
+        num_filtered_by_entity_vocab = 0
 
         if self.entity_vocab is None:
             annotation_entities = Counter()
@@ -321,6 +334,9 @@ class WikiProcessor(object):
                 annotations, _num_filtered_by_human_annotations = self.filter_by_human_annotations(article, annotations)
                 annotations, _num_filtered_by_self_overlaps = self.filter_by_self_overlaps(annotations)
                 annotations = article['annotations'] + annotations
+                if self.entity_vocab is not None:
+                    annotations, _num_filtered_by_entity_vocab = self.filter_by_entity_vocab(annotations)
+                    num_filtered_by_entity_vocab += _num_filtered_by_entity_vocab
                 num_filtered_by_candidate_set += _num_filtered_by_candidate_set
                 num_filtered_by_human_annotations += _num_filtered_by_human_annotations
                 num_filtered_by_self_overlaps += _num_filtered_by_self_overlaps
@@ -381,6 +397,7 @@ class WikiProcessor(object):
             num_filtered_by_crossing_sentence_boundaries,
             num_filtered_solo_annotion_in_sentence,
             num_filtered_xao,
+            num_filtered_by_entity_vocab,
         )
 
 
@@ -406,6 +423,8 @@ def main(args):
     num_sentences = 0
     num_annotations, num_filtered_by_candidate_set, num_filtered_by_human_annotations, num_filtered_by_self_overlaps = 0, 0, 0, 0
     num_filtered_xao, num_filtered_by_crossing_sentence_boundaries, num_filtered_solo_annotion_in_sentence = 0, 0, 0
+    num_filtered_by_entity_vocab = 0
+
     pbar = tqdm.tqdm(
         total=len(input_files),
         desc='Processing Wiki',
@@ -420,6 +439,7 @@ def main(args):
         'f_cross_s_bd': num_filtered_by_crossing_sentence_boundaries,
         'f_solo_s': num_filtered_solo_annotion_in_sentence,
         'f_xao': num_filtered_xao,
+        'f_vocab': num_filtered_by_entity_vocab,
     })
 
     if build_entity_vocab_mode:
@@ -439,7 +459,7 @@ def main(args):
         )
     if args.nworkers == 1:
         processor.initializer()
-        for output, s, x, y, z, w, v, u, t in map(processor, input_files):
+        for output, s, x, y, z, w, v, u, t, q in map(processor, input_files):
             if build_entity_vocab_mode:
                 entities.update(output)
             else:
@@ -453,6 +473,7 @@ def main(args):
             num_filtered_by_crossing_sentence_boundaries += v
             num_filtered_solo_annotion_in_sentence += u
             num_filtered_xao += t
+            num_filtered_by_entity_vocab += q
             pbar.set_postfix({
                 's': num_sentences,
                 'ann': num_annotations,
@@ -462,11 +483,12 @@ def main(args):
                 'f_cross_s_bd': num_filtered_by_crossing_sentence_boundaries,
                 'f_solo_s': num_filtered_solo_annotion_in_sentence,
                 'f_xao': num_filtered_xao,
+                'f_vocab': num_filtered_by_entity_vocab,
             })
             pbar.update()
     else:
         with mp.Pool(processes=args.nworkers, initializer=processor.initializer) as pool:
-            for output, s, x, y, z, w, v, u, t in pool.imap_unordered(processor, input_files):
+            for output, s, x, y, z, w, v, u, t, q in pool.imap_unordered(processor, input_files):
                 if build_entity_vocab_mode:
                     entities.update(output)
                 else:
@@ -480,6 +502,7 @@ def main(args):
                 num_filtered_by_crossing_sentence_boundaries += v
                 num_filtered_solo_annotion_in_sentence += u
                 num_filtered_xao += t
+                num_filtered_by_entity_vocab += q
                 pbar.set_postfix({
                     's': num_sentences,
                     'ann': num_annotations,
@@ -489,6 +512,7 @@ def main(args):
                     'f_cross_s_bd': num_filtered_by_crossing_sentence_boundaries,
                     'f_solo_s': num_filtered_solo_annotion_in_sentence,
                     'f_xao': num_filtered_xao,
+                    'f_vocab': num_filtered_by_entity_vocab,
                 })
                 pbar.update()
     pbar.close()
@@ -496,7 +520,11 @@ def main(args):
     if build_entity_vocab_mode:
         with codecs.open(args.entity_vocab, 'w', 'utf8') as f:
             for entity_and_count in entities.most_common():
-                f.write('%s %d\n' % (entity_and_count[0], entity_and_count[1]))
+                if (
+                    args.entity_count_threshold is None
+                    or entity_and_count[1] >= args.entity_count_threshold
+                ):
+                    f.write('%s %d\n' % (entity_and_count[0], entity_and_count[1]))
         print('-- Successfully saved %d entities to %s' % (len(entities), args.entity_vocab))
     else:
         dataset_builder.finalize(args.output + '.text.idx')
@@ -515,6 +543,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=str, help='Output filename')
     parser.add_argument('--entity-vocab', type=str, default=None, help='Output filename')
     parser.add_argument('--limit-set-of-entities', default=False, action='store_true')
+    parser.add_argument('--entity-count-threshold', default=None, type=int)
     parser.add_argument('--roberta', type=str, help='RoBERTa directory with all dictionaries.')
     parser.add_argument('--append-eos', default=False, action='store_true')
     parser.add_argument(
