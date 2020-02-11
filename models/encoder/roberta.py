@@ -65,7 +65,6 @@ class RobertaWrapper(RobertaModel):
 
         missing_keys, unexpected_keys = super().load_state_dict(new_state_dict, strict=False, args=args)
         print('missing_keys: {}'.format(missing_keys))
-        print('unexpected_keys: {}'.format(unexpected_keys))
 
 
 def base_architecture(args):
