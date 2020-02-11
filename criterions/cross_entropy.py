@@ -46,7 +46,7 @@ class CrossEntropy(FairseqCriterion):
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
             'sample_size': sample_size,
-            'accuracy': accuracy,
+            'accuracy': utils.item(accuracy.data),
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
         }
