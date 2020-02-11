@@ -30,6 +30,10 @@ class EncoderTripletModel(BaseFairseqModel):
         self.triplet_model = triplet_model
 
         self.task = task
+        self._max_positions = args.max_positions
+
+    def max_positions(self):
+        return self._max_positions
 
     def forward(self, batch):
         mention_enc, _ = self.encoder(batch['mention']) # [batch_size, enc_dim]

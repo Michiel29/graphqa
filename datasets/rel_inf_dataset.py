@@ -7,7 +7,7 @@ from fairseq.data import FairseqDataset
 
 class RelInfDataset(FairseqDataset):
 
-    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary):
+    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary, n_examples=None):
         self.text_data = text_data
         self.annotation_data = annotation_data
         self.k_negative = k_negative
@@ -15,28 +15,55 @@ class RelInfDataset(FairseqDataset):
 
         self.dictionary = dictionary
 
+        self.n_examples = n_examples
+        if n_examples is not None:
+            self.dataset_indices = range(n_examples)
+        else:
+            self.dataset_indices = None
+
     def __getitem__(self, index):
-        item_dict = {
-        'mention': self.text_data[index],
-        'annotation': self.annotation_data[index]
-        }
+        if self.dataset_indices is None:
+            item_dict = {
+            'mention': self.text_data[index],
+            'annotation': self.annotation_data[index]
+            }
+        else: 
+            item_dict = {
+            'mention': self.text_data[self.dataset_indices[index]],
+            'annotation': self.annotation_data[self.dataset_indices[index]]
+            }
+
         return item_dict
 
     def __len__(self):
-        return len(self.text_data)
+        if self.dataset_indices is None:
+            return len(self.text_data)
+        else:
+            return self.n_examples
 
     def num_tokens(self, index):
-        return self.text_data.sizes[index]
+        if self.dataset_indices is None:
+            return self.text_data.sizes[index]
+        else: 
+            return self.text_data.sizes[self.dataset_indices[index]]
 
     def size(self, index):
-        return self.text_data.sizes[index]
+        if self.dataset_indices is None:
+            return self.text_data.sizes[index]
+        else: 
+            return self.text_data.sizes[self.dataset_indices[index]]
 
     def ordered_indices(self):
         """Sorts by sentence length, randomly shuffled within sentences of """
         order = np.arange(len(self))
         np.random.shuffle(order)
         order = [order]
-        order.append(self.text_data.sizes)        
+
+        if self.dataset_indices is None:
+            order.append(self.text_data.sizes)
+        else:
+            order.append(self.text_data.sizes[self.dataset_indices])
+
         indices = np.lexsort(order)
 
         return indices

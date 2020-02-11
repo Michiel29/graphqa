@@ -1,8 +1,7 @@
 {
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_base",
-    //"data_path": "../data/bin-v2",
-    "data_path": "../data/bin_sample",
+    "data_path": "../data/nki/bin-v2-threshold20",
 
     "entity_dim": 256,
 
@@ -10,26 +9,25 @@
     "encoder_embed_dim": 768,
     "encoder_output_layer_type": "bag_of_words",
 
-    "max_update": 125000,
-    //"max_update": 1000,
+    "lr": [1e-3],
+
+    "max_update": 1e8,
     "max_sentences": 16,
-    //"max_sentences": 1,
     "max_positions": 512, 
-    //"max_positions": 5, 
     "max_tokens": 1000,
     "required-batch-size-multiple": 1,
 
     "n_train_examples": -1,
-    "n_valid_examples": 10000,
+    "n_valid_examples": -1,
     "n_test_examples": -1,
 
     "num_workers": 0,
-    "save_dir": "../save/checkpoints__n_train=-1",
+    "save_dir": "../save/checkpoints__n_train=-1__lr=1e-3__max_update=1e8",
     "restore_file": false,
     "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
     "ddp_backend": "no_c10d",
 
-    "tensorboard_logdir": "../save/tensorboard__n_train=-1",
+    "tensorboard_logdir": "../save/tensorboard__n_train=-1__lr=1e-3__max_update=1e8",
 
     "criterion": "cross_entropy_custom"
 }

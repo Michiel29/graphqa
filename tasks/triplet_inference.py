@@ -50,6 +50,15 @@ class TripletInferenceTask(RelationInferenceTask):
 
         text_data = PrependTokenDataset(text_data, self.dictionary.bos())
 
-        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
+        if split is 'train' and self.args.n_train_examples > 0:
+            n_examples = int(self.args.n_train_examples)
+        elif split is 'valid' and self.args.n_valid_examples > 0:
+            n_examples = int(self.args.n_valid_examples)
+        elif split is 'test' and self.args.n_test_examples > 0:
+            n_examples = int(self.args.n_test_examples)
+        else:
+            n_examples = None
+
+        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary, n_examples)
         
         self.datasets[split] = dataset
