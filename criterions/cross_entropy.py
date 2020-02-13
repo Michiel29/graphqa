@@ -37,7 +37,7 @@ class CrossEntropy(FairseqCriterion):
 
         model_output = model(sample)
         target = sample['target']
-        loss = F.cross_entropy(model_output, target, reduction='mean' if reduce else 'none')
+        loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
 
         predicted_class = torch.argmax(model_output, dim=1)
         accuracy = (predicted_class == target).float().mean()
@@ -56,7 +56,7 @@ class CrossEntropy(FairseqCriterion):
     def reduce_metrics(logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
 
-        loss_sum = sum(log.get('loss', 0) * log.get('sample_size', 0) for log in logging_outputs)
+        loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
         accuracy_sum = sum(log.get('accuracy', 0) * log.get('sample_size', 0) for log in logging_outputs)
 
