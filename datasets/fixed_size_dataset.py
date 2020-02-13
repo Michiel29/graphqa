@@ -5,14 +5,21 @@ from fairseq.data import BaseWrapperDataset
 
 
 class FixedSizeDataset(BaseWrapperDataset):
-    def __init__(self, dataset, size=-1):
+    def __init__(self, dataset, size=-1, seed=0):
         super().__init__(dataset)
         if size > 0:
+            old_rd_state = rd.get_state()
+            rd.seed(seed)
             self.data_indices = rd.choice(len(dataset), size, replace=False)
+            rd.set_state(old_rd_state)
         else:
             self.data_indices = range(len(dataset))
 
-        self._sizes = [self.size(idx) for idx in range(len(self.data_indices))]
+        self._sizes = self.dataset.sizes[self.data_indices]
+
+    @property
+    def sizes(self):
+        return self._sizes
 
     def __getitem__(self, index):
         return self.dataset[self.data_indices[index]]
@@ -25,17 +32,3 @@ class FixedSizeDataset(BaseWrapperDataset):
 
     def size(self, index):
         return self.dataset.size(self.data_indices[index])
-
-    @property
-    def sizes(self):
-        return self._sizes
-
-    def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of """
-        order = np.arange(len(self.data_indices))
-        np.random.shuffle(order)
-        order = [order]
-        order.append(self.sizes)
-        indices = np.lexsort(order)
-
-        return indices

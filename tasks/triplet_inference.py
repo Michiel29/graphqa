@@ -50,10 +50,12 @@ class TripletInferenceTask(RelationInferenceTask):
             raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
 
         text_data = PrependTokenDataset(text_data, self.dictionary.bos())
-        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
 
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
 
-        dataset = FixedSizeDataset(dataset, n_examples)
+        text_data = FixedSizeDataset(text_data, n_examples)
+        annotation_data = FixedSizeDataset(annotation_data, n_examples)
+
+        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
 
         self.datasets[split] = dataset
