@@ -27,7 +27,7 @@ class RelationInferenceTask(FairseqTask):
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')                                 
-
+        
 
         """Optional"""
         # optional arguments here
@@ -38,7 +38,6 @@ class RelationInferenceTask(FairseqTask):
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
         self.dictionary = dictionary
-
 
     @classmethod
     def setup_task(cls, args, **kwargs):

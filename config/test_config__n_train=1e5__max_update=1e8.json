@@ -1,0 +1,45 @@
+{
+    "task": "triplet_inference",
+    "arch": "encoder_triplet__roberta_base",
+    "data_path": "../data/nki/bin-v2-threshold20",
+
+    "entity_dim": 256,
+
+    "encoder_layers": 12,
+    "encoder_embed_dim": 768,
+    "encoder_output_layer_type": "bag_of_words",
+
+    "optimizer": "adam",
+    "adam_betas": "(0.9, 0.98)",
+    "adam_eps": 1e-6,
+    "clip_norm": 0.0,
+    "lr": [1e-4],
+    "lr_scheduler": "polynomial_decay",
+    "weight_decay": 0.1,
+    "dropout": 0.1,
+    "attention_dropout": 0.1,
+
+    "max_update": 1e8,
+    "warmup_updates": 1e4,
+    "max_sentences": 16,
+    "update_freq": [16],
+    "max_positions": 512,
+    "tokens_per_sample": 512, 
+    "max_tokens": 4400,
+    "required-batch-size-multiple": 1,
+
+    "n_train_examples": 1e5,
+    "n_valid_examples": -1,
+    "n_test_examples": -1,
+
+    "num_workers": 0,
+    "save_dir": "../save/checkpoints__n_train=1e5__max_update=1e8",
+    "restore_file": false,
+    "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
+    "ddp_backend": "no_c10d",
+    "no_epoch_checkpoints": true,
+
+    "tensorboard_logdir": "../save/tensorboard__n_train=1e5__max_update=1e8",
+
+    "criterion": "cross_entropy_custom"
+}

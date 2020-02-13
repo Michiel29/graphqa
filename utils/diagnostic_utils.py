@@ -52,6 +52,7 @@ def inspect_batch(batch, task, scores=None, n_way=None, n_shot=None):
 
 
         print('\n\nMENTION ID LIST:\n {}\n\n'.format(cur_mention_id))
+        print('\n\nNUM MENTION TOKENS:\n {}\n\n'.format(len(cur_mention_id)))
         if task.args.task == 'triplet_inference':
             print('POSITIVE <head> ENTITY:\n {} (ID={})\n'.format(pos_head_ent, head_id[i,0].item()))
             print('POSITIVE <tail> ENTITY:\n {} (ID={})\n'.format(pos_tail_ent, tail_id[i,0].item()))
@@ -68,3 +69,4 @@ def inspect_batch(batch, task, scores=None, n_way=None, n_shot=None):
             print('SCORES: \n {}\n\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
         else:
             print('\n')
+        

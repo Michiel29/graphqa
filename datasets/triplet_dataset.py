@@ -6,8 +6,8 @@ from datasets import RelInfDataset
 
 class TripletDataset(RelInfDataset):
 
-    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary):
-        super().__init__(text_data, annotation_data, k_negative, n_entities, dictionary)
+    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary, n_examples):
+        super().__init__(text_data, annotation_data, k_negative, n_entities, dictionary, n_examples)
 
     def collater(self, instances):
 

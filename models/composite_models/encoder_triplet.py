@@ -9,7 +9,7 @@ from fairseq.models import BaseFairseqModel
 
 import tasks
 from models.triplet import triplet_dict
-from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
 from utils.diagnostic_utils import inspect_batch
 
@@ -30,6 +30,10 @@ class EncoderTripletModel(BaseFairseqModel):
         self.triplet_model = triplet_model
 
         self.task = task
+        self._max_positions = args.max_positions
+
+    def max_positions(self):
+        return self._max_positions
 
     def forward(self, batch):
         mention_enc, _ = self.encoder(batch['mention']) # [batch_size, enc_dim]
@@ -70,10 +74,13 @@ class EncoderTripletModel(BaseFairseqModel):
 def triplet_base_architecture(args):
     base_architecture(args)
 
-
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_large')
 def roberta_large_architecture(args):
-    large_architecture
+    large_architecture(args)
+
+@register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_small')
+def roberta_small_architecture(args):
+    small_architecture(args)
 
 
 
