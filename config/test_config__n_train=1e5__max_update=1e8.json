@@ -20,7 +20,7 @@
     "attention_dropout": 0.1,
 
     "max_update": 1e8,
-    "warmup_updates": 1e5,
+    "warmup_updates": 1e4,
     "max_sentences": 16,
     "update_freq": [16],
     "max_positions": 512,
@@ -29,7 +29,7 @@
     "required-batch-size-multiple": 1,
 
     "n_train_examples": 1e5,
-    "n_valid_examples": 1e4,
+    "n_valid_examples": -1,
     "n_test_examples": -1,
 
     "num_workers": 0,

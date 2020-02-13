@@ -9,7 +9,7 @@ from fairseq.models import BaseFairseqModel
 
 import tasks
 from models.triplet import triplet_dict
-from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
 from utils.diagnostic_utils import inspect_batch
 
@@ -74,10 +74,13 @@ class EncoderTripletModel(BaseFairseqModel):
 def triplet_base_architecture(args):
     base_architecture(args)
 
-
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_large')
 def roberta_large_architecture(args):
-    large_architecture
+    large_architecture(args)
+
+@register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_small')
+def roberta_small_architecture(args):
+    small_architecture(args)
 
 
 

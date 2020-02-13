@@ -1,3 +1,4 @@
+from pudb import set_trace
 import torch
 from fairseq.models.roberta import RobertaModel, RobertaEncoder
 from fairseq.checkpoint_utils import load_checkpoint_to_cpu
@@ -43,7 +44,11 @@ class RobertaWrapper(RobertaModel):
 
     def load_from_pretrained(self, filename, args):
 
-        state_dict = load_checkpoint_to_cpu(filename)['model']
+        if args.arch == 'encoder_triplet__roberta_small':
+            arg_overrides = {'arch': 'encoder_triplet__roberta_small'}
+            state_dict = load_checkpoint_to_cpu(filename, arg_overrides)['model']
+        else:
+            state_dict = load_checkpoint_to_cpu(filename)['model']
 
         model_vocab_size = self.decoder.sentence_encoder.embed_tokens.weight.shape[0]
         ckpt_vocab_size = state_dict['decoder.sentence_encoder.embed_tokens.weight'].shape[0]
@@ -90,4 +95,11 @@ def large_architecture(args):
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 4096)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
+    base_architecture(args)
+
+def small_architecture(args):
+    args.encoder_layers = getattr(args, 'encoder_layers', 12)
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 256)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 1024)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 4)
     base_architecture(args)
