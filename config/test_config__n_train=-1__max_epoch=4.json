@@ -28,14 +28,14 @@
     "update_freq": [1],
     "max_positions": 128,
     "max_tokens": 2e4,
-    "required-batch-size-multiple": 1,
+    "required-batch-size-multiple": 3,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 0,
+    "num_workers": 2,
     "save_dir": "../save/checkpoints__n_train=-1__max_epoch=4",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
