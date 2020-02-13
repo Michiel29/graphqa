@@ -12,8 +12,9 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask, register_task
 
-from tasks.relation_inference import RelationInferenceTask
-from datasets.triplet_dataset import TripletDataset
+from tasks import RelationInferenceTask
+from datasets import TripletDataset, FixedSizeDataset
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,22 +44,16 @@ class TripletInferenceTask(RelationInferenceTask):
             annotation_path,
             None,
             dataset_impl='mmap',
-        )        
+        )
 
         if annotation_data is None:
             raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
 
         text_data = PrependTokenDataset(text_data, self.dictionary.bos())
+        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
 
-        if split is 'train' and self.args.n_train_examples > 0:
-            n_examples = int(self.args.n_train_examples)
-        elif split is 'valid' and self.args.n_valid_examples > 0:
-            n_examples = int(self.args.n_valid_examples)
-        elif split is 'test' and self.args.n_test_examples > 0:
-            n_examples = int(self.args.n_test_examples)
-        else:
-            n_examples = None
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
 
-        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary, n_examples)
-        
+        dataset = FixedSizeDataset(dataset, n_examples)
+
         self.datasets[split] = dataset
