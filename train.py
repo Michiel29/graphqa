@@ -10,6 +10,7 @@ Train a new model on one or across multiple GPUs.
 import logging
 import math
 import random
+import os
 import sys
 import argparse
 
@@ -38,10 +39,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger('fairseq_cli.train')
 
-
 def main(args, init_distributed=False):
     utils.import_user_module(args)
-
 
     # Initialize CUDA and distributed training
     if torch.cuda.is_available() and not args.cpu:
@@ -287,7 +286,9 @@ def cli_main():
 
     update_namespace(args, config_dict)
 
-    setattr(args, 'save_dir', generate_save_dir(args))
+    base_save_dir = generate_save_dir(args)
+    setattr(args, 'save_dir', os.path.join(base_save_dir, 'checkpoints'))
+    setattr(args, 'tensorboard_logdir', os.path.join(base_save_dir, 'tensorboard'))
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

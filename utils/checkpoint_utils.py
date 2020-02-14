@@ -13,7 +13,7 @@ def generate_save_dir(args):
 
     restore_file = getattr(args, 'restore_file', False)
     new_save_base = os.path.join(args.save_dir, args.task, args.arch, 'lr_' + str(args.lr[0]))
-    
+
     if restore_file:
         sub_dirs = [sub_dir[0] for sub_dir in os.walk(new_save_base) if sub_dir[0] != new_save_base]
         assert len(sub_dirs) > 0
@@ -23,4 +23,5 @@ def generate_save_dir(args):
     else:
         dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm")
         new_save_dir = os.path.join(new_save_base, dt_string)
+
     return new_save_dir
