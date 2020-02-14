@@ -33,7 +33,7 @@ class FewRelDataset(FairseqDataset):
         self.relation_index = defaultdict(list)
 
         # Correct entity positions for bos token
-        bos_offset = int(hasattr(self.text_data,'token'))
+        bos_offset = int(getattr(self.text_data.dataset, 'token') != None)
 
         # Construct
         # 1. List of processed mentions with entities masked out

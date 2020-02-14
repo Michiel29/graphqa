@@ -52,7 +52,7 @@ class RelInfDataset(FairseqDataset):
         mention_entities = [entities[idx] for idx in mention_entity_ids]
 
         # offset annotations by 1 if bos token added
-        bos_offset = int(hasattr(self.text_data, 'token'))
+        bos_offset = int(getattr(self.text_data.dataset, 'token') != None)
 
         ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
 

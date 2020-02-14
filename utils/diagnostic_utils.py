@@ -40,7 +40,6 @@ class Diagnostic():
 
         return decoded_sentence
 
-
     def inspect_batch(self, batch, task, scores=None):
 
         batch_size = batch['batch_size']
@@ -58,8 +57,6 @@ class Diagnostic():
         for i in range(batch_size):
 
             cur_mention_id = task.dictionary.string(mention_id[i]).split()
-            decoded_old = self.bpe.decode([int(x) for x in cur_mention_id if x not in self.filter_tokens +
-            self.replace_tokens])
             decoded_mention = self.decode_sentence(cur_mention_id)
 
             if task.args.task == 'triplet_inference':
@@ -74,13 +71,11 @@ class Diagnostic():
                     decoded_exemplars[j] = {}
                     for k in range(n_shot):
                         cur_exemplar_id = task.dictionary.string(exemplars_id[i,j,k,:]).split()
-                        # decoded_exemplars[j][k] = self.bpe.decode([int(x) for x in cur_exemplar_id if x not in filter_tokens])
                         decoded_exemplars[j][k] = self.decode_sentence(cur_exemplar_id)
 
 
             print('\n\nMENTION ID LIST:\n {}\n'.format(cur_mention_id))
-            # print('\nNUM MENTION TOKENS:\n {}\n'.format(len(cur_mention_id)))
-            print('DECODED MENTION (w/o ENTITIES):\n {}\n'.format(decoded_mention))
+            print('DECODED MENTION:\n {}\n'.format(decoded_mention))
             if task.args.task == 'triplet_inference':
                 print('POSITIVE <head> ENTITY:\n {} (ID={})\n'.format(pos_head_ent, head_id[i,0].item()))
                 print('POSITIVE <tail> ENTITY:\n {} (ID={})\n'.format(pos_tail_ent, tail_id[i,0].item()))

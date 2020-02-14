@@ -11,7 +11,7 @@ from fairseq.data import (
     PrependTokenDataset
 )
 from fairseq.tasks import FairseqTask, register_task
-from datasets.fewrel_dataset import FewRelDataset
+from datasets import FewRelDataset, FixedSizeDataset
 
 from utils.data_utils import CustomDictionary
 
@@ -24,23 +24,23 @@ class FewRelTask(FairseqTask):
     @staticmethod
     def add_args(parser):
         """Add task-specific arguments to the parser."""
-        
+
         """Required either in config or cl"""
         parser.add_argument('--data_path', help='path to data')
         parser.add_argument('--n_way', default=5, help='number of few-shot classes')
         parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
 
-        
+
         """Optional"""
         # optional arguments here
-     
+
 
     def __init__(self, args, dictionary):
         super().__init__(args)
         self.dictionary = dictionary
         self.seed = args.seed
 
-        #  temp for testing remove 
+        #  temp for testing remove
         self.entity_dictionary = dictionary
 
     @classmethod
@@ -66,7 +66,7 @@ class FewRelTask(FairseqTask):
             text_path,
             None,
             dataset_impl='mmap',
-        )   
+        )
 
         if text_data is None:
             raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
@@ -77,21 +77,26 @@ class FewRelTask(FairseqTask):
             annotation_path,
             None,
             dataset_impl='mmap',
-        )    
+        )
 
         if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))        
+            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
 
         relation_data = data_utils.load_indexed_dataset(
             relation_path,
             None,
             dataset_impl='mmap',
-        )    
+        )
 
         if relation_data is None:
-            raise FileNotFoundError('Dataset (relations) not found: {}'.format(relation_path))        
+            raise FileNotFoundError('Dataset (relations) not found: {}'.format(relation_path))
 
-        
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
+
+        text_data = FixedSizeDataset(text_data, n_examples)
+        annotation_data = FixedSizeDataset(annotation_data, n_examples)
+        relation_data = FixedSizeDataset(relation_data, n_examples)
+
         dataset = FewRelDataset(text_data, annotation_data, relation_data, self.dictionary, self.args.n_way, self.args.n_shot, self.args.dataset_size)
 
         self.datasets[split] = dataset

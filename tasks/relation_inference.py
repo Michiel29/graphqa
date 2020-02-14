@@ -22,16 +22,16 @@ class RelationInferenceTask(FairseqTask):
     @staticmethod
     def add_args(parser):
         """Add task-specific arguments to the parser."""
-        
+
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
-                            help='number of negative samples per mention')                                 
-        
+                            help='number of negative samples per mention')
+
 
         """Optional"""
         # optional arguments here
-     
+
 
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
