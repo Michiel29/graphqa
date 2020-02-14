@@ -64,6 +64,7 @@ class CrossEntropy(FairseqCriterion):
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
 
         metrics.log_scalar('accuracy', accuracy_sum / sample_size, sample_size, round=3)
+        metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
 
 
     @staticmethod
