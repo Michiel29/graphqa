@@ -39,8 +39,6 @@ def main(args):
     # Load model
     load_checkpoint = getattr(args, 'load_checkpoint', None)
 
-
-
     if load_checkpoint:
         logger.info('loading model(s) from {}'.format(load_checkpoint))
         if not os.path.exists(load_checkpoint):

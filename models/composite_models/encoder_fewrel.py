@@ -6,7 +6,7 @@ from fairseq import models
 
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
-from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
 from utils.diagnostic_utils import inspect_batch
 
@@ -39,7 +39,7 @@ class EncoderFewRelModel(BaseFairseqModel):
         scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
 
         #inspect_batch(batch, self.task, scores, self.n_way, self.n_shot)
-        
+
         return scores
 
     @classmethod
@@ -48,6 +48,9 @@ class EncoderFewRelModel(BaseFairseqModel):
         encoder = RobertaWrapper.build_model(args, task)
         return cls(args, encoder, task)
 
+@register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_small')
+def fewrel_small_architecture(args):
+    small_architecture(args)
 
 @register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_base')
 def fewrel_base_architecture(args):
