@@ -11,7 +11,7 @@ import tasks
 from models.triplet import triplet_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
-from utils.diagnostic_utils import inspect_batch
+# from utils.diagnostic_utils import inspect_batch
 
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
@@ -47,8 +47,8 @@ class EncoderTripletModel(BaseFairseqModel):
         mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
         scores = self.triplet_model(mention_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
-     
-        #inspect_batch(batch, self.task, scores)        
+
+        #inspect_batch(batch, self.task, scores)
 
         return scores
 
@@ -63,7 +63,7 @@ class EncoderTripletModel(BaseFairseqModel):
 
     @classmethod
     def build_model(cls, args, task):
-        
+
         encoder = RobertaWrapper.build_model(args, task)
         triplet_model = triplet_dict[args.triplet_type](args)
         n_entities = len(task.entity_dictionary)

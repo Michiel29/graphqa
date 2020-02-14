@@ -8,7 +8,6 @@ from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
-from utils.diagnostic_utils import inspect_batch
 
 @register_model('encoder_fewrel')
 class EncoderFewRelModel(BaseFairseqModel):

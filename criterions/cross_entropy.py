@@ -35,6 +35,11 @@ class CrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
+        from utils.diagnostic_utils import Diagnostic
+
+        diagnostic = Diagnostic()
+        diagnostic.inspect_batch(sample, self.task)
+
         model_output = model(sample)
         target = sample['target']
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
@@ -63,7 +68,6 @@ class CrossEntropy(FairseqCriterion):
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
 
-        metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
         metrics.log_scalar('accuracy', accuracy_sum / sample_size, sample_size, round=3)
 
 
