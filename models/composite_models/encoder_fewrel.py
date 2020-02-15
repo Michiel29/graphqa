@@ -37,8 +37,6 @@ class EncoderFewRelModel(BaseFairseqModel):
 
         scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
 
-        #inspect_batch(batch, self.task, scores, self.n_way, self.n_shot)
-
         return scores
 
     @classmethod

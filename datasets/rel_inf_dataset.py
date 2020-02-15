@@ -57,12 +57,22 @@ class RelInfDataset(FairseqDataset):
         ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
 
         # remove entity tokens from mention
-        for i, entity in enumerate(mention_entities):
+        for mention_entity_idx, entity in enumerate(mention_entities):
             entity_slice = slice(entity[0] + bos_offset, entity[1] + bos_offset)
             mention[entity_slice] = -1
 
             # replace with appropriate head/tail ent token
-            mention[entity[0] + bos_offset] = ent_tokens[i]
+            mention[entity[0] + bos_offset] = ent_tokens[mention_entity_idx]
+
+        # mask other occurrences of head and tail entity in the same sentence
+        for entity_idx, entity in enumerate(entities):
+            if entity_idx not in mention_entity_ids and entity[2] in (mention_entities[0][2], mention_entities[1][2]):
+                entity_slice = slice(entity[0] + bos_offset, entity[1] + bos_offset)
+                mention[entity_slice] = -1
+
+                # replace with unk_ent token
+                mention[entity[0] + bos_offset] = self.dictionary.unk_ent()
+
 
         mention = mention[mention!=-1]
 

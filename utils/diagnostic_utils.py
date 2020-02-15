@@ -23,7 +23,7 @@ class Diagnostic():
     )
 
     filter_tokens = [cd.pad_df]
-    replace_tokens = [cd.head_token_df, cd.tail_token_df]
+    replace_tokens = [cd.head_token_df, cd.tail_token_df, cd.unk_ent_token_df]
 
     def __init__(self):
         self.bpe = get_encoder(self.encoder_json, self.vocab_bpe)
