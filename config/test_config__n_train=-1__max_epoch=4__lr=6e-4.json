@@ -36,14 +36,12 @@
     "n_test_examples": -1,
 
     "num_workers": 2,
-    "save_dir": "../save/checkpoints__n_train=-1__max_epoch=4__lr=6e-4",
+    "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
     "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
-
-    "tensorboard_logdir": "../save/tensorboard__n_train=-1__max_epoch=4__lr=6e-4",
 
     "criterion": "cross_entropy_custom"
 }
