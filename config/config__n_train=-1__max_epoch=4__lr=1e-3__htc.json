@@ -9,7 +9,7 @@
     "encoder_embed_dim": 256,
     "encoder_ffn_embed_dim": 1024,
     "encoder_attention_heads": 4,
-    "encoder_output_layer_type": "bag_of_words",
+    "encoder_output_layer_type": "head_tail_concat",
 
     "max_epoch": 4,
     "warmup_updates": 3600,
@@ -17,7 +17,7 @@
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
     "clip_norm": 0.0,
-    "lr": [6e-4],
+    "lr": [1e-3],
     "lr_scheduler": "polynomial_decay",
 
     "weight_decay": 0.1,
@@ -35,7 +35,7 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 2,
+    "num_workers": 3,
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",

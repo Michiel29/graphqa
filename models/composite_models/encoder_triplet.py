@@ -26,7 +26,10 @@ class EncoderTripletModel(BaseFairseqModel):
 
         self.encoder = encoder
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
-        self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
+        if args.encoder_output_layer_type == 'bag_of_words':
+            self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
+        elif args.encoder_output_layer_type == 'head_tail_concat':
+            self.mention_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
         self.triplet_model = triplet_model
 
         self.task = task

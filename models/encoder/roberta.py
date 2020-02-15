@@ -37,9 +37,14 @@ class RobertaWrapper(RobertaModel):
                     states have shape `(src_len, batch, vocab)`.
         """
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
+
         if not features_only:
-            padding_mask = (src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)
-            x = self.custom_output_layer(x, padding_mask)
+            if self.args.encoder_output_layer_type == 'bag_of_words':
+                mask = (src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)
+            elif self.args.encoder_output_layer_type == 'head_tail_concat':
+                mask = (src_tokens == self.head_idx) | (src_tokens == self.tail_idx)
+            x = self.custom_output_layer(x, mask)
+
         return x, extra
 
     def load_from_pretrained(self, filename, args):
