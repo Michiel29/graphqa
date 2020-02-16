@@ -9,7 +9,7 @@ import torch
 from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
 
 from utils.config import update_namespace, read_json, modify_factory
-from utils.checkpoint_utils import select_component_state
+from utils.checkpoint_utils import select_component_state, handle_state_dict_keys
 
 import models, criterions
 import tasks as custom_tasks
@@ -37,7 +37,7 @@ def main(args):
     task = tasks.setup_task(args)
 
     # Load model
-    load_checkpoint = getattr(args, 'load_checkpoint', None)
+    load_checkpoint = getattr(args, 'load_checkpoint')
 
     if load_checkpoint:
         logger.info('loading model(s) from {}'.format(load_checkpoint))
@@ -57,7 +57,8 @@ def main(args):
 
         # build model for ensemble
         model = task.build_model(args)
-        model.load_state_dict(model_state, strict=True, args=args)
+        missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False, args=args)
+        handle_state_dict_keys(missing_keys, unexpected_keys)
 
     else:
         model = task.build_model(args)
@@ -120,6 +121,8 @@ def main(args):
 def cli_main():
     parser = options.get_validation_parser()
     parser.add_argument('--config', type=str, help='path to JSON file of experiment configurations')
+    parser.add_argument('--load-checkpoint', type=str, help='path to checkpoint to load (possibly composite) model from')
+
     pre_parsed_args = parser.parse_args()
 
     config_dict = read_json(pre_parsed_args.config) if pre_parsed_args.config else {}

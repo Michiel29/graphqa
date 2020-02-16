@@ -78,11 +78,11 @@ def triplet_base_architecture(args):
     base_architecture(args)
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_large')
-def roberta_large_architecture(args):
+def triplet_large_architecture(args):
     large_architecture(args)
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_small')
-def roberta_small_architecture(args):
+def triplet_small_architecture(args):
     small_architecture(args)
 
 

@@ -1,8 +1,10 @@
-from pudb import set_trace
 import torch
-from fairseq.models.roberta import RobertaModel, RobertaEncoder
+from fairseq.models.roberta import RobertaModel, RobertaEncoder, base_architecture
+from fairseq.models.roberta import roberta_large_architecture as large_architecture
+from fairseq.models import register_model_architecture
 from fairseq.checkpoint_utils import load_checkpoint_to_cpu
 from models.encoder.encoder_heads import encoder_head_dict
+from utils.checkpoint_utils import handle_state_dict_keys
 
 class RobertaWrapper(RobertaModel):
 
@@ -49,11 +51,7 @@ class RobertaWrapper(RobertaModel):
 
     def load_from_pretrained(self, filename, args):
 
-        if args.arch == 'encoder_triplet__roberta_small':
-            arg_overrides = {'arch': 'encoder_triplet__roberta_small'}
-            state_dict = load_checkpoint_to_cpu(filename, arg_overrides)['model']
-        else:
-            state_dict = load_checkpoint_to_cpu(filename)['model']
+        state_dict = load_checkpoint_to_cpu(filename)['model']
 
         model_vocab_size = self.decoder.sentence_encoder.embed_tokens.weight.shape[0]
         ckpt_vocab_size = state_dict['decoder.sentence_encoder.embed_tokens.weight'].shape[0]
@@ -73,34 +71,11 @@ class RobertaWrapper(RobertaModel):
             else:
                 new_state_dict[n] = c
 
-        missing_keys, unexpected_keys = super().load_state_dict(new_state_dict, strict=False, args=args)
-        print('missing_keys: {}'.format(missing_keys))
+        missing_keys, unexpected_keys = super().load_state_dict(state_dict, strict=False, args=args)
+        handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
-def base_architecture(args):
-
-    args.encoder_layers = getattr(args, 'encoder_layers', 12)
-    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
-    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 3072)
-    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 12)
-
-    args.activation_fn = getattr(args, 'activation_fn', 'gelu')
-    args.pooler_activation_fn = getattr(args, 'pooler_activation_fn', 'tanh')
-
-    args.dropout = getattr(args, 'dropout', 0.1)
-    args.attention_dropout = getattr(args, 'attention_dropout', 0.1)
-    args.activation_dropout = getattr(args, 'activation_dropout', 0.0)
-    args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
-    args.encoder_layers_to_keep = getattr(args, 'encoder_layers_to_keep', None)
-    args.encoder_layerdrop = getattr(args, 'encoder_layerdrop', 0.0)
-
-def large_architecture(args):
-    args.encoder_layers = getattr(args, 'encoder_layers', 24)
-    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
-    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 4096)
-    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
-    base_architecture(args)
-
+@register_model_architecture('roberta', 'roberta_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 256)

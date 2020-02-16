@@ -25,3 +25,11 @@ def generate_save_dir(args):
         new_save_dir = os.path.join(new_save_base, dt_string)
 
     return new_save_dir
+
+def handle_state_dict_keys(missing_keys, unexpected_keys):
+    if len(missing_keys) > 0:
+        print('missing_keys: {}'.format(missing_keys))
+        raise KeyError('missing state dict key')
+
+    if len(unexpected_keys) > 0:
+        print('unexpected_keys: {}'.format(unexpected_keys))
