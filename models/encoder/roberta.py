@@ -71,7 +71,7 @@ class RobertaWrapper(RobertaModel):
             else:
                 new_state_dict[n] = c
 
-        missing_keys, unexpected_keys = super().load_state_dict(state_dict, strict=False, args=args)
+        missing_keys, unexpected_keys = super().load_state_dict(new_state_dict, strict=False, args=args)
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
