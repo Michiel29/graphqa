@@ -11,6 +11,9 @@ class TripletDataset(RelInfDataset):
 
     def collater(self, instances):
 
+        if len(instances) == 0:
+            return None
+
         mentions = []
         heads = []
         tails = []
