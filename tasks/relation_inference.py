@@ -16,7 +16,7 @@ from fairseq.tasks import FairseqTask
 
 from utils.data_utils import CustomDictionary, EntityDictionary
 
-from cython_modules.construct_graph import construct_graph
+# from cython_modules.construct_graph import construct_graph
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +57,9 @@ class RelationInferenceTask(FairseqTask):
         task = cls(args, dictionary, entity_dictionary)
         task.load_dataset('train')
 
-        logger.info('beginning graph construction')
-        task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
-        logger.info('finished graph construction')
+        # logger.info('beginning graph construction')
+        # task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
+        # logger.info('finished graph construction')
 
         return task
 
