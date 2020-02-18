@@ -1,4 +1,4 @@
 CUDA (10.1 works)
-apex (https://github.com/NVIDIA/apex)	
-
+apex (https://github.com/NVIDIA/apex)
+build latest fairseq from source
 
