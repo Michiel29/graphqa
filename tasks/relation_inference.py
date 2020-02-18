@@ -1,7 +1,9 @@
 import logging
 import os
-from collections import namedtuple
+
+
 import numpy as np
+import torch
 
 from fairseq.data import (
     data_utils,
@@ -13,6 +15,8 @@ from fairseq.data import (
 from fairseq.tasks import FairseqTask
 
 from utils.data_utils import CustomDictionary, EntityDictionary
+
+from cython_modules.construct_graph import construct_graph
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +32,16 @@ class RelationInferenceTask(FairseqTask):
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
 
-
         """Optional"""
         # optional arguments here
-
 
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
         self.dictionary = dictionary
+
+
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -50,7 +54,14 @@ class RelationInferenceTask(FairseqTask):
         logger.info('dictionary: {} types'.format(len(dictionary)))
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
-        return cls(args, dictionary, entity_dictionary)
+        task = cls(args, dictionary, entity_dictionary)
+        task.load_dataset('train')
+
+        logger.info('beginning graph construction')
+        task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
+        logger.info('finished graph construction')
+
+        return task
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
 

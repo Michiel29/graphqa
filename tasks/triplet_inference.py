@@ -28,6 +28,10 @@ class TripletInferenceTask(RelationInferenceTask):
             split (str): name of the split (e.g., train, valid, test)
         """
 
+        # Don't reload datasets that were already setup earlier
+        if split in self.datasets:
+            return
+
         text_path = os.path.join(self.args.data_path, split + '.text')
         annotation_path = os.path.join(self.args.data_path, split + '.annotations')
 
