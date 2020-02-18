@@ -32,10 +32,8 @@ class RelationInferenceTask(FairseqTask):
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
 
-
         """Optional"""
         # optional arguments here
-
 
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)

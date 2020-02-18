@@ -117,3 +117,6 @@ run_jobs*.sh
 
 # profiler files
 *.lprof
+
+# C files
+*.c
