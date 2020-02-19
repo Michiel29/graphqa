@@ -14,11 +14,8 @@ class RobertaWrapper(RobertaModel):
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
-        self.padding_idx = encoder.dictionary.pad()
-        self.head_idx = encoder.dictionary.head()
-        self.tail_idx = encoder.dictionary.tail()
 
-        self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args)
+        self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args, encoder.dictionary)
 
     def forward(self, src_tokens, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
         """
@@ -41,11 +38,7 @@ class RobertaWrapper(RobertaModel):
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
 
         if not features_only:
-            if self.args.encoder_output_layer_type == 'bag_of_words':
-                mask = (src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)
-            elif self.args.encoder_output_layer_type == 'head_tail_concat':
-                mask = (src_tokens == self.head_idx) | (src_tokens == self.tail_idx)
-            x = self.custom_output_layer(x, mask)
+            x = self.custom_output_layer(x, src_tokens)
 
         return x, extra
 
