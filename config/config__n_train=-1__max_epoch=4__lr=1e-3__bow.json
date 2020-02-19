@@ -1,14 +1,10 @@
 {
     "task": "triplet_inference",
-    "arch": "encoder_triplet__roberta_small",
-    "data_path": "../data/nki/bin-v2-threshold20",
+    "arch": "encoder_triplet__roberta_base",
+    "data_path": "/data2/urikz/nki/bin-small",
 
     "entity_dim": 256,
 
-    "encoder_layers": 12,
-    "encoder_embed_dim": 256,
-    "encoder_ffn_embed_dim": 1024,
-    "encoder_attention_heads": 4,
     "encoder_output_layer_type": "bag_of_words",
 
     "max_epoch": 4,
@@ -26,20 +22,20 @@
 
     "max_sentences": 2048,
     "update_freq": [1],
-    "max_positions": 128,
+    "max_positions": 512,
     "max_tokens": 2e4,
-    "required-batch-size-multiple": 3,
+    "required-batch-size-multiple": 1,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 2,
-    "save_dir": "../save/",
+    "num_workers": 0,
+    "save_dir": "/data2/urikz/nki/checkpoints/test",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
-    "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
+    "pretrain_encoder_path": "/data2/urikz/nki/checkpoints/roberta.base/model.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
 

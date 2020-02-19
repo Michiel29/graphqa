@@ -1,3 +1,4 @@
+from .annotated_text_dataset import AnnotatedTextDataset
 from .rel_inf_dataset import RelInfDataset
 from .triplet_dataset import TripletDataset
 from .fewrel_dataset import FewRelDataset

@@ -60,6 +60,13 @@ class TripletInferenceTask(RelationInferenceTask):
         text_data = FixedSizeDataset(text_data, n_examples)
         annotation_data = FixedSizeDataset(annotation_data, n_examples)
 
-        dataset = TripletDataset(text_data, annotation_data, self.args.k_negative, len(self.entity_dictionary), self.dictionary)
+        dataset = TripletDataset(
+            text_data,
+            annotation_data,
+            self.args.k_negative,
+            len(self.entity_dictionary),
+            self.dictionary,
+            shift_annotations=1, # because of the PrependTokenDataset
+        )
 
         self.datasets[split] = dataset

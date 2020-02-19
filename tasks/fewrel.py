@@ -97,7 +97,16 @@ class FewRelTask(FairseqTask):
         annotation_data = FixedSizeDataset(annotation_data, n_examples)
         relation_data = FixedSizeDataset(relation_data, n_examples)
 
-        dataset = FewRelDataset(text_data, annotation_data, relation_data, self.dictionary, self.args.n_way, self.args.n_shot, self.args.dataset_size)
+        dataset = FewRelDataset(
+            text_data,
+            annotation_data,
+            relation_data,
+            self.dictionary,
+            self.args.n_way,
+            self.args.n_shot,
+            self.args.dataset_size,
+            shift_annotations=True,
+        )
 
         self.datasets[split] = dataset
 

@@ -5,95 +5,44 @@ import numpy.random as rd
 
 from fairseq.data import FairseqDataset
 
-class RelInfDataset(FairseqDataset):
+from datasets import AnnotatedTextDataset
 
-    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary):
-        self.text_data = text_data
-        self.annotation_data = annotation_data
+class RelInfDataset(AnnotatedTextDataset):
+
+    def __init__(
+        self,
+        text_data,
+        annotation_data,
+        k_negative,
+        n_entities,
+        dictionary,
+        shift_annotations,
+    ):
+        super().__init__(
+            text_data,
+            annotation_data,
+            dictionary,
+            shift_annotations,
+            assign_head_tail_randomly=True,
+        )
         self.k_negative = k_negative
         self.n_entities = n_entities
 
-        self.dictionary = dictionary
-
     def __getitem__(self, index):
-        item_dict = {
-        'mention': self.text_data[index],
-        'annotation': self.annotation_data[index]
-        }
-        return item_dict
+        item = super().__getitem__(index)
+        head = item['head']
+        tail = item['tail']
 
-    def __len__(self):
-        return len(self.text_data)
-
-    def num_tokens(self, index):
-        return self.text_data.sizes[index]
-
-    def size(self, index):
-        return self.text_data.sizes[index]
-
-    def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        order = np.arange(len(self))
-        np.random.shuffle(order)
-        order = [order]
-        order.append(self.text_data.sizes)
-        indices = np.lexsort(order)
-
-        return indices
-
-    def sample_entities(self, instance):
-
-        mention = instance['mention']
-        annotation = instance['annotation']
-
-        entities = torch.split(annotation, 3)
-
-        mention_entity_ids = rd.choice(len(entities), 2, replace=False)
-        mention_entities = [entities[idx] for idx in mention_entity_ids]
-
-        # offset annotations by 1 if bos token added
-        bos_offset = int(getattr(self.text_data.dataset, 'token') != None)
-
-        ent_tokens = [self.dictionary.head(), self.dictionary.tail()]
-
-        # remove entity tokens from mention
-        for mention_entity_idx, entity in enumerate(mention_entities):
-            entity_slice = slice(entity[0] + bos_offset, entity[1] + bos_offset)
-            mention[entity_slice] = -1
-
-            # replace with appropriate head/tail ent token
-            mention[entity[0] + bos_offset] = ent_tokens[mention_entity_idx]
-
-        # mask other occurrences of head and tail entity in the same sentence
-        for entity_idx, entity in enumerate(entities):
-            if entity_idx not in mention_entity_ids and entity[2] in (mention_entities[0][2], mention_entities[1][2]):
-                entity_slice = slice(entity[0] + bos_offset, entity[1] + bos_offset)
-                mention[entity_slice] = -1
-
-                # replace with unk_ent token
-                mention[entity[0] + bos_offset] = self.dictionary.unk_ent()
-
-
-        mention = mention[mention!=-1]
-
-        entity_to_replace = rd.binomial(self.k_negative, 0.5, size=self.k_negative)
+        replace_head_entity = rd.randint(2, size=self.k_negative)
         replacement_entities = rd.randint(self.n_entities, size=self.k_negative)
 
-        head_ent = mention_entities[0][2].item()
-        tail_ent = mention_entities[1][2].item()
+        item['head'] = [head] + [head if replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
+        item['tail'] = [tail] + [tail if not replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
+        item['target'] = [0] * (self.k_negative + 1)
 
-        heads = [head_ent] + [head_ent if entity_to_replace[i]==1 else replacement_entities[i] for i in range(self.k_negative)]
-        tails = [tail_ent] + [tail_ent if entity_to_replace[i]==0 else replacement_entities[i] for i in range(self.k_negative)]
-
-
-        return mention, heads, tails
-
-    def collater(self, instances):
-        raise NotImplementedError
+        return item
 
     @property
     def supports_prefetch(self):
         """Whether this dataset supports prefetching."""
         return False
-
-

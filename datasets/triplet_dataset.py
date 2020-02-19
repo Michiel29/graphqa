@@ -6,35 +6,35 @@ from datasets import RelInfDataset
 
 class TripletDataset(RelInfDataset):
 
-    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary):
-        super().__init__(text_data, annotation_data, k_negative, n_entities, dictionary)
+    def __init__(self, text_data, annotation_data, k_negative, n_entities, dictionary, shift_annotations):
+        super().__init__(text_data, annotation_data, k_negative, n_entities, dictionary, shift_annotations)
 
     def collater(self, instances):
-
         if len(instances) == 0:
             return None
 
         mentions = []
         heads = []
         tails = []
+        targets = []
+        ntokens, nsentences = 0, 0
 
         for instance in instances:
-
-            """Perform Masking"""
-            mention, instance_heads, instance_tails = self.sample_entities(instance)
-            mentions.append(mention)
-            heads.append(instance_heads)
-            tails.append(instance_tails)
+            mentions.append(instance['mention'])
+            heads.extend(instance['head'])
+            tails.extend(instance['tail'])
+            targets.extend(instance['target'])
+            ntokens += instance['ntokens']
+            nsentences += instance['nsentences']
 
         padded_mention = pad_sequence(mentions, batch_first=True, padding_value=self.dictionary.pad())
 
-        batch = {}
-        batch['mention'] = padded_mention
-        batch['head'] =  torch.LongTensor(heads)
-        batch['tail'] = torch.LongTensor(tails)
-        batch['target'] = torch.zeros(len(instances), dtype=torch.long)
-        batch['batch_size'] = len(instances)
-        batch['ntokens'] = sum(len(m) for m in mentions)
-        batch['nsentences'] = len(instances)
-
-        return batch
+        return {
+            'mention': padded_mention,
+            'head':  torch.LongTensor(heads),
+            'tail': torch.LongTensor(tails),
+            'target':  torch.LongTensor(targets),
+            'size': len(instances),
+            'ntokens': ntokens,
+            'nsentences': nsentences,
+        }
