@@ -49,11 +49,12 @@ class AnnotatedTextDataset(FairseqDataset):
         }
 
         for annotation in annotations:
-            if annotation[2] in entity_replacement:
+            annotation_entity = annotation[2].item()
+            if annotation_entity in entity_replacement:
                 ent_start = annotation[0] + self.shift_annotations
-                end_end = annotation[1] + self.shift_annotations
-                mention[ent_start:end_end] = -1
-                mention[end_start] = entity_replacement[annotation[2]]
+                ent_end = annotation[1] + self.shift_annotations
+                mention[ent_start:ent_end] = -1
+                mention[ent_start] = entity_replacement[annotation_entity]
 
         mention = mention[mention != -1]
 
