@@ -34,8 +34,15 @@ class AnnotatedTextDataset(FairseqDataset):
         assert len(unique_entity_ids) >= 1
 
         if self.assign_head_tail_randomly:
-            # TODO(urikz): Use replace=False
-            head_entity, tail_entity = np.random.choice(unique_entity_ids, size=2)
+            # TODO(urikz): Fix dataset first
+            if len(unique_entity_ids) < 2:
+                head_entity, tail_entity = np.random.choice(unique_entity_ids, size=2)
+            else:
+                head_entity, tail_entity = np.random.choice(
+                    unique_entity_ids,
+                    size=2,
+                    replace=False,
+                )
         else:
             # TODO(urikz): Fix dataset first
             if len(unique_entity_ids) < 2:
