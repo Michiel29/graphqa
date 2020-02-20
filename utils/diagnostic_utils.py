@@ -44,7 +44,7 @@ class Diagnostic():
 
     def inspect_batch(self, batch, scores=None):
 
-        batch_size = batch['batch_size']
+        batch_size = batch['nsentences']
         mention_id = batch['mention']
         target = batch['target']
 
