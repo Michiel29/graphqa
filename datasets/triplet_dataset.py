@@ -21,9 +21,9 @@ class TripletDataset(RelInfDataset):
 
         for instance in instances:
             mentions.append(instance['mention'])
-            heads.extend(instance['head'])
-            tails.extend(instance['tail'])
-            targets.extend(instance['target'])
+            heads.append(instance['head'])
+            tails.append(instance['tail'])
+            targets.append(instance['target'])
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
 

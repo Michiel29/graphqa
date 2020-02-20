@@ -38,7 +38,7 @@ class RelInfDataset(AnnotatedTextDataset):
 
         item['head'] = [head] + [head if replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
         item['tail'] = [tail] + [tail if not replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
-        item['target'] = [0] * (self.k_negative + 1)
+        item['target'] = 0
 
         return item
 

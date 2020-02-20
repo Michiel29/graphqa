@@ -105,7 +105,7 @@ class FewRelTask(FairseqTask):
             self.args.n_way,
             self.args.n_shot,
             self.args.dataset_size,
-            shift_annotations=True,
+            shift_annotations=1, # because of the PrependTokenDataset
         )
 
         self.datasets[split] = dataset
