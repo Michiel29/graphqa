@@ -361,7 +361,7 @@ class WikiProcessor(object):
                             num_filtered_by_crossing_sentence_boundaries += 1
                     if len(annotations_per_sentence) == 0:
                         continue
-                    if len(annotations_per_sentence) == 1:
+                    if len(set([annotation['uri'] for annotation in annotations_per_sentence])) < 2:
                         num_filtered_solo_annotion_in_sentence += 1
                         continue
                     num_annotations += len(annotations_per_sentence)
@@ -518,14 +518,20 @@ def main(args):
     pbar.close()
 
     if build_entity_vocab_mode:
+        counter = 0
         with codecs.open(args.entity_vocab, 'w', 'utf8') as f:
             for entity_and_count in entities.most_common():
                 if (
                     args.entity_count_threshold is None
                     or entity_and_count[1] >= args.entity_count_threshold
                 ):
+                    counter += 1
                     f.write('%s %d\n' % (entity_and_count[0], entity_and_count[1]))
-        print('-- Successfully saved %d entities to %s' % (len(entities), args.entity_vocab))
+        print('-- Successfully saved %d entities (out of %d) to %s' % (
+            counter,
+            len(entities),
+            args.entity_vocab,
+        ))
     else:
         dataset_builder.finalize(args.output + '.text.idx')
         annotations_builder.finalize(args.output + '.annotations.idx')
