@@ -1,7 +1,7 @@
 {
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_small",
-    "data_path": "../data/nki/bin-v2-threshold20",
+    "data_path": "../data/nki/bin-v3-threshold20",
 
     "entity_dim": 256,
 
