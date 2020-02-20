@@ -1,22 +1,13 @@
 import logging
-import os
-from collections import namedtuple
-import numpy as np
 
-from fairseq.data import (
-    data_utils,
-    Dictionary,
-    iterators,
-    FairseqDataset,
-    PrependTokenDataset
-)
-from fairseq.tasks import FairseqTask, register_task
+from fairseq.tasks import register_task
 
 from tasks import RelationInferenceTask
-from datasets import TripletDataset, FixedSizeDataset
+from datasets import TripletDataset
 
 
 logger = logging.getLogger(__name__)
+
 
 @register_task('triplet_inference')
 class TripletInferenceTask(RelationInferenceTask):
@@ -32,35 +23,9 @@ class TripletInferenceTask(RelationInferenceTask):
         if split in self.datasets:
             return
 
-        text_path = os.path.join(self.args.data_path, split + '.text')
-        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
+        text_data, annotation_data = self.load_annotated_text(split)
 
-        text_data =  data_utils.load_indexed_dataset(
-            text_path,
-            None,
-            dataset_impl='mmap',
-        )
-
-        if text_data is None:
-            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
-
-        annotation_data =  data_utils.load_indexed_dataset(
-            annotation_path,
-            None,
-            dataset_impl='mmap',
-        )
-
-        if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
-
-        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
-
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-
-        text_data = FixedSizeDataset(text_data, n_examples)
-        annotation_data = FixedSizeDataset(annotation_data, n_examples)
-
-        dataset = TripletDataset(
+        self.datasets[split] = TripletDataset(
             text_data,
             annotation_data,
             self.args.k_negative,
@@ -68,5 +33,3 @@ class TripletInferenceTask(RelationInferenceTask):
             self.dictionary,
             shift_annotations=1, # because of the PrependTokenDataset
         )
-
-        self.datasets[split] = dataset

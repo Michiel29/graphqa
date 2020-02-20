@@ -1,7 +1,6 @@
 import logging
 import os
 
-
 import numpy as np
 import torch
 
@@ -9,16 +8,18 @@ from fairseq.data import (
     data_utils,
     iterators,
     FairseqDataset,
-    PrependDataset,
+    PrependTokenDataset,
     Dictionary
 )
 from fairseq.tasks import FairseqTask
 
 from utils.data_utils import CustomDictionary, EntityDictionary
+from datasets import FixedSizeDataset
 
 # from cython_modules.construct_graph import construct_graph
 
 logger = logging.getLogger(__name__)
+
 
 class RelationInferenceTask(FairseqTask):
     """Task for training inference models."""
@@ -41,8 +42,6 @@ class RelationInferenceTask(FairseqTask):
         self.seed = args.seed
         self.dictionary = dictionary
 
-
-
     @classmethod
     def setup_task(cls, args, **kwargs):
         dict_path = os.path.join(args.data_path, 'dict.txt')
@@ -64,8 +63,38 @@ class RelationInferenceTask(FairseqTask):
         return task
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-
         raise NotImplementedError
+
+    def load_annotated_text(self, split):
+        text_path = os.path.join(self.args.data_path, split + '.text')
+        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
+
+        text_data =  data_utils.load_indexed_dataset(
+            text_path,
+            None,
+            dataset_impl='mmap',
+        )
+
+        if text_data is None:
+            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
+
+        annotation_data =  data_utils.load_indexed_dataset(
+            annotation_path,
+            None,
+            dataset_impl='mmap',
+        )
+
+        if annotation_data is None:
+            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
+
+        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
+
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
+
+        text_data = FixedSizeDataset(text_data, n_examples)
+        annotation_data = FixedSizeDataset(annotation_data, n_examples)
+
+        return text_data, annotation_data
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,
