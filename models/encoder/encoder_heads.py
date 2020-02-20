@@ -28,14 +28,11 @@ class HeadTailConcat(nn.Module):
     def forward(self, x, src_tokens):
         # x: [batch_size, length, enc_dim]
 
-        head_mask = (src_tokens == self.head_idx).unsqueeze(-1) # [batch_size, length, 1]
-        tail_mask = (src_tokens == self.tail_idx).unsqueeze(-1) # [batch_size, length, 1]
+        head_mask = (src_tokens == self.head_idx) # [batch_size, length]
+        tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_values = x * head_mask
-        head_sum = torch.sum(head_values, dim=-2) / torch.sum(head_mask, dim=-2) # [batch_size, enc_dim]
-
-        tail_values = x * tail_mask
-        tail_sum = torch.sum(tail_values, dim=-2) / torch.sum(tail_mask, dim=-2)
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
