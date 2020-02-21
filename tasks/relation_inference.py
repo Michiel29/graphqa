@@ -56,9 +56,27 @@ class RelationInferenceTask(FairseqTask):
         task = cls(args, dictionary, entity_dictionary)
         task.load_dataset('train')
 
-        # logger.info('beginning graph construction')
-        # task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
-        # logger.info('finished graph construction')
+        # here only temporarily
+        def construct_graph(annotation_data, n_entities):
+            from collections import defaultdict
+            from itertools import combinations
+            neighbor_list = [defaultdict(int) for entity in range(n_entities)]
+            edge_dict = defaultdict(list)
+
+            for sentence_idx in range(len(annotation_data)):
+                entity_ids = annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy()
+
+                for a, b in combinations(entity_ids, 2):
+                    neighbor_list[a][b] += 1
+                    neighbor_list[b][a] += 1
+
+                    edge_dict[frozenset({a, b})].append(sentence_idx)
+
+            return neighbor_list, edge_dict
+
+        logger.info('beginning graph construction')
+        task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
+        logger.info('finished graph construction')
 
         return task
 
