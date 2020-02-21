@@ -1,11 +1,15 @@
 import torch
-from fairseq.models.roberta import RobertaModel, RobertaEncoder, base_architecture
+
+from fairseq.models.roberta import RobertaModel, base_architecture
 from fairseq.models.roberta import roberta_large_architecture as large_architecture
-from fairseq.models import register_model_architecture
+from fairseq.models import register_model, register_model_architecture
 from fairseq.checkpoint_utils import load_checkpoint_to_cpu
+
 from models.encoder.encoder_heads import encoder_head_dict
 from utils.checkpoint_utils import handle_state_dict_keys
 
+
+@register_model('roberta_wrapper')
 class RobertaWrapper(RobertaModel):
 
     def __init__(self, args, encoder):
@@ -15,7 +19,10 @@ class RobertaWrapper(RobertaModel):
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
 
-        self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args, encoder.dictionary)
+        if args.encoder_output_layer_type == 'lm_head':
+            self.custom_output_layer = self.output_layer
+        else:
+            self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args, encoder.dictionary)
 
     def forward(self, src_tokens, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
         """
@@ -38,7 +45,7 @@ class RobertaWrapper(RobertaModel):
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
 
         if not features_only:
-            x = self.custom_output_layer(x, src_tokens)
+            x = self.custom_output_layer(x, src_tokens=src_tokens, masked_tokens=masked_tokens)
 
         return x, extra
 
@@ -68,7 +75,7 @@ class RobertaWrapper(RobertaModel):
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
-@register_model_architecture('roberta', 'roberta_small')
+@register_model_architecture('roberta_wrapper', 'roberta_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 256)

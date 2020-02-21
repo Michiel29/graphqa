@@ -29,26 +29,16 @@ class AnnotatedTextDataset(FairseqDataset):
 
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
 
-        # TODO(urikz): Fix dataset first
-        # assert len(unique_entity_ids) >= 2
-        assert len(unique_entity_ids) >= 1
+        assert len(unique_entity_ids) >= 2
 
         if self.assign_head_tail_randomly:
-            # TODO(urikz): Fix dataset first
-            if len(unique_entity_ids) < 2:
-                head_entity, tail_entity = np.random.choice(unique_entity_ids, size=2)
-            else:
-                head_entity, tail_entity = np.random.choice(
-                    unique_entity_ids,
-                    size=2,
-                    replace=False,
-                )
+            head_entity, tail_entity = np.random.choice(
+                unique_entity_ids,
+                size=2,
+                replace=False,
+            )
         else:
-            # TODO(urikz): Fix dataset first
-            if len(unique_entity_ids) < 2:
-                head_entity, tail_entity = unique_entity_ids[0], unique_entity_ids[0]
-            else:
-                head_entity, tail_entity = unique_entity_ids[:2]
+            head_entity, tail_entity = unique_entity_ids[:2]
 
         entity_replacement = {
             head_entity: self.dictionary.head(),
@@ -88,6 +78,10 @@ class AnnotatedTextDataset(FairseqDataset):
             np.random.permutation(len(self)),
             self.text_data.sizes,
         ])
+
+    @property
+    def sizes(self):
+        return self.text_data.sizes
 
     @property
     def supports_prefetch(self):
