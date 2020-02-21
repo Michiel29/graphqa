@@ -1,26 +1,38 @@
 import logging
+import os
 
 from fairseq.data import (
+    data_utils,
+    Dictionary,
     IdDataset,
     MaskTokensDataset,
     NestedDictionaryDataset,
     NumelDataset,
     NumSamplesDataset,
     PadDataset,
+    PrependTokenDataset,
 )
+from utils.data_utils import CustomDictionary, EntityDictionary
 from fairseq.data.encoders.utils import get_whole_word_mask
-from fairseq.tasks import register_task
+from fairseq.tasks import FairseqTask, register_task
 
-from datasets import AnnotatedTextDataset, SelectDictionaryDataset
-from tasks import RelationInferenceTask
-
+from datasets import (
+    AnnotatedTextDataset,
+    FixedSizeDataset,
+    SelectDictionaryDataset,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @register_task('masked_lm_em')
-class MaskedLMEMTask(RelationInferenceTask):
+class MaskedLMEMTask(FairseqTask):
     """Task for masked language model (entity mention) models."""
+    def __init__(self, args, dictionary, entity_dictionary):
+        super().__init__(args)
+        self.seed = args.seed
+        self.dictionary = dictionary
+        self.mask_idx = self.dictionary.index('<mask>')
 
     @staticmethod
     def add_args(parser):
@@ -37,12 +49,40 @@ class MaskedLMEMTask(RelationInferenceTask):
         parser.add_argument('--mask-whole-words', default=True, action='store_true',
                             help='mask whole words; you may also want to set --bpe')
 
-    def __init__(self, args, dictionary, entity_dictionary):
-        super().__init__(args, dictionary, entity_dictionary)
-        self.mask_idx = self.dictionary.index('<mask>')
-
     def get_mask_seed(self, epoch):
         return self.seed + epoch
+
+    # TODO(urikz): refactor this
+    def load_annotated_text(self, split):
+        text_path = os.path.join(self.args.data_path, split + '.text')
+        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
+
+        text_data =  data_utils.load_indexed_dataset(
+            text_path,
+            None,
+            dataset_impl='mmap',
+        )
+
+        if text_data is None:
+            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
+
+        annotation_data =  data_utils.load_indexed_dataset(
+            annotation_path,
+            None,
+            dataset_impl='mmap',
+        )
+
+        if annotation_data is None:
+            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
+
+        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
+
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
+
+        text_data = FixedSizeDataset(text_data, n_examples)
+        annotation_data = FixedSizeDataset(annotation_data, n_examples)
+
+        return text_data, annotation_data
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         """Load a given dataset split.
@@ -104,6 +144,22 @@ class MaskedLMEMTask(RelationInferenceTask):
             },
             sizes=[src_dataset.sizes],
         )
+
+    @classmethod
+    def setup_task(cls, args, **kwargs):
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
+
+        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
+        entity_dictionary = EntityDictionary.load(entity_dict_path)
+
+        logger.info('dictionary: {} types'.format(len(dictionary)))
+        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
+
+        task = cls(args, dictionary, entity_dictionary)
+        task.load_dataset('train')
+
+        return task
 
     @property
     def source_dictionary(self):
