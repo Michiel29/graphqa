@@ -1,7 +1,6 @@
 import logging
 import os
 
-
 import numpy as np
 import torch
 
@@ -18,7 +17,7 @@ from fairseq.tasks import FairseqTask, register_task
 from utils.data_utils import CustomDictionary, EntityDictionary
 from datasets import MTBDataset, FixedSizeDataset
 
-from cython_modules.construct_graph import construct_graph
+#from cython_modules.construct_graph import construct_graph
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,8 @@ class MTBTask(FairseqTask):
                             help='probability of sampling a pair of sentences which share both head and tail entities')
         parser.add_argument('--case1_prob', default=0.4, type=int,
                             help='probability of sampling a pair of sentences which share only one entity')
+        parser.add_argument('--n_tries', default=10, type=int,
+                            help='number of attempts to sample mentions for a given case')
 
         """Optional"""
         # optional arguments here
@@ -59,6 +60,24 @@ class MTBTask(FairseqTask):
 
         task = cls(args, dictionary, entity_dictionary)
         task.load_dataset('train')
+
+        # here only temporarily
+        def construct_graph(annotation_data, n_entities):
+            from collections import defaultdict
+            from itertools import combinations
+            neighbor_list = [defaultdict(int) for entity in range(n_entities)]
+            edge_dict = defaultdict(list)
+
+            for sentence_idx in range(len(annotation_data)):
+                entity_ids = annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy()
+
+                for a, b in combinations(entity_ids, 2):
+                    neighbor_list[a][b] += 1
+                    neighbor_list[b][a] += 1
+
+                    edge_dict[frozenset({a, b})].append(sentence_idx)
+
+            return neighbor_list, edge_dict
 
         logger.info('beginning graph construction')
         task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
@@ -114,6 +133,8 @@ class MTBTask(FairseqTask):
             self.dictionary,
             self.args.case0_prob,
             self.args.case1_prob,
+            self.args.max_positions,
+            self.args.n_tries,
             shift_annotations=1, # because of the PrependTokenDataset
         )   
 

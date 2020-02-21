@@ -1,7 +1,13 @@
 {
-    "task": "triplet_inference",
-    "arch": "encoder_triplet__roberta_small",
-    "data_path": "../data/nki/bin-v3-threshold20",
+    "task": "mtb",
+    "arch": "encoder_mtb__roberta_small",
+    //"data_path": "../data/nki/bin-v2-threshold20",
+    //"data_path": "../data/nki/bin_sample",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
+    //"data_path": "../data/nki/bin-v3-threshold20",
+
+    "case0_prob": 0.5,
+    "case1_prob": 0.4,
 
     "entity_dim": 256,
 
@@ -11,24 +17,24 @@
     "encoder_attention_heads": 4,
     "encoder_output_layer_type": "bag_of_words",
 
-    "max_epoch": 4,
-    "warmup_updates": 3600,
+    "max_epoch": 5,
+    "warmup_updates": 1600,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
     "clip_norm": 0.0,
-    "lr": [1e-3],
+    "lr": [3e-4],
     "lr_scheduler": "polynomial_decay",
 
     "weight_decay": 0.1,
     "dropout": 0.1,
     "attention_dropout": 0.1,
 
-    "max_sentences": 2048,
+    "max_sentences": 256,
     "update_freq": [1],
     "max_positions": 128,
-    "max_tokens": 2e4,
-    "required-batch-size-multiple": 3,
+    "max_tokens": 5000,
+    "required_batch_size_multiple": 2,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
@@ -43,5 +49,5 @@
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
 
-    "criterion": "cross_entropy_custom"
+    "criterion": "binary_cross_entropy_custom"
 }

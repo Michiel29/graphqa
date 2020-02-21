@@ -40,7 +40,7 @@ class BinaryCrossEntropy(FairseqCriterion):
         loss = F.binary_cross_entropy_with_logits(model_output, target, reduction='sum' if reduce else 'none')
 
         output_prob = torch.sigmoid(model_output)
-        predicted_class = output_prob.round() 
+        predicted_class = output_prob.round()
         accuracy = (predicted_class == target).float().mean()
         
         sample_size = target.numel()
