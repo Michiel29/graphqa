@@ -39,6 +39,110 @@ class MTBDataset(AnnotatedTextDataset):
         """Whether this dataset supports prefetching."""
         return False
 
+    def __getitem__(self, index):
+
+        item = super().__getitem__(index)
+
+        mention1 = item['mention']
+        head1 = item['head']
+        tail1 = item['tail']
+
+        head1_neighbors = self.neighbor_list[head1]
+        head1_tail1_edges = self.edge_dict[frozenset((head1, tail1))]
+        
+        case = np.random.choice(3, p=[self.case0_prob, self.case1_prob, 1 - self.case0_prob - self.case1_prob])
+
+        print('head1: {}'.format(head1))
+        print('tail1: {}'.format(tail1))
+        print('mention1: {}'.format(mention1))
+        print('head1_tail1_edges: {}'.format(head1_tail1_edges))
+        
+
+        while True:
+            # Case 0: mention_A and mention_B share both head and tail entities
+            if case == 0:
+                if len(head1_tail1_edges) == 0:
+                    raise Exception("Case 0 -- head1 and tail1 are are not mentioned in any sentence")
+                elif len(head1_tail1_edges) == 1:
+                    #raise Exception("Case 0 -- head1 and tail1 are only mentioned in one sentence")
+                    case = 1
+                    continue
+
+                head2 = head1
+                tail2 = tail1
+
+                mention2_idx = random.choice(head1_tail1_edges)
+                mention2 = self.__getitem__(mention2_idx)['mention']
+                target = 1
+                break
+
+            # Case 1: mention_A and mention_B share only one entity
+            elif case == 1:
+                head1_neighbors.remove(tail1)
+                
+                if len(head1_neighbors) == 0:
+                    #raise Exception("Case 1 -- head1 has no neighbors besides tail1")
+                    case = 2
+                    continue
+                
+                head2 = head1
+                tail2 = random.choice(head1_neighbors)
+
+                head2_tail2_edges = self.edge_dict[frozenset((head2, tail2))]
+                head2_tail2_edges = [e for e in head2_tail2_edges if tail1 not in self.annotation_data[e][2::3]]
+
+                if len(head2_tail2_edges) == 0:
+                    #raise Exception("Case 1 -- No sentences mentioning head2 and tail2 that do not also mention tail1")
+                    case = 2
+                    continue
+
+                mention2_idx = random.choice(head2_tail2_edges)
+                mention2 = self.__getitem__(mention2_idx)['mention']
+                target = 0
+                break
+
+            # Case 2: mention_A and mention_B share no entities
+            else: 
+                all_entities = [*range(self.n_entities)]
+                all_entities.remove(head1)
+                all_entities.remove(tail1)
+
+                while True:
+                    head2 = random.choice(all_entities)
+                    head2_neighbors = self.neighbor_list[head2]
+                    head2_neighbors = [n for n in head2_neighbors if (n != head1 and n != tail1)]
+
+                    if len(head2_neighbors) == 0:
+                        #print("Case 2 -- head2 has no neighbors besides head1 and tail1")
+                        continue
+
+                    else:
+                        tail2 = random.choice(head2_neighbors)
+                        head2_tail2_edges = self.edge_dict[frozenset((head2, tail2))]
+                        head2_tail2_edges = [e for e in head2_tail2_edges if (head1 not in self.annotation_data[e][2::3] and tail1 not in self.annotation_data[e][2::3])]
+
+                        if len(head2_tail2_edges) == 0:
+                            #print("Case 2 -- No sentences mentioning head2 and tail2 that do not also mention head1 or tail1")
+                            continue
+                        else:
+                            break
+                
+                mention2_idx = random.choice(head2_tail2_edges)
+                mention2 = self.__getitem__(mention2_idx)['mention']
+                target = 0
+                break
+
+        return {
+            'mention1': mention1,
+            'mention2': mention2,
+            'head1':  head1,
+            'head2':  head2,
+            'tail1': tail1,
+            'tail2': tail2,
+            'target':  target,
+            'ntokens': len(mention1) + len(mention2),
+            'nsentences': 2,
+        }
     
     def collater(self, instances):
         if len(instances) == 0:
@@ -54,97 +158,14 @@ class MTBDataset(AnnotatedTextDataset):
         ntokens, nsentences = 0, 0
 
         for instance in instances:
-            
-            head1 = instance['head']
-            tail1 = instance['tail']
-            #head1 = 0 
-            #tail1 = 1
 
-            head1_neighbors = self.neighbor_list[head1]
-            head1_tail1_edges = self.edge_dict[frozenset((head1, tail1))]
-        
-            
-            print('head1: {}\n'.format(head1))
-            print('tail1: {}\n'.format(tail1))
-            print('mention: {}\n'.format(instance['mention']))
-            print('head1_tail1_edges: {}\n'.format(head1_tail1_edges))
-            
-            case = np.random.choice(3, p=[self.case0_prob, self.case1_prob, 1 - self.case0_prob - self.case1_prob])
-            #case = 0 
-
-            #print('case: {}'.format(case))
-            # Case 0: mention_A and mention_B share both head and tail entities
-            if case == 0:
-                if len(head1_tail1_edges) == 0:
-                    raise Exception("Case 0 -- head1 and tail1 not mentioned in any sentences")
-                elif len(head1_tail1_edges) == 1:
-                    raise Exception("Case 0 -- head1 and tail1 are only mentioned in one sentence")
-
-                #head2 = head1
-                #tail2 = tail1
-                head2 = 0
-                tail2 = 1
-
-                mention2_idx = random.choice(head1_tail1_edges)
-                mention2 = self.__getitem__(mention2_idx)['mention']
-                target = 1
-
-            # Case 1: mention_A and mention_B share only one entity
-            elif case == 1:
-                head1_neighbors.remove(tail1)
-                
-                if len(head1_neighbors) == 0:
-                    raise Exception("Case 1 -- head1 has no neighbors besides tail1")
-                
-                head2 = head1
-                tail2 = random.choice(head1_neighbors)
-
-                head2_tail2_edges = self.edge_dict[frozenset((head2, tail2))]
-                head2_tail2_edges = [e for e in head2_tail2_edges if tail1 not in self.annotation_data[e][2::3]]
-
-                if len(head2_tail2_edges) == 0:
-                    raise Exception("Case 1 -- No sentences mentioning head2 and tail2 that do not also mention tail1")
-
-                mention2_idx = random.choice(head2_tail2_edges)
-                mention2 = self.__getitem__(mention2_idx)['mention']
-                target = 0
-
-            # Case 2: mention_A and mention_B share no entities
-            else: 
-                all_entities = [*range(self.n_entities)]
-                all_entities.remove(head1)
-                all_entities.remove(tail1)
-
-                while True:
-                    head2 = random.choice(all_entities)
-                    head2_neighbors = self.neighbor_list[head2]
-                    head2_neighbors = [n for n in head2_neighbors if (n != head1 and n != tail1)]
-
-                    if len(head2_neighbors) == 0:
-                        print("Case 2 -- head2 has no neighbors besides head1 and tail1")
-
-                    else:
-                        tail2 = random.choice(head2_neighbors)
-                        head2_tail2_edges = self.edge_dict[frozenset((head2, tail2))]
-                        head2_tail2_edges = [e for e in head2_tail2_edges if (head1 not in self.annotation_data[e][2::3] and tail1 not in self.annotation_data[e][2::3])]
-
-                        if len(head2_tail2_edges) == 0:
-                            print("Case 2 -- No sentences mentioning head2 and tail2 that do not also mention head1 or tail1")
-                        else:
-                            break
-                
-                mention2_idx = random.choice(head2_tail2_edges)
-                mention2 = self.__getitem__(mention2_idx)['mention']
-                target = 0 
-
-
-            mention1_list.append(instance['mention'])
-            mention2_list.append(mention2)
-            head1_list.append(head1)
-            head2_list.append(head2)
-            tail1_list.append(tail1)
-            tail2_list.append(tail2)
-            target_list.append(target)
+            mention1_list.append(instance['mention1'])
+            mention2_list.append(instance['mention2'])
+            head1_list.append(instance['head1'])
+            head2_list.append(instance['head2'])
+            tail1_list.append(instance['tail1'])
+            tail2_list.append(instance['tail2'])
+            target_list.append(instance['target'])
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
 
