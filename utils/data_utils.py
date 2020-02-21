@@ -1,5 +1,6 @@
 from fairseq.data import Dictionary
-
+from collections import defaultdict
+from itertools import combinations
 
 class CustomDictionary(Dictionary):
     """Dictionary with entity tokens"""
@@ -41,6 +42,25 @@ class EntityDictionary(Dictionary):
         self.count = []
         self.indices = {}
 
+class Graph():
+
+    def __init__(self):
+        self.edge_dict = None
+        self.entity_neighbors = None
+
+    def construct_graph(self, annotation_data, n_entities):
+
+        self.entity_neighbors = [defaultdict(int) for entity in range(n_entities)]
+        self.edge_dict = defaultdict(list)
+
+        for sentence_idx in range(len(annotation_data)):
+            entity_ids = annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy()
+
+            for a, b in combinations(entity_ids, 2):
+                self.entity_neighbors[a][b] += 1
+                self.entity_neighbors[b][a] += 1
+
+                self.edge_dict[frozenset({a, b})].append(sentence_idx)
 
 
 

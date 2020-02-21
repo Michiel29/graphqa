@@ -25,9 +25,18 @@ class TripletInferenceTask(RelationInferenceTask):
 
         text_data, annotation_data = self.load_annotated_text(split)
 
+        if split=='train':
+            # here temporarily
+            from utils.data_utils import Graph
+            logger.info('beginning graph construction')
+            self.graph = Graph()
+            self.graph.construct_graph(annotation_data, len(self.entity_dictionary))
+            logger.info('finished graph construction')
+
         self.datasets[split] = TripletDataset(
             text_data,
             annotation_data,
+            self.graph,
             self.args.k_negative,
             len(self.entity_dictionary),
             self.dictionary,
