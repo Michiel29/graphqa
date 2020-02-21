@@ -33,3 +33,7 @@ class TripletInferenceTask(RelationInferenceTask):
             self.dictionary,
             shift_annotations=1, # because of the PrependTokenDataset
         )
+
+    @property
+    def source_dictionary(self):
+        return self.dictionary

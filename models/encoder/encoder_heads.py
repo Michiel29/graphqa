@@ -9,7 +9,7 @@ class BoW(nn.Module):
         self.head_idx = dictionary.head()
         self.tail_idx = dictionary.tail()
 
-    def forward(self, x, src_tokens):
+    def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
         mask = ((src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)).unsqueeze(-1) # [batch_size, length, enc_dim]
         masked_emb = x * mask
@@ -25,7 +25,7 @@ class HeadTailConcat(nn.Module):
         self.head_idx = dictionary.head()
         self.tail_idx = dictionary.tail()
 
-    def forward(self, x, src_tokens):
+    def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
 
         head_mask = (src_tokens == self.head_idx).unsqueeze(-1) # [batch_size, length, 1]

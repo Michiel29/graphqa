@@ -80,6 +80,10 @@ class AnnotatedTextDataset(FairseqDataset):
         ])
 
     @property
+    def sizes(self):
+        return self.text_data.sizes
+
+    @property
     def supports_prefetch(self):
         """Whether this dataset supports prefetching."""
         return False
