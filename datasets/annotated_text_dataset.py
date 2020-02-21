@@ -26,7 +26,7 @@ class AnnotatedTextDataset(FairseqDataset):
     def __getitem__(self, index):
         mention = self.text_data[index]
         annotations = self.annotation_data[index].split(3)
-
+        
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
 
         assert len(unique_entity_ids) >= 2
