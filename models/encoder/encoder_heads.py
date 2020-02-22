@@ -1,3 +1,5 @@
+from pudb import set_trace
+
 from torch import nn
 import torch
 
@@ -38,7 +40,28 @@ class HeadTailConcat(nn.Module):
 
         return head_tail_concat
 
+class EntityStart(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        self.e1_start_idx = dictionary.e1_start()
+        self.e2_start_idx = dictionary.e2_start()
+
+    def forward(self, x, src_tokens, **unused):
+        # x: [batch_size, length, enc_dim]
+
+        mask_e1 = (src_tokens == self.e1_start_idx).unsqueeze(-1) # [batch_size, length, 1]
+        mask_e2 = (src_tokens == self.e2_start_idx).unsqueeze(-1) # [batch_size, length, 1]
+
+        emb_e1 = torch.sum(x * mask_e1, dim=-2) # [batch_size, enc_dim]
+        emb_e2 = torch.sum(x * mask_e2, dim=-2) # [batch_size, enc_dim]
+
+        e1_e2_concat = torch.cat((emb_e1, emb_e2), dim=-1) # [batch_size, 2 * enc_dim]
+
+        return e1_e2_concat
+
 encoder_head_dict = {
     'bag_of_words': BoW,
-    'head_tail_concat': HeadTailConcat
+    'head_tail_concat': HeadTailConcat,
+    'entity_start': EntityStart
 }

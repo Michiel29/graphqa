@@ -24,7 +24,7 @@ class EncoderMTBModel(BaseFairseqModel):
         self.encoder = encoder
         if args.encoder_output_layer_type == 'bag_of_words':
             self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
-        elif args.encoder_output_layer_type == 'head_tail_concat':
+        elif args.encoder_output_layer_type in ['head_tail_concat', 'entity_start']:
             self.mention_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
 
         self.task = task
@@ -35,13 +35,13 @@ class EncoderMTBModel(BaseFairseqModel):
 
     def forward(self, batch):
 
-        mention1_enc, _ = self.encoder(batch['mention1']) # [batch_size, enc_dim]
-        mention1_enc = self.mention_linear(mention1_enc) # [batch_size, ent_dim]
+        mentionA_enc, _ = self.encoder(batch['mentionA']) # [batch_size, enc_dim]
+        mentionA_enc = self.mention_linear(mentionA_enc) # [batch_size, ent_dim]
 
-        mention2_enc, _ = self.encoder(batch['mention2']) # [batch_size, enc_dim]
-        mention2_enc = self.mention_linear(mention2_enc) # [batch_size, ent_dim]
+        mentionB_enc, _ = self.encoder(batch['mentionB']) # [batch_size, enc_dim]
+        mentionB_enc = self.mention_linear(mentionB_enc) # [batch_size, ent_dim]
        
-        scores = (mention1_enc * mention2_enc).sum(dim=-1) 
+        scores = (mentionA_enc * mentionB_enc).sum(dim=-1) 
 
         #inspect_batch(batch, self.task, scores)
 

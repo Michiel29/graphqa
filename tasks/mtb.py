@@ -14,7 +14,7 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask, register_task
 
-from utils.data_utils import CustomDictionary, EntityDictionary
+from utils.data_utils import MTBDictionary, EntityDictionary
 from datasets import MTBDataset, FixedSizeDataset
 
 #from cython_modules.construct_graph import construct_graph
@@ -31,12 +31,14 @@ class MTBTask(FairseqTask):
 
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
-        parser.add_argument('--case0_prob', default=0.5, type=int,
+        parser.add_argument('--case0_prob', default=0.5, type=float,
                             help='probability of sampling a pair of sentences which share both head and tail entities')
-        parser.add_argument('--case1_prob', default=0.4, type=int,
+        parser.add_argument('--case1_prob', default=0.4, type=float,
                             help='probability of sampling a pair of sentences which share only one entity')
         parser.add_argument('--n_tries', default=10, type=int,
                             help='number of attempts to sample mentions for a given case')
+        parser.add_argument('--alpha', default=0.7, type=float,
+                            help='probability of not masking the entity with a [BLANK] token')
 
         """Optional"""
         # optional arguments here
@@ -50,7 +52,7 @@ class MTBTask(FairseqTask):
     @classmethod
     def setup_task(cls, args, **kwargs):
         dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
+        dictionary = MTBDictionary.load(dict_path)
 
         entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
         entity_dictionary = EntityDictionary.load(entity_dict_path)
@@ -79,9 +81,9 @@ class MTBTask(FairseqTask):
 
             return neighbor_list, edge_dict
 
-        logger.info('beginning graph construction')
+        logger.info('beginning train graph construction')
         task.neighbor_list, task.edge_dict = construct_graph(task.datasets['train'].annotation_data, len(entity_dictionary))
-        logger.info('finished graph construction')
+        logger.info('finished train graph construction')
 
         task.datasets['train'].neighbor_list = task.neighbor_list
         task.datasets['train'].edge_dict = task.edge_dict
@@ -135,13 +137,10 @@ class MTBTask(FairseqTask):
             self.args.case1_prob,
             self.args.max_positions,
             self.args.n_tries,
+            self.args.alpha,
             shift_annotations=1, # because of the PrependTokenDataset
         )   
 
-        if split != 'train':
-            dataset.neighbor_list = self.neighbor_list
-            dataset.edge_dict = self.edge_dict
-        
         self.datasets[split] = dataset
         
     def get_batch_iterator(
