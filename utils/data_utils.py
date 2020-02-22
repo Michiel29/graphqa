@@ -1,5 +1,6 @@
 from fairseq.data import Dictionary
-
+from collections import defaultdict
+from itertools import combinations
 
 class CustomDictionary(Dictionary):
     """Dictionary with entity tokens"""
@@ -82,17 +83,10 @@ class MTBDictionary(Dictionary):
 
     def blank(self):
         return self.blank_index
-    '''
-    def unk_ent(self):
-        return self.unk_ent_index
-    '''
+
 class EntityDictionary(Dictionary):
     """Dictionary with no special tokens"""
     def __init__(self):
         self.symbols = []
         self.count = []
         self.indices = {}
-
-
-
-

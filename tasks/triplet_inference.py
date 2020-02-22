@@ -19,15 +19,12 @@ class TripletInferenceTask(RelationInferenceTask):
             split (str): name of the split (e.g., train, valid, test)
         """
 
-        # Don't reload datasets that were already setup earlier
-        if split in self.datasets:
-            return
-
         text_data, annotation_data = self.load_annotated_text(split)
 
         self.datasets[split] = TripletDataset(
             text_data,
             annotation_data,
+            self.graph,
             self.args.k_negative,
             len(self.entity_dictionary),
             self.dictionary,
