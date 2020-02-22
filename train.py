@@ -27,9 +27,8 @@ from fairseq.meters import StopwatchMeter
 import models, criterions
 import tasks as custom_tasks
 
-from utils.config import update_namespace, read_json, modify_factory
+from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import generate_save_dir
-
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -276,10 +275,15 @@ def distributed_main(i, args, start_rank=0):
 def cli_main():
 
     parser = options.get_training_parser()
-    parser.add_argument('--config', type=str, help='path to JSON file of experiment configurations')
+    parser.add_argument('--config', type=str, nargs='*', help='paths to JSON files of experiment configurations, from high to low priority')
     pre_parsed_args = parser.parse_args()
 
-    config_dict = read_json(pre_parsed_args.config) if pre_parsed_args.config else {}
+
+
+    config_dict = {}
+    for config_path in pre_parsed_args.config:
+        config_dict = update_config(config_dict, compose_configs(config_path))
+
     parser_modifier = modify_factory(config_dict)
 
     args = options.parse_args_and_arch(parser, modify_parser=parser_modifier)
@@ -289,6 +293,8 @@ def cli_main():
     base_save_dir = generate_save_dir(args)
     setattr(args, 'save_dir', os.path.join(base_save_dir, 'checkpoints'))
     setattr(args, 'tensorboard_logdir', os.path.join(base_save_dir, 'tensorboard'))
+
+    save_config(vars(args), base_save_dir)
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
