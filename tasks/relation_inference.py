@@ -14,9 +14,7 @@ from fairseq.data import (
 from fairseq.tasks import FairseqTask
 
 from utils.data_utils import CustomDictionary, EntityDictionary
-from datasets import FixedSizeDataset
-
-# from cython_modules.construct_graph import construct_graph
+from datasets import FixedSizeDataset, GraphDataset
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +52,8 @@ class RelationInferenceTask(FairseqTask):
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
         task = cls(args, dictionary, entity_dictionary)
-        task.load_dataset('train')
+
+        task.load_graph()
 
         return task
 
@@ -91,6 +90,32 @@ class RelationInferenceTask(FairseqTask):
         annotation_data = FixedSizeDataset(annotation_data, n_examples)
 
         return text_data, annotation_data
+
+    def load_graph(self):
+        neighbor_path = os.path.join(self.args.data_path, 'neighbors')
+        edge_path = os.path.join(self.args.data_path, 'edges')
+
+        neighbor_data = data_utils.load_indexed_dataset(
+            neighbor_path,
+            None,
+            dataset_impl='mmap'
+        )
+
+        if neighbor_data is None:
+            raise FileNotFoundError('Dataset (graph) not found: {}'.format(neighbor_path))
+
+        edge_data = data_utils.load_indexed_dataset(
+            edge_path,
+            None,
+            dataset_impl='mmap'
+        )
+
+        if edge_data is None:
+            raise FileNotFoundError('Dataset (graph) not found: {}'.format(edge_path))
+
+        self.graph = GraphDataset(neighbor_data, edge_data)
+
+
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

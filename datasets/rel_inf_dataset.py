@@ -35,24 +35,29 @@ class RelInfDataset(AnnotatedTextDataset):
         head = item['head']
         tail = item['tail']
 
-        replace_head_entity = rd.randint(2, size=self.k_negative)
+        replace_heads = rd.randint(2, size=self.k_negative)
 
-        tail_head = np.array([tail, head])
-        entities_to_be_replaced = tail_head[replace_head_entity]
-        entities_not_replaced = tail_head[1 - replace_head_entity]
+        head_neighbors = self.graph[head]['neighbors']
+        tail_neighbors = self.graph[tail]['neighbors']
+
+        tail_head_neighbors = [tail_neighbors, head_neighbors]
+
         replacement_entities = []
-        for entity_replaced, entity_not_replaced in zip(entities_to_be_replaced, entities_not_replaced):
-            if len(self.graph.entity_neighbors[entity_not_replaced]) > 0:
-                replacement_entity = rd.choice(list(self.graph.entity_neighbors[entity_not_replaced].keys()))
-            elif len(self.graph.entity_neighbors[entity_replaced]) > 0:
-                replacement_entity = rd.choice(list(self.graph.entity_neighbors[entity_replaced].keys()))
+
+        for replace_head in replace_heads:
+            replacement_neighbors, static_neighbors = tail_head_neighbors[replace_head], tail_head_neighbors[1 - replace_head]
+
+            if len(replacement_neighbors) > 0:
+                replacement_entity = rd.choice(replacement_neighbors)
+            elif len(static_neighbors) > 0:
+                replacement_entity = rd.choice(static_neighbors)
             else:
                 replacement_entity = rd.randint(self.n_entities)
 
             replacement_entities.append(replacement_entity)
 
-        item['head'] = [head] + [head if replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
-        item['tail'] = [tail] + [tail if not replace_head_entity[i] else replacement_entities[i] for i in range(self.k_negative)]
+        item['head'] = [head] + [head if not replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
+        item['tail'] = [tail] + [tail if replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
         item['target'] = 0
 
         return item
