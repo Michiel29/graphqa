@@ -102,6 +102,10 @@ class MaskedLmCustomLoss(FairseqCriterion):
         metrics.log_scalar('acc_ht', accuracy_ht, 0, round=3)
         metrics.log_scalar('acc_w', accuracy_w, 0, round=3)
 
+        metrics.log_scalar('num_masked', sample_size, 0, round=3, priority=1e9)
+        metrics.log_scalar('num_masked_ht', sample_size_ht, 0, round=3, priority=1e9)
+        metrics.log_scalar('num_masked_w', sample_size_w, 0, round=3, priority=1e9)
+
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
         """

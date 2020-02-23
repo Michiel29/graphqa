@@ -1,6 +1,6 @@
 {
     "task": "masked_lm_em",
-    "arch": "roberta_small",
+    "arch": "roberta_base",
     "data_path": "../data/nki/bin-v3-threshold20",
 
     "mask_prob": 0.15,
@@ -12,9 +12,9 @@
     "bpe": "gpt2",
 
     "encoder_layers": 12,
-    "encoder_embed_dim": 256,
-    "encoder_ffn_embed_dim": 1024,
-    "encoder_attention_heads": 4,
+    "encoder_embed_dim": 768,
+    "encoder_ffn_embed_dim": 3072,
+    "encoder_attention_heads": 12,
     "encoder_output_layer_type": "lm_head",
 
     "max_epoch": 2,
@@ -31,9 +31,9 @@
     "attention_dropout": 0.1,
 
     "max_sentences": 2048,
-    "update_freq": [6],
+    "update_freq": [15],
     "max_positions": 128,
-    "max_tokens": 16000,
+    "max_tokens": 7e3,
     "required-batch-size-multiple": 3,
     "skip_invalid_size_inputs_valid_test": true,
 
@@ -41,11 +41,11 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 3,
+    "num_workers": 5,
     "save_dir": "../save/",
     "restore_file": false,
-    //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
-    "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
+    "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
+    // "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
 
