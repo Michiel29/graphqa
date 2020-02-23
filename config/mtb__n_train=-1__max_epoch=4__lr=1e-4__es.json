@@ -7,7 +7,9 @@
     //"data_path": "../data/nki/bin-v3-threshold20",
 
     "case0_prob": 0.5,
-    "case1_prob": 0.4,
+    "case1_prob": 0.35,
+    "n_tries": 10,
+    "alpha": 0.7,
 
     "entity_dim": 256,
 
@@ -18,30 +20,30 @@
     "encoder_output_layer_type": "entity_start",
 
     "max_epoch": 4,
-    "warmup_updates": 1300,
+    "warmup_updates": 1333,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
     "clip_norm": 0.0,
-    "lr": [3e-4],
+    "lr": [1e-4],
     "lr_scheduler": "polynomial_decay",
 
     "weight_decay": 0.1,
     "dropout": 0.1,
     "attention_dropout": 0.1,
 
-    "max_sentences": 256,
+    "max_sentences": 128,
     "update_freq": [1],
     "max_positions": 128,
-    "max_tokens": 1e4,
+    "max_tokens": 16384,
     "required_batch_size_multiple": 2,
     "skip_invalid_size_inputs_valid_test": true,
 
-    "n_train_examples": 10000,
-    "n_valid_examples": 10000,
+    "n_train_examples": -1,
+    "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 0,
+    "num_workers": 2,
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",

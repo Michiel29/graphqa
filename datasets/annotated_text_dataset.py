@@ -15,6 +15,7 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         assign_head_tail_randomly,
+        alpha=0.7,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
@@ -22,6 +23,7 @@ class AnnotatedTextDataset(FairseqDataset):
         self.shift_annotations = shift_annotations
         self.dictionary = dictionary
         self.assign_head_tail_randomly = assign_head_tail_randomly
+        self.alpha = alpha
 
     def __getitem__(self, index):
         mention = self.text_data[index]
@@ -78,6 +80,91 @@ class AnnotatedTextDataset(FairseqDataset):
             np.random.permutation(len(self)),
             self.text_data.sizes,
         ])
+
+    def insert_entity_tokens(self, index):
+        mention = self.text_data[index]
+        annotations = self.annotation_data[index].split(3)
+        
+        entity_ids = self.annotation_data[index][2::3].numpy()
+        unique_entity_ids = np.unique(entity_ids)
+        assert len(unique_entity_ids) >= 2
+        
+        if self.assign_head_tail_randomly:
+            e1_temp, e2_temp = np.random.choice(
+                unique_entity_ids,
+                size=2,
+                replace=False,
+            )
+            
+            e1_temp_indices = np.where(entity_ids == e1_temp)[0]
+            e2_temp_indices = np.where(entity_ids == e2_temp)[0]
+            
+            e1_temp_idx = np.random.choice(e1_temp_indices)
+            e2_temp_idx = np.random.choice(e2_temp_indices)
+            
+            if e1_temp_idx < e2_temp_idx:
+                e1 = e1_temp
+                e1_idx = e1_temp_idx
+                e2 = e2_temp
+                e2_idx = e2_temp_idx
+            else:
+                e1 = e2_temp
+                e1_idx = e2_temp_idx
+                e2 = e1_temp
+                e2_idx = e1_temp_idx
+        
+        else:
+            e1, e2 = unique_entity_ids[:2]
+            e1_idx = 0
+            e2_idx = 1
+        
+        # Get e1 and e2 start/end indices
+        e1_annotation = annotations[e1_idx][2].item()
+        e1_start = annotations[e1_idx][0].item() + self.shift_annotations
+        e1_end = annotations[e1_idx][1].item() + self.shift_annotations
+        
+        e2_annotation = annotations[e2_idx][2].item()
+        e2_start = annotations[e2_idx][0].item() + self.shift_annotations
+        e2_end = annotations[e2_idx][1].item() + self.shift_annotations
+        
+        # Initialize new mention with -1's
+        mention_new = -1 * torch.ones(mention.shape[0]+4).long()
+        
+        # Copy over non-entity tokens from original mention to new mention
+        mention_new[:e1_start] = mention[:e1_start]
+        mention_new[e1_end+2:e2_start+2] = mention[e1_end:e2_start]
+        mention_new[e2_end+4:] = mention[e2_end:]
+        
+        # Insert e1 and e2 start/end tokens into new mention
+        mention_new[e1_start] = self.dictionary.e1_start()
+        mention_new[e1_end+1] = self.dictionary.e1_end()
+        mention_new[e2_start+2] = self.dictionary.e2_start()
+        mention_new[e2_end+3] = self.dictionary.e2_end()
+        
+        # For each entity, randomly decide whether to mask it with a [BLANK] token
+        #   - NO, with probability alpha
+        #   - YES, with probability 1-alpha
+        mask_decision = np.random.choice(2, 2, p=[self.alpha, 1 - self.alpha])
+
+        if mask_decision[0] == 1:
+            mention_new[e1_start+1] = self.dictionary.blank()
+        else:
+            mention_new[e1_start+1:e1_end+1] = mention[e1_start:e1_end]
+        
+        if mask_decision[1] == 1:
+            mention_new[e2_start+3] = self.dictionary.blank()
+        else:
+            mention_new[e2_start+3:e2_end+3] = mention[e2_start:e2_end]
+        
+        # Remove any -1's in new mention left over after [BLANK] masking
+        mention_new = mention_new[mention_new != -1]
+        
+        
+        return {
+            'mention': mention_new,
+            'e1': e1,
+            'e2': e2
+        }
 
     @property
     def sizes(self):
