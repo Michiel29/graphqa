@@ -83,8 +83,7 @@ class MTBDataset(AnnotatedTextDataset):
         e1A = item['e1']
         e2A = item['e2']
 
-        #case = np.random.choice(3, p=[self.case0_prob, self.case1_prob, 1 - self.case0_prob - self.case1_prob])
-        case=0
+        case = np.random.choice(3, p=[self.case0_prob, self.case1_prob, 1 - self.case0_prob - self.case1_prob])
         e1A_neighbors = self.graph[e1A]['neighbors']
         e1A_edges = self.graph[e1A]['edges']
 
