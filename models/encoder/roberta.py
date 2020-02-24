@@ -57,6 +57,10 @@ class RobertaWrapper(RobertaModel):
         ckpt_vocab_size = state_dict['decoder.sentence_encoder.embed_tokens.weight'].shape[0]
         diff = model_vocab_size - ckpt_vocab_size
 
+        model_pos_size = self.decoder.sentence_encoder.embed_positions.weight.shape[0]
+        ckpt_pos_size = state_dict['decoder.sentence_encoder.embed_positions.weight'].shape[0]
+        diff_pos_size = model_pos_size - ckpt_pos_size
+
         new_state_dict = {}
         for n, c in state_dict.items():
             if n in ['decoder.sentence_encoder.embed_tokens.weight', 'decoder.lm_head.weight'] and diff > 0:
@@ -68,6 +72,9 @@ class RobertaWrapper(RobertaModel):
                 new_weight = torch.zeros(c.shape[0]+diff)
                 new_weight[:-diff] = c
                 new_state_dict[n] = new_weight
+            elif n == 'decoder.sentence_encoder.embed_positions.weight' and diff_pos_size < 0:
+                new_weight = c[:c.shape[0] + diff_pos_size]
+                new_state_dict[n] = new_weight
             else:
                 new_state_dict[n] = c
 
@@ -75,10 +82,14 @@ class RobertaWrapper(RobertaModel):
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
-@register_model_architecture('roberta_wrapper', 'roberta_small')
+@register_model_architecture('roberta_wrapper', 'roberta_wrapper_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 256)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 1024)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 4)
+    base_architecture(args)
+
+@register_model_architecture('roberta_wrapper', 'roberta_wrapper_base')
+def base_wrapper_architecture(args):
     base_architecture(args)
