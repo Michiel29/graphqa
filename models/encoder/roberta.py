@@ -82,7 +82,7 @@ class RobertaWrapper(RobertaModel):
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
-@register_model_architecture('roberta_wrapper', 'roberta_wrapper_small')
+@register_model_architecture('roberta_wrapper', 'roberta_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 256)
