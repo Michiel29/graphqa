@@ -1,6 +1,6 @@
 {
     "task": "masked_lm_em",
-    "arch": "roberta_small",
+    "arch": "roberta_wrapper_small",
     "data_path": "../data/nki/bin-v3-threshold20",
 
     "mask_prob": 0.15,
@@ -17,8 +17,8 @@
     "encoder_attention_heads": 4,
     "encoder_output_layer_type": "lm_head",
 
-    "max_epoch": 2,
-    "warmup_updates": 500,
+    "max_epoch": 4,
+    "warmup_updates": 1000,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
