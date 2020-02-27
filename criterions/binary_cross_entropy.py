@@ -1,3 +1,4 @@
+from pudb import set_trace
 import math
 
 import numpy as np
@@ -45,11 +46,13 @@ class BinaryCrossEntropy(FairseqCriterion):
         
         sample_size = target.numel()
         logging_output = {
-            'loss': utils.item(loss.data) if reduce else loss.data,
             'sample_size': sample_size,
+            'loss': utils.item(loss.data) if reduce else loss.data,
             'accuracy': utils.item(accuracy.data),
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
+            'ntokens_AB': sample['ntokens_AB'],
+            'ntokens_mem': torch.numel(sample['mentionA']) + sample['mentionB_size'],
         }
         return loss, sample_size, logging_output
 
@@ -57,16 +60,19 @@ class BinaryCrossEntropy(FairseqCriterion):
     def reduce_metrics(logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
 
-        loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
+        loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
         accuracy_sum = sum(log.get('accuracy', 0) * log.get('sample_size', 0) for log in logging_outputs)
-
+        
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
-
-        metrics.log_scalar('accuracy', accuracy_sum / sample_size, sample_size, round=3)
+        ntokens_AB = sum(log.get('ntokens_AB', 0) for log in logging_outputs)
+        ntokens_mem = sum(log.get('ntokens_mem', 0) for log in logging_outputs)
+        
+        metrics.log_scalar('acc', accuracy_sum / sample_size, sample_size, round=3)
         metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
-
+        metrics.log_scalar('wpb_mem', ntokens_mem, sample_size, round=3)
+        metrics.log_scalar('wpb_AB', ntokens_AB, sample_size, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

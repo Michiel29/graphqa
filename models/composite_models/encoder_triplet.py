@@ -37,6 +37,7 @@ class EncoderTripletModel(BaseFairseqModel):
         return self._max_positions
 
     def forward(self, batch):
+
         mention_enc, _ = self.encoder(batch['mention']) # [batch_size, enc_dim]
         mention_enc = self.mention_linear(mention_enc) # [batch_size, ent_dim]
 

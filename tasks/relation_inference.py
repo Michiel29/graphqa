@@ -30,8 +30,6 @@ class RelationInferenceTask(FairseqTask):
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
-        parser.add_argument('--alpha', default=0.7, type=float,
-                            help='probability of not masking the entity with a [BLANK] token')
 
         """Optional"""
         # optional arguments here

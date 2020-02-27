@@ -38,9 +38,13 @@ class EncoderMTBModel(BaseFairseqModel):
         mentionA_enc, _ = self.encoder(batch['mentionA']) # [batch_size, enc_dim]
         mentionA_enc = self.mention_linear(mentionA_enc) # [batch_size, ent_dim]
 
-        mentionB_enc, _ = self.encoder(batch['mentionB']) # [batch_size, enc_dim]
+        mentionB_enc = []
+        for k, v in batch['mentionB'].items():
+            cur_mentionB_enc, _ = self.encoder(v)
+            mentionB_enc.append(cur_mentionB_enc)
+        mentionB_enc = torch.cat(mentionB_enc, dim=0) 
         mentionB_enc = self.mention_linear(mentionB_enc) # [batch_size, ent_dim]
-       
+        
         scores = (mentionA_enc * mentionB_enc).sum(dim=-1) 
 
         #inspect_batch(batch, self.task, scores)

@@ -14,21 +14,48 @@ class AnnotatedTextDataset(FairseqDataset):
         annotation_data,
         dictionary,
         shift_annotations,
-        assign_head_tail_randomly,
-        alpha=0.7,
+        mask_type,
+        assign_head_tail_randomly=None,
+        alpha=None,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
         assert len(self.text_data) == len(self.annotation_data)
         self.shift_annotations = shift_annotations
         self.dictionary = dictionary
+        self.mask_type = mask_type
         self.assign_head_tail_randomly = assign_head_tail_randomly
         self.alpha = alpha
 
     def __getitem__(self, index):
         mention = self.text_data[index]
-        annotations = self.annotation_data[index].split(3)
-        
+        annotations = self.annotation_data[index]
+
+        if self.mask_type == 'head_tail':
+            item = self.head_tail_mask(mention, annotations)
+        elif self.mask_type == 'start_end':
+            item = self.start_end_mask(mention, annotations)
+
+        return item
+
+    def __len__(self):
+        return len(self.text_data)
+
+    def num_tokens(self, index):
+        return self.text_data.sizes[index]
+
+    def size(self, index):
+        return self.text_data.sizes[index]
+
+    def ordered_indices(self):
+        """Sorts by sentence length, randomly shuffled within sentences of same length"""
+        return np.lexsort([
+            np.random.permutation(len(self)),
+            self.text_data.sizes,
+        ])
+
+    def head_tail_mask(self, mention, annotations):
+        annotations = annotations.split(3)
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
 
         assert len(unique_entity_ids) >= 2
@@ -57,35 +84,16 @@ class AnnotatedTextDataset(FairseqDataset):
 
         mention = mention[mention != -1]
 
-        return {
-            'mention': mention,
-            'head': head_entity,
-            'tail': tail_entity,
-            'ntokens': len(mention),
-            'nsentences': 1,
+        return {'mention': mention,
+                'head': head_entity,
+                'tail': tail_entity,
+                'ntokens': len(mention),
+                'nsentences': 1,
         }
 
-    def __len__(self):
-        return len(self.text_data)
-
-    def num_tokens(self, index):
-        return self.text_data.sizes[index]
-
-    def size(self, index):
-        return self.text_data.sizes[index]
-
-    def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.text_data.sizes,
-        ])
-
-    def insert_entity_tokens(self, index):
-        mention = self.text_data[index]
-        annotations = self.annotation_data[index].split(3)
-        
-        entity_ids = self.annotation_data[index][2::3].numpy()
+    def start_end_mask(self, mention, annotations):
+        annotations_list = annotations.split(3)
+        entity_ids = annotations[2::3].numpy()
         unique_entity_ids = np.unique(entity_ids)
         assert len(unique_entity_ids) >= 2
         
@@ -119,13 +127,13 @@ class AnnotatedTextDataset(FairseqDataset):
             e2_idx = 1
         
         # Get e1 and e2 start/end indices
-        e1_annotation = annotations[e1_idx][2].item()
-        e1_start = annotations[e1_idx][0].item() + self.shift_annotations
-        e1_end = annotations[e1_idx][1].item() + self.shift_annotations
+        e1_annotation = annotations_list[e1_idx][2].item()
+        e1_start = annotations_list[e1_idx][0].item() + self.shift_annotations
+        e1_end = annotations_list[e1_idx][1].item() + self.shift_annotations
         
-        e2_annotation = annotations[e2_idx][2].item()
-        e2_start = annotations[e2_idx][0].item() + self.shift_annotations
-        e2_end = annotations[e2_idx][1].item() + self.shift_annotations
+        e2_annotation = annotations_list[e2_idx][2].item()
+        e2_start = annotations_list[e2_idx][0].item() + self.shift_annotations
+        e2_end = annotations_list[e2_idx][1].item() + self.shift_annotations
         
         # Initialize new mention with -1's
         mention_new = -1 * torch.ones(mention.shape[0]+4).long()

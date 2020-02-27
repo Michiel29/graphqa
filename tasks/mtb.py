@@ -60,7 +60,7 @@ class MTBTask(RelationInferenceTask):
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
         task = cls(args, dictionary, entity_dictionary)
-
+        
         task.load_graph()
 
         return task
@@ -86,7 +86,6 @@ class MTBTask(RelationInferenceTask):
             shift_annotations=1, # because of the PrependTokenDataset
             alpha=self.args.alpha,
         )
-
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

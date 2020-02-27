@@ -1,10 +1,9 @@
 {
     "task": "mtb",
     "arch": "encoder_mtb__roberta_small",
-    //"data_path": "../data/nki/bin-v2-threshold20",
     //"data_path": "../data/nki/bin_sample",
-    "data_path": "../data/nki/bin-v3-threshold20-small",
-    //"data_path": "../data/nki/bin-v3-threshold20",
+    //"data_path": "../data/nki/bin-v3-threshold20-small",
+    "data_path": "../data/nki/bin-v3-threshold20",
 
     "case0_prob": 0.5,
     "case1_prob": 0.35,
@@ -20,7 +19,7 @@
     "encoder_output_layer_type": "entity_start",
 
     "max_epoch": 4,
-    "warmup_updates": 1333,
+    "warmup_updates": 6558,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
@@ -32,24 +31,26 @@
     "dropout": 0.1,
     "attention_dropout": 0.1,
 
-    "max_sentences": 128,
-    "update_freq": [1],
+    "max_sentences": 300, // max number of mentionA sentences per batch
+    "max_tokens": 1.5e4, // max number of mentionA tokens per batch
     "max_positions": 128,
-    "max_tokens": 16384,
-    "required_batch_size_multiple": 2,
+    "update_freq": [1],
+    
+    "required_batch_size_multiple": 1,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 2,
+    "num_workers": 6, // set 2+ workers per gpu
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
     "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
+    "fp16": false,
 
     "criterion": "binary_cross_entropy_custom"
 }

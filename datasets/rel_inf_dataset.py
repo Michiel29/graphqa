@@ -24,6 +24,7 @@ class RelInfDataset(AnnotatedTextDataset):
             annotation_data,
             dictionary,
             shift_annotations,
+            mask_type='head_tail',
             assign_head_tail_randomly=True,
         )
         self.k_negative = k_negative
