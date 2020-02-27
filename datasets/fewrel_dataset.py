@@ -7,7 +7,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import FairseqDataset
-
+from fairseq.data.data_utils import numpy_seed
 from datasets import AnnotatedTextDataset
 
 
@@ -23,6 +23,7 @@ class FewRelDataset(FairseqDataset):
         n_shot,
         dataset_size,
         shift_annotations,
+        seed,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
@@ -39,6 +40,7 @@ class FewRelDataset(FairseqDataset):
         self.n_way = n_way
         self.n_shot = n_shot
         self.dataset_size = dataset_size
+        self.seed = seed
 
         self.relation_index = defaultdict(list)
         for idx in range(len(self.relation_data)):
@@ -46,45 +48,36 @@ class FewRelDataset(FairseqDataset):
 
         self.data = []
 
-        # Exact validation set depends on the sampling being used. Thus, we
-        # 1. Save the current random generation state
-        # 2. Set random seed to be a paricular constant
-        # 3. We restore random state after the data generation has finished.
-        old_rd_state = rd.get_state()
-        rd.seed(31415)
+        with numpy_seed(self.seed):
+            for _ in range(self.dataset_size):
 
-        for _ in range(self.dataset_size):
+                exemplars = []
 
-            exemplars = []
+                # Sample n_way relation types and choose the first one as correct label
+                sample_relations = rd.choice(list(self.relation_index.keys()), size=self.n_way, replace=False)
+                positive_relation = sample_relations[0]
+                negative_relations = sample_relations[1:]
 
-            # Sample n_way relation types and choose the first one as correct label
-            sample_relations = rd.choice(list(self.relation_index.keys()), size=self.n_way, replace=False)
-            positive_relation = sample_relations[0]
-            negative_relations = sample_relations[1:]
+                # Sample goal sentence + n_shot exemplar sentences for correct class
+                positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
 
-            # Sample goal sentence + n_shot exemplar sentences for correct class
-            positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
+                goal_mention_idx = positive_mention_idxs[0]
+                exemplars += list(positive_mention_idxs[1:])
 
-            goal_mention_idx = positive_mention_idxs[0]
-            exemplars += list(positive_mention_idxs[1:])
+                # Sample n_shot exemplar sentences for other classes
+                for rel in negative_relations:
+                    rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
+                    exemplars += list(rel_examplar_idxs)
 
-            # Sample n_shot exemplar sentences for other classes
-            for rel in negative_relations:
-                rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
-                exemplars += list(rel_examplar_idxs)
+                all_ids = [goal_mention_idx] + [idx for idx in exemplars]
+                total_tokens = sum([self.dataset.num_tokens(idx) for idx in all_ids])
 
-            all_ids = [goal_mention_idx] + [idx for idx in exemplars]
-            total_tokens = sum([self.dataset.num_tokens(idx) for idx in all_ids])
-
-            # Generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
-            self.data.append({
-                'mention_id': goal_mention_idx,
-                'exemplars': exemplars,
-                'size': total_tokens,
-            })
-
-        # Restore the random state back
-        rd.set_state(old_rd_state)
+                # Generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
+                self.data.append({
+                    'mention_id': goal_mention_idx,
+                    'exemplars': exemplars,
+                    'size': total_tokens,
+                })
 
         self.sizes = np.array([instance['size'] for instance in self.data])
 

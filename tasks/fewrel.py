@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class FewRelTask(FairseqTask):
     """Task for training inference models."""
 
+    VALID_SEED = 31415
+
     @staticmethod
     def add_args(parser):
         """Add task-specific arguments to the parser."""
@@ -55,7 +57,7 @@ class FewRelTask(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-
+        assert split in ['train', 'test', 'valid']
         split_path = os.path.join(self.args.data_path, split)
 
         text_path = os.path.join(self.args.data_path, split + '.text')
@@ -104,8 +106,10 @@ class FewRelTask(FairseqTask):
             self.dictionary,
             self.args.n_way,
             self.args.n_shot,
-            self.args.dataset_size,
+            # TODO(urikz): Remove this
+            dataset_size=n_examples,
             shift_annotations=1, # because of the PrependTokenDataset
+            seed=self.seed + epoch if split == 'train' else FewRelTask.VALID_SEED,
         )
 
         self.datasets[split] = dataset
