@@ -1,6 +1,6 @@
 {
     "task": "masked_lm_em",
-    "arch": "roberta_wrapper_small",
+    "arch": "roberta_small",
     "data_path": "../data/nki/bin-v3-threshold20",
 
     "mask_prob": 0.15,
