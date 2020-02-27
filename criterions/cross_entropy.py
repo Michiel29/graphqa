@@ -40,7 +40,7 @@ class CrossEntropy(FairseqCriterion):
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
 
         predicted_class = torch.argmax(model_output, dim=1)
-        accuracy = (predicted_class == target).float().mean()
+        accuracy = (predicted_class == target).float().sum()
 
         sample_size = target.numel()
         logging_output = {
@@ -58,7 +58,7 @@ class CrossEntropy(FairseqCriterion):
 
         loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-        accuracy_sum = sum(log.get('accuracy', 0) * log.get('sample_size', 0) for log in logging_outputs)
+        accuracy_sum = sum(log.get('accuracy', 0) for log in logging_outputs)
 
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
@@ -74,4 +74,4 @@ class CrossEntropy(FairseqCriterion):
         across workers prior to calling `reduce_metrics`. Setting this
         to True will improves distributed training speed.
         """
-        return False
+        return True
