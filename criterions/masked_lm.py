@@ -50,12 +50,13 @@ class MaskedLmCustomLoss(FairseqCriterion):
         accuracy_w = 100 * accuracy_mask.dot(words_mask)
         accuracy = 100 * accuracy_mask.sum()
 
-        # TODO: This might need to be modified for FP16 training
-        # See https://github.com/pytorch/fairseq/blob/master/fairseq/criterions/masked_lm.py
-        # where they explicitly calculate loss in FP32
-        loss = F.cross_entropy(
-            logits.view(-1, logits.size(-1)),
-            targets,
+        loss = F.nll_loss(
+            F.log_softmax(
+                logits.view(-1, logits.size(-1)),
+                dim=-1,
+                dtype=torch.float32,
+            ),
+            targets.view(-1),
             reduction='sum',
             ignore_index=self.padding_idx,
         )
@@ -101,6 +102,10 @@ class MaskedLmCustomLoss(FairseqCriterion):
         metrics.log_scalar('acc', accuracy, 0, round=3)
         metrics.log_scalar('acc_ht', accuracy_ht, 0, round=3)
         metrics.log_scalar('acc_w', accuracy_w, 0, round=3)
+
+        metrics.log_scalar('num_masked', sample_size, 0, round=3, priority=1e9)
+        metrics.log_scalar('num_masked_ht', sample_size_ht, 0, round=3, priority=1e9)
+        metrics.log_scalar('num_masked_w', sample_size_w, 0, round=3, priority=1e9)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

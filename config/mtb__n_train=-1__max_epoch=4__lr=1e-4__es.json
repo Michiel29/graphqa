@@ -2,8 +2,8 @@
     "task": "mtb",
     "arch": "encoder_mtb__roberta_small",
     //"data_path": "../data/nki/bin_sample",
-    //"data_path": "../data/nki/bin-v3-threshold20-small",
-    "data_path": "../data/nki/bin-v3-threshold20",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
+    //"data_path": "../data/nki/bin-v3-threshold20",
 
     "case0_prob": 0.5,
     "case1_prob": 0.35,
