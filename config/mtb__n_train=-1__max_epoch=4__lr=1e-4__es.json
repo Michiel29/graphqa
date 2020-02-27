@@ -2,8 +2,8 @@
     "task": "mtb",
     "arch": "encoder_mtb__roberta_small",
     //"data_path": "../data/nki/bin_sample",
-    "data_path": "../data/nki/bin-v3-threshold20-small",
-    //"data_path": "../data/nki/bin-v3-threshold20",
+    //"data_path": "../data/nki/bin-v3-threshold20-small",
+    "data_path": "../data/nki/bin-v3-threshold20",
 
     "case0_prob": 0.5,
     "case1_prob": 0.35,
@@ -43,7 +43,7 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 6, // set 2+ workers per gpu
+    "num_workers": 1, // set at least 1 worker
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
