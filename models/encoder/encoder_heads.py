@@ -91,10 +91,10 @@ class EntityStart(nn.Module):
         super().__init__()
         self.e1_start_idx = dictionary.e1_start()
         self.e2_start_idx = dictionary.e2_start()
-    
+
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
-        
+
         mask_e1 = (src_tokens == self.e1_start_idx).unsqueeze(-1) # [batch_size, length, 1]
         mask_e2 = (src_tokens == self.e2_start_idx).unsqueeze(-1) # [batch_size, length, 1]
 
@@ -111,12 +111,12 @@ class EntityStartLinear(nn.Module):
         super().__init__()
         self.e1_start_idx = dictionary.e1_start()
         self.e2_start_idx = dictionary.e2_start()
-        
+
         self.linear = nn.Linear(2*args.encoder_embed_dim, args.encoder_representation_dim)
-    
+
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
-        
+
         mask_e1 = (src_tokens == self.e1_start_idx).unsqueeze(-1) # [batch_size, length, 1]
         mask_e2 = (src_tokens == self.e2_start_idx).unsqueeze(-1) # [batch_size, length, 1]
 
@@ -124,7 +124,7 @@ class EntityStartLinear(nn.Module):
         emb_e2 = torch.sum(x * mask_e2, dim=-2) # [batch_size, enc_dim]
 
         e1_e2_concat = torch.cat((emb_e1, emb_e2), dim=-1) # [batch_size, 2 * enc_dim]
-        
+
         linear_projection = self.linear(e1_e2_concat)
 
         return e1_e2_concat
@@ -146,6 +146,6 @@ encoder_head_dict = {
     'head_tail_concat': HeadTailConcat,
     'head_tail_concat_linear': HeadTailConcatLinear,
     'entity_start': EntityStart,
-    'entity_start_linear': EntityStartLinear
+    'entity_start_linear': EntityStartLinear,
     'cls_token_linear': CLSTokenLinear,
 }

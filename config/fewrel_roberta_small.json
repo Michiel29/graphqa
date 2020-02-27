@@ -6,6 +6,7 @@
     "dataset_size": 1000,
 
     "arch": "encoder_fewrel__roberta_small",
+    "mask_type": "head_tail",
     "entity_dim": 256,
 
     "encoder_layers": 1,

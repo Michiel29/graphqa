@@ -33,6 +33,7 @@ class MaskedLMEMTask(FairseqTask):
         self.seed = args.seed
         self.dictionary = dictionary
         self.mask_idx = self.dictionary.index('<mask>')
+        self.mask_type = args.mask_type
 
     @staticmethod
     def add_args(parser):
@@ -97,9 +98,10 @@ class MaskedLMEMTask(FairseqTask):
         text_data, annotation_data = self.load_annotated_text(split)
         dataset = SelectDictionaryDataset(
             AnnotatedTextDataset(
-                text_data,
-                annotation_data,
-                self.dictionary,
+                text_data=text_data,
+                annotation_data=annotation_data,
+                dictionary=self.dictionary,
+                mask_type=self.mask_type,
                 shift_annotations=1, # because of the PrependTokenDataset
                 assign_head_tail_randomly=True,
             ),

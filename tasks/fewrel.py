@@ -33,14 +33,11 @@ class FewRelTask(FairseqTask):
         parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
 
 
-        """Optional"""
-        # optional arguments here
-
-
     def __init__(self, args, dictionary):
         super().__init__(args)
         self.dictionary = dictionary
         self.seed = args.seed
+        self.mask_type = args.mask_type
 
         #  temp for testing remove
         self.entity_dictionary = dictionary
@@ -100,12 +97,13 @@ class FewRelTask(FairseqTask):
         relation_data = FixedSizeDataset(relation_data, n_examples)
 
         dataset = FewRelDataset(
-            text_data,
-            annotation_data,
-            relation_data,
-            self.dictionary,
-            self.args.n_way,
-            self.args.n_shot,
+            text_data=text_data,
+            annotation_data=annotation_data,
+            relation_data=relation_data,
+            dictionary=self.dictionary,
+            mask_type=self.mask_type,
+            n_way=self.args.n_way,
+            n_shot=self.args.n_shot,
             # TODO(urikz): Remove this
             dataset_size=n_examples,
             shift_annotations=1, # because of the PrependTokenDataset

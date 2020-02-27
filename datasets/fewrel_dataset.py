@@ -19,6 +19,7 @@ class FewRelDataset(FairseqDataset):
         annotation_data,
         relation_data,
         dictionary,
+        mask_type,
         n_way,
         n_shot,
         dataset_size,
@@ -35,6 +36,7 @@ class FewRelDataset(FairseqDataset):
             dictionary=self.dictionary,
             shift_annotations=shift_annotations,
             assign_head_tail_randomly=False,
+            mask_type=mask_type,
         )
 
         self.n_way = n_way

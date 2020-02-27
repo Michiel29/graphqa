@@ -4,6 +4,7 @@
     "data_path": "../data/nki/bin-v3-threshold20-small",
     //"data_path": "../data/nki/bin_sample",
 
+    "mask_type": "head_tail",
     "entity_dim": 256,
 
     "encoder_layers": 12,

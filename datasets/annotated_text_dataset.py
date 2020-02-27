@@ -15,7 +15,7 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         mask_type,
-        assign_head_tail_randomly=None,
+        assign_head_tail_randomly=False,
         alpha=None,
     ):
         self.text_data = text_data
@@ -24,6 +24,7 @@ class AnnotatedTextDataset(FairseqDataset):
         self.shift_annotations = shift_annotations
         self.dictionary = dictionary
         self.mask_type = mask_type
+        assert self.mask_type in ['head_tail', 'start_end']
         self.assign_head_tail_randomly = assign_head_tail_randomly
         self.alpha = alpha
 
@@ -57,7 +58,6 @@ class AnnotatedTextDataset(FairseqDataset):
     def head_tail_mask(self, mention, annotations):
         annotations = annotations.split(3)
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
-
         assert len(unique_entity_ids) >= 2
 
         if self.assign_head_tail_randomly:
@@ -84,11 +84,12 @@ class AnnotatedTextDataset(FairseqDataset):
 
         mention = mention[mention != -1]
 
-        return {'mention': mention,
-                'head': head_entity,
-                'tail': tail_entity,
-                'ntokens': len(mention),
-                'nsentences': 1,
+        return {
+            'mention': mention,
+            'head': head_entity,
+            'tail': tail_entity,
+            'ntokens': len(mention),
+            'nsentences': 1,
         }
 
     def start_end_mask(self, mention, annotations):
@@ -96,20 +97,20 @@ class AnnotatedTextDataset(FairseqDataset):
         entity_ids = annotations[2::3].numpy()
         unique_entity_ids = np.unique(entity_ids)
         assert len(unique_entity_ids) >= 2
-        
+
         if self.assign_head_tail_randomly:
             e1_temp, e2_temp = np.random.choice(
                 unique_entity_ids,
                 size=2,
                 replace=False,
             )
-            
+
             e1_temp_indices = np.where(entity_ids == e1_temp)[0]
             e2_temp_indices = np.where(entity_ids == e2_temp)[0]
-            
+
             e1_temp_idx = np.random.choice(e1_temp_indices)
             e2_temp_idx = np.random.choice(e2_temp_indices)
-            
+
             if e1_temp_idx < e2_temp_idx:
                 e1 = e1_temp
                 e1_idx = e1_temp_idx
@@ -120,35 +121,35 @@ class AnnotatedTextDataset(FairseqDataset):
                 e1_idx = e2_temp_idx
                 e2 = e1_temp
                 e2_idx = e1_temp_idx
-        
+
         else:
             e1, e2 = unique_entity_ids[:2]
             e1_idx = 0
             e2_idx = 1
-        
+
         # Get e1 and e2 start/end indices
         e1_annotation = annotations_list[e1_idx][2].item()
         e1_start = annotations_list[e1_idx][0].item() + self.shift_annotations
         e1_end = annotations_list[e1_idx][1].item() + self.shift_annotations
-        
+
         e2_annotation = annotations_list[e2_idx][2].item()
         e2_start = annotations_list[e2_idx][0].item() + self.shift_annotations
         e2_end = annotations_list[e2_idx][1].item() + self.shift_annotations
-        
+
         # Initialize new mention with -1's
         mention_new = -1 * torch.ones(mention.shape[0]+4).long()
-        
+
         # Copy over non-entity tokens from original mention to new mention
         mention_new[:e1_start] = mention[:e1_start]
         mention_new[e1_end+2:e2_start+2] = mention[e1_end:e2_start]
         mention_new[e2_end+4:] = mention[e2_end:]
-        
+
         # Insert e1 and e2 start/end tokens into new mention
         mention_new[e1_start] = self.dictionary.e1_start()
         mention_new[e1_end+1] = self.dictionary.e1_end()
         mention_new[e2_start+2] = self.dictionary.e2_start()
         mention_new[e2_end+3] = self.dictionary.e2_end()
-        
+
         # For each entity, randomly decide whether to mask it with a [BLANK] token
         #   - NO, with probability alpha
         #   - YES, with probability 1-alpha
@@ -158,16 +159,15 @@ class AnnotatedTextDataset(FairseqDataset):
             mention_new[e1_start+1] = self.dictionary.blank()
         else:
             mention_new[e1_start+1:e1_end+1] = mention[e1_start:e1_end]
-        
+
         if mask_decision[1] == 1:
             mention_new[e2_start+3] = self.dictionary.blank()
         else:
             mention_new[e2_start+3:e2_end+3] = mention[e2_start:e2_end]
-        
+
         # Remove any -1's in new mention left over after [BLANK] masking
         mention_new = mention_new[mention_new != -1]
-        
-        
+
         return {
             'mention': mention_new,
             'e1': e1,
