@@ -204,18 +204,18 @@ class MTBDataset(AnnotatedTextDataset):
                              ]
         
         mentionB_clusters = {} 
-        cluster_count = 0
+        cluster_id = 0
         for c in cluster_candidates:
             if len(c) > 0:
-                mentionB_clusters[cluster_count] = c
-                mentionB_dict[cluster_count] = []
-                cluster_count += 1
+                mentionB_clusters[cluster_id] = c
+                mentionB_dict[cluster_id] = []
+                cluster_id += 1
 
         for i, instance in enumerate(instances):
             mentionA_list.append(instance['mentionA'])
-            for key, val in mentionB_clusters.items():
-                if i in val:
-                    mentionB_dict[key].append(instance['mentionB'])
+            for cluster_id, cluster_instance_ids in mentionB_clusters.items():
+                if i in cluster_instance_ids:
+                    mentionB_dict[cluster_id].append(instance['mentionB'])
                     break
 
             e1A_list.append(instance['e1A'])
@@ -230,9 +230,9 @@ class MTBDataset(AnnotatedTextDataset):
         padded_mentionA = pad_sequence(mentionA_list, batch_first=True, padding_value=self.dictionary.pad())
         padded_mentionB = {}
         padded_mentionB_size = 0
-        for k, v in mentionB_dict.items():
-            padded_mentionB[k] = pad_sequence(v, batch_first=True, padding_value=self.dictionary.pad())
-            padded_mentionB_size += torch.numel(padded_mentionB[k])
+        for cluster_id, cluster_mentions in mentionB_dict.items():
+            padded_mentionB[cluster_id] = pad_sequence(cluster_mentions, batch_first=True, padding_value=self.dictionary.pad())
+            padded_mentionB_size += torch.numel(padded_mentionB[cluster_id])
         
         return {
             'mentionA': padded_mentionA,
