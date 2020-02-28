@@ -3,7 +3,10 @@
     "data_path": "../data/fewrel/bin",
     "n_way": 5,
     "n_shot": 3,
-    "dataset_size": 500,
+
+    "n_train_examples": 25000,
+    "n_valid_examples": 5000,
+    "n_test_examples": -1,
 
     "arch": "encoder_fewrel__roberta_base",
     "entity_dim": 256,
