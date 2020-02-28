@@ -10,7 +10,9 @@ from fairseq.data import (
     FairseqDataset,
     PrependTokenDataset
 )
-from fairseq.tasks import FairseqTask, register_task
+from fairseq.tasks import register_task
+
+from tasks import BaseTask
 from datasets import FewRelDataset, FixedSizeDataset
 
 from utils.data_utils import CustomDictionary
@@ -18,7 +20,7 @@ from utils.data_utils import CustomDictionary
 logger = logging.getLogger(__name__)
 
 @register_task('fewrel')
-class FewRelTask(FairseqTask):
+class FewRelTask(BaseTask):
     """Task for training inference models."""
 
     VALID_SEED = 31415
