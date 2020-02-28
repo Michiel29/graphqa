@@ -276,6 +276,7 @@ def cli_main():
 
     parser = options.get_training_parser()
     parser.add_argument('--config', type=str, nargs='*', help='paths to JSON files of experiment configurations, from high to low priority')
+    parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
     pre_parsed_args = parser.parse_args()
 
 

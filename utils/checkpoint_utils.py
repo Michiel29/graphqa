@@ -12,7 +12,16 @@ def generate_save_dir(args):
     """For new experiments, generate checkpointing directory of form task/architecture/lr/datetime. When restoring from a checkpoint, return the path with the latest datetime in task/architecture/lr."""
 
     restore_file = getattr(args, 'restore_file', False)
-    new_save_base = os.path.join(args.save_dir, args.task, args.arch, 'lr_' + str(args.lr[0]))
+
+    new_save_base = args.save_dir
+    for attribute_name in args.path_attributes:
+        attribute_value = getattr(args, attribute_name)
+        if isinstance(attribute_value, list):
+            attribute_string = '__'.join([str(val) for val in attribute_value])
+        else:
+            attribute_string = str(attribute_value)
+
+        new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_string)
 
     if restore_file:
         sub_dirs = [sub_dir[0] for sub_dir in os.walk(new_save_base) if sub_dir[0] != new_save_base]
