@@ -14,7 +14,6 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask, register_task
 
-from utils.data_utils import MTBDictionary, EntityDictionary
 from tasks import RelationInferenceTask
 from datasets import MTBDataset, FixedSizeDataset
 
@@ -47,23 +46,6 @@ class MTBTask(RelationInferenceTask):
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
         self.dictionary = dictionary
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = MTBDictionary.load(dict_path)
-
-        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-        entity_dictionary = EntityDictionary.load(entity_dict_path)
-
-        logger.info('dictionary: {} types'.format(len(dictionary)))
-        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
-
-        task = cls(args, dictionary, entity_dictionary)
-        
-        task.load_graph()
-
-        return task
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         """Load a given dataset split.
