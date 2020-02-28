@@ -109,6 +109,9 @@ class MaskedLMEMTask(FairseqTask):
         mask_whole_words = get_whole_word_mask(self.args, self.source_dictionary) \
             if self.args.mask_whole_words else None
 
+        # Random generation of masks depends on
+        # 1. seed (which is provided here)
+        # 2. epoch (which is set in get_batch_iterator via dataset.set_epoch())
         src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
             dataset,
             self.dictionary,
