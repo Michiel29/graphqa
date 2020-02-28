@@ -15,7 +15,7 @@
     "max_sentences": 10,
     "max_positions": 512,
     "max_tokens": 2000,
-    "required-batch-size-multiple": 1,
+    "required_batch_size_multiple": 1,
 
     "num_workers": 0,
     "save_dir": "../save/checkpoints",

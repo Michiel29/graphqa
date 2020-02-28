@@ -25,9 +25,9 @@
     "lr": [1e-5],
     "lr_scheduler": "polynomial_decay",
 
-    "max_sentences": 128,
-    "max_tokens": 4000,
-    "required-batch-size-multiple": 1,
+    "max_sentences": 64,
+    "max_tokens": 2e4,
+    "required_batch_size_multiple": 1,
 
     "num_workers": 2,
     "save_dir": "../save/checkpoints",

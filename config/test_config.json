@@ -14,10 +14,10 @@
     //"max_update": 1000,
     "max_sentences": 16,
     //"max_sentences": 1,
-    "max_positions": 512, 
-    //"max_positions": 5, 
+    "max_positions": 512,
+    //"max_positions": 5,
     "max_tokens": 1000,
-    "required-batch-size-multiple": 1,
+    "required_batch_size_multiple": 1,
 
     "n_train_examples": -1,
     "n_valid_examples": 10000,

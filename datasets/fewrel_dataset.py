@@ -114,24 +114,25 @@ class FewRelDataset(FairseqDataset):
 
         mention = []
         exemplars = []
+        ntokens, nsentences = 0, 0
 
         for instance in instances:
             mention.append(instance['mention'])
             exemplars += instance['exemplars']
+            ntokens += sum([len(s) for s in instance['exemplars']])
+            nsentences += 1 + len(instance['exemplars'])
 
         padded_mention = pad_sequence(mention, batch_first=True, padding_value=self.dictionary.pad())
         padded_exemplars = pad_sequence(exemplars, batch_first=True, padding_value=self.dictionary.pad())
 
-        batch = {}
-
-        batch['mention'] = padded_mention
-        batch['exemplars'] = padded_exemplars
-        batch['target'] = torch.zeros(len(instances), dtype=torch.long)
-        batch['batch_size'] = len(instances)
-        batch['ntokens'] = sum(len(m) for m in mention)
-        batch['nsentences'] = len(padded_exemplars)
-
-        return batch
+        return {
+            'mention': padded_mention,
+            'exemplars': padded_exemplars,
+            'target': torch.zeros(len(instances), dtype=torch.long),
+            'batch_size': len(instances),
+            'ntokens': ntokens,
+            'nsentences': nsentences,
+        }
 
     @property
     def supports_prefetch(self):

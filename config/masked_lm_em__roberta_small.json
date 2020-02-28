@@ -35,7 +35,7 @@
     "update_freq": [6],
     "max_positions": 128,
     "max_tokens": 16000,
-    "required-batch-size-multiple": 3,
+    "required_batch_size_multiple": 3,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
