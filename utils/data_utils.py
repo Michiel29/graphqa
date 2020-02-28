@@ -49,6 +49,8 @@ class CustomDictionary(Dictionary):
         self.e2_start_index = self.add_symbol(self.e2_start_token)
         self.e2_end_index = self.add_symbol(self.e2_end_token)
 
+        self.mask_index = self.index('<mask>')
+
     def head(self):
         return self.head_index
 
@@ -69,6 +71,10 @@ class CustomDictionary(Dictionary):
 
     def e2_end(self):
         return self.e2_end_index
+
+    def mask(self):
+        return self.mask_index
+
 
 class EntityDictionary(Dictionary):
     """Dictionary with no special tokens"""

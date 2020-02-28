@@ -11,6 +11,7 @@ from fairseq.data import (
     NumSamplesDataset,
     PadDataset,
     PrependTokenDataset,
+    SortDataset,
 )
 from utils.data_utils import CustomDictionary, EntityDictionary
 from fairseq.data.encoders.utils import get_whole_word_mask
@@ -32,7 +33,6 @@ class MaskedLMEMTask(FairseqTask):
         super().__init__(args)
         self.seed = args.seed
         self.dictionary = dictionary
-        self.mask_idx = self.dictionary.index('<mask>')
         self.mask_type = args.mask_type
 
     @staticmethod
@@ -49,9 +49,6 @@ class MaskedLMEMTask(FairseqTask):
                             help='sample random replacement words based on word frequencies')
         parser.add_argument('--mask-whole-words', default=True, action='store_true',
                             help='mask whole words; you may also want to set --bpe')
-
-    def get_mask_seed(self, epoch):
-        return self.seed + epoch
 
     # TODO(urikz): refactor this
     def load_annotated_text(self, split):
@@ -116,8 +113,8 @@ class MaskedLMEMTask(FairseqTask):
             dataset,
             self.dictionary,
             pad_idx=self.dictionary.pad(),
-            mask_idx=self.mask_idx,
-            seed=self.get_mask_seed(epoch),
+            mask_idx=self.dictionary.mask(),
+            seed=self.seed + epoch,
             mask_prob=self.args.mask_prob,
             leave_unmasked_prob=self.args.leave_unmasked_prob,
             random_token_prob=self.args.random_token_prob,
@@ -125,26 +122,35 @@ class MaskedLMEMTask(FairseqTask):
             mask_whole_words=mask_whole_words,
         )
 
-        self.datasets[split] = NestedDictionaryDataset(
-            {
-                'id': IdDataset(),
-                'net_input': {
-                    'src_tokens': PadDataset(
-                        src_dataset,
+        with data_utils.numpy_seed(self.args.seed + epoch):
+            shuffle = np.random.permutation(len(src_dataset))
+
+        self.datasets[split] = SortDataset(
+                NestedDictionaryDataset(
+                {
+                    'id': IdDataset(),
+                    'net_input': {
+                        'src_tokens': PadDataset(
+                            src_dataset,
+                            pad_idx=self.source_dictionary.pad(),
+                            left_pad=False,
+                        ),
+                        'src_lengths': NumelDataset(src_dataset, reduce=False),
+                    },
+                    'target': PadDataset(
+                        tgt_dataset,
                         pad_idx=self.source_dictionary.pad(),
                         left_pad=False,
                     ),
-                    'src_lengths': NumelDataset(src_dataset, reduce=False),
+                    'nsentences': NumSamplesDataset(),
+                    'ntokens': NumelDataset(src_dataset, reduce=True),
                 },
-                'target': PadDataset(
-                    tgt_dataset,
-                    pad_idx=self.source_dictionary.pad(),
-                    left_pad=False,
-                ),
-                'nsentences': NumSamplesDataset(),
-                'ntokens': NumelDataset(src_dataset, reduce=True),
-            },
-            sizes=[src_dataset.sizes],
+                sizes=[src_dataset.sizes],
+            ),
+            sort_order=[
+                shuffle,
+                src_dataset.sizes,
+            ],
         )
 
     @classmethod

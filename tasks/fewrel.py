@@ -19,6 +19,7 @@ from utils.data_utils import CustomDictionary
 
 logger = logging.getLogger(__name__)
 
+
 @register_task('fewrel')
 class FewRelTask(BaseTask):
     """Task for training inference models."""
@@ -34,15 +35,9 @@ class FewRelTask(BaseTask):
         parser.add_argument('--n_way', default=5, help='number of few-shot classes')
         parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
 
-
     def __init__(self, args, dictionary):
-        super().__init__(args)
-        self.dictionary = dictionary
-        self.seed = args.seed
+        super().__init__(args, dictionary)
         self.mask_type = args.mask_type
-
-        #  temp for testing remove
-        self.entity_dictionary = dictionary
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -152,7 +147,7 @@ class FewRelTask(BaseTask):
         assert isinstance(dataset, FairseqDataset)
 
         # get indices ordered by example size
-        with data_utils.numpy_seed(seed):
+        with data_utils.numpy_seed(seed + epoch):
             indices = dataset.ordered_indices()
 
         # filter examples that are too large
@@ -180,7 +175,3 @@ class FewRelTask(BaseTask):
         )
 
         return epoch_iter
-
-    @property
-    def source_dictionary(self):
-        return self.dictionary

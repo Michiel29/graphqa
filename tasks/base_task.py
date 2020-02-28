@@ -8,20 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class BaseTask(FairseqTask):
-    def __init__(self, args):
+    def __init__(self, args, dictionary):
         super().__init__(args)
+        self.seed = args.seed
+        self.dictionary = dictionary
 
     def reduce_metrics(self, logging_outputs, criterion):
-        """Aggregate logging outputs from data parallel training."""
-        # backward compatibility for tasks that override aggregate_logging_outputs
-        base_func = FairseqTask.aggregate_logging_outputs
-        self_func = getattr(self, 'aggregate_logging_outputs').__func__
-        if self_func is not base_func:
-            raise Exception(
-                'Tasks should implement the reduce_metrics API. '
-                'Falling back to deprecated aggregate_logging_outputs API.'
-            )
-
         if not any('ntokens' in log for log in logging_outputs):
             warnings.warn('ntokens not found in Criterion logging outputs, cannot log wpb or wps')
         else:
@@ -43,3 +35,11 @@ class BaseTask(FairseqTask):
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
         criterion.__class__.reduce_metrics(logging_outputs)
+
+    @property
+    def source_dictionary(self):
+        return self.dictionary
+
+    @property
+    def target_dictionary(self):
+        return self.dictionary

@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+import logging
 import numpy as np
 import numpy.random as rd
 import torch
@@ -9,6 +9,8 @@ from torch.nn.utils.rnn import pad_sequence
 from fairseq.data import FairseqDataset
 from fairseq.data.data_utils import numpy_seed
 from datasets import AnnotatedTextDataset
+
+logger = logging.getLogger(__name__)
 
 
 class FewRelDataset(FairseqDataset):
@@ -37,8 +39,8 @@ class FewRelDataset(FairseqDataset):
             shift_annotations=shift_annotations,
             assign_head_tail_randomly=False,
             mask_type=mask_type,
+            seed=seed,
         )
-
         self.n_way = n_way
         self.n_shot = n_shot
         self.dataset_size = dataset_size
@@ -49,6 +51,8 @@ class FewRelDataset(FairseqDataset):
             self.relation_index[self.relation_data[idx].item()].append(idx)
 
         self.data = []
+
+        logger.info('creating %d examples with seed %d' % (dataset_size, self.seed))
 
         with numpy_seed(self.seed):
             for _ in range(self.dataset_size):
@@ -111,6 +115,9 @@ class FewRelDataset(FairseqDataset):
 
     def collater(self, instances):
         batch_size = len(instances)
+
+        if batch_size == 0:
+            return None
 
         mention = []
         exemplars = []

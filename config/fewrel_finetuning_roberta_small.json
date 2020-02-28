@@ -7,6 +7,8 @@
     "n_train_examples": 25000,
     "n_valid_examples": 5000,
     "n_test_examples": -1,
+    "seed": 239,
+    "reload": true,
 
     "arch": "encoder_fewrel__roberta_small",
     "mask_type": "head_tail",

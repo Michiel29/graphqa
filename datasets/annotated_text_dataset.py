@@ -18,6 +18,7 @@ class AnnotatedTextDataset(FairseqDataset):
         graph_annotation_data=None,
         assign_head_tail_randomly=False,
         alpha=None,
+        seed=31415,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
@@ -30,6 +31,8 @@ class AnnotatedTextDataset(FairseqDataset):
         self.graph_annotation_data = graph_annotation_data
         self.assign_head_tail_randomly = assign_head_tail_randomly
         self.alpha = alpha
+        # TODO(urikz): Use this seed below
+        self.seed = seed
 
     def __getitem__(self, index, use_train_data_for_valid=False):
 
