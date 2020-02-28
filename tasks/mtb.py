@@ -57,7 +57,7 @@ class MTBTask(RelationInferenceTask):
         if split == 'valid':
             graph_text_data, graph_annotation_data = self.load_annotated_text('train')
         else:
-            graph_text_data, graph_annotation_data = self.load_annotated_text('train') 
+            graph_text_data, graph_annotation_data = None, None 
 
         self.datasets[split] = MTBDataset(
             split,
