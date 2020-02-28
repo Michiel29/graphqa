@@ -72,11 +72,18 @@ class MTBTask(RelationInferenceTask):
         """
 
         text_data, annotation_data = self.load_annotated_text(split)
+        if split == 'valid':
+            graph_text_data, graph_annotation_data = self.load_annotated_text('train')
+        else:
+            graph_text_data, graph_annotation_data = self.load_annotated_text('train') 
 
         self.datasets[split] = MTBDataset(
+            split,
             text_data,
             annotation_data,
             self.graph,
+            graph_text_data,
+            graph_annotation_data,
             len(self.entity_dictionary),
             self.dictionary,
             self.args.max_positions,

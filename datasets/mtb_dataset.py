@@ -14,9 +14,12 @@ class MTBDataset(AnnotatedTextDataset):
 
     def __init__(
         self,
+        split,
         text_data,
         annotation_data,
         graph,
+        graph_text_data,
+        graph_annotation_data,
         n_entities,
         dictionary,
         max_positions,
@@ -32,8 +35,13 @@ class MTBDataset(AnnotatedTextDataset):
             dictionary,
             shift_annotations,
             mask_type='start_end',
+            graph_text_data=graph_text_data,
+            graph_annotation_data=graph_annotation_data,
             alpha=alpha,
         )
+        self.split = split
+        assert split in ['train', 'valid']
+        self.text_data = text_data
         self.graph = graph
         self.n_entities = n_entities
         self.max_positions = max_positions
@@ -66,7 +74,11 @@ class MTBDataset(AnnotatedTextDataset):
         mentionB_candidates_idx = torch.randperm(len(edges))[:n_mentionB_candidates]
 
         for i, m in enumerate(mentionB_candidates_idx):
-            mentionB = super().__getitem__(edges[m])['mention']
+            if self.split == 'train':
+                mentionB = super().__getitem__(edges[m])['mention']
+            else:
+                mentionB = super().__getitem__(edges[m], True)['mention']
+                
             if len(mentionB) < self.max_positions:
                 return mentionB, target, None
             else:
@@ -95,7 +107,9 @@ class MTBDataset(AnnotatedTextDataset):
                 e1A_e2A_idx = np.flatnonzero(e1A_neighbors == e2A)
                 
                 if len(e1A_e2A_idx) < 1:
-                    raise Exception("Case 0 -- e1A and e2A are are not mentioned in any sentence")
+                    case = 1
+                    continue
+                    #raise Exception("Case 0 -- e1A and e2A are are not mentioned in any sentence")
                 
                 # e1A and e2A are only mentioned in one sentence
                 elif len(e1A_e2A_idx) == 1:

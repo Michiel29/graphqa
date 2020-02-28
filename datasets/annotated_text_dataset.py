@@ -5,7 +5,6 @@ import numpy.random as rd
 
 from fairseq.data import FairseqDataset
 
-
 class AnnotatedTextDataset(FairseqDataset):
 
     def __init__(
@@ -15,6 +14,8 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         mask_type,
+        graph_text_data=None,
+        graph_annotation_data=None,
         assign_head_tail_randomly=False,
         alpha=None,
     ):
@@ -25,12 +26,19 @@ class AnnotatedTextDataset(FairseqDataset):
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end']
+        self.graph_text_data = graph_text_data
+        self.graph_annotation_data = graph_annotation_data
         self.assign_head_tail_randomly = assign_head_tail_randomly
         self.alpha = alpha
 
-    def __getitem__(self, index):
-        mention = self.text_data[index]
-        annotations = self.annotation_data[index]
+    def __getitem__(self, index, use_train_data_for_valid=False):
+
+        if use_train_data_for_valid:
+            mention = self.graph_text_data[index]
+            annotations = self.graph_annotation_data[index]
+        else:
+            mention = self.text_data[index]
+            annotations = self.annotation_data[index]
 
         if self.mask_type == 'head_tail':
             item = self.head_tail_mask(mention, annotations)
