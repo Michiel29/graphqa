@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 
 from fairseq.models.roberta import RobertaModel, base_architecture
 from fairseq.models.roberta import roberta_large_architecture as large_architecture
@@ -18,6 +19,12 @@ class RobertaWrapper(RobertaModel):
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
         if pretrain_encoder_path is not None:
             self.load_from_pretrained(pretrain_encoder_path, args)
+
+        encoder_head_dropout_rate = getattr(args, 'encoder_head_dropout', 0)
+        if encoder_head_dropout_rate > 0:
+            self.encoder_head_dropout = nn.Dropout(p=encoder_head_dropout_rate)
+        else:
+            self.encoder_head_dropout = None
 
         if args.encoder_output_layer_type == 'lm_head':
             self.custom_output_layer = self.output_layer
@@ -45,6 +52,8 @@ class RobertaWrapper(RobertaModel):
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
 
         if not features_only:
+            if self.encoder_head_dropout is not None:
+                x = self.encoder_head_dropout(x)
             x = self.custom_output_layer(x, src_tokens=src_tokens, masked_tokens=masked_tokens)
 
         return x, extra

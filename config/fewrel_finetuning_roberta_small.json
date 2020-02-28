@@ -17,7 +17,7 @@
     "encoder_output_layer_type": "cls_token_linear",
 
     "max_epoch": 20,
-    "warmup_updates": 375,
+    "warmup_updates": 234,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,

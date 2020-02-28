@@ -9,14 +9,15 @@
     "n_test_examples": -1,
 
     "arch": "encoder_fewrel__roberta_base",
+    "mask_type": "head_tail",
     "encoder_layers": 12,
     "encoder_embed_dim": 768,
     "encoder_ffn_embed_dim": 3072,
     "encoder_attention_heads": 12,
     "encoder_output_layer_type": "cls_token_linear",
 
-    "max_epoch": 20,
-    "warmup_updates": 375,
+    "max_epoch": 10,
+    "warmup_updates": 234,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
@@ -24,9 +25,10 @@
     "lr": [1e-5],
     "lr_scheduler": "polynomial_decay",
 
-    "max_sentences": 64,
-    "max_tokens": 4000,
-    "required-batch-size-multiple": 1,
+    "update_freq": [3],
+    "max_sentences": 22,
+    "max_tokens": 5e3,
+    "required_batch_size_multiple": 1,
 
     "num_workers": 2,
     "save_dir": "../save/checkpoints",

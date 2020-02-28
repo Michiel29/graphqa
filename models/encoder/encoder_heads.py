@@ -132,12 +132,10 @@ class EntityStartLinear(nn.Module):
 class CLSTokenLinear(nn.Module):
     def __init__(self, args, dictionary):
         super().__init__()
-        # TODO(urikz): make a parameter
-        self.dropout = nn.Dropout(p=0.1)
         self.linear = nn.Linear(args.encoder_embed_dim, args.encoder_embed_dim)
 
     def forward(self, x, src_tokens, **unused):
-        return self.linear(self.dropout(x[:, 0, :]))
+        return self.linear(x[:, 0, :])
 
 
 encoder_head_dict = {
