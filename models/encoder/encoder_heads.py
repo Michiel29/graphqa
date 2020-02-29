@@ -3,6 +3,7 @@ from pudb import set_trace
 from torch import nn
 import torch
 
+
 class BoW(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -19,6 +20,7 @@ class BoW(nn.Module):
         avg_emb = torch.sum(masked_emb, dim=-2) / mask_sum
 
         return avg_emb
+
 
 class BoWLinear(nn.Module):
 
@@ -41,6 +43,7 @@ class BoWLinear(nn.Module):
 
         return linear_projection
 
+
 class HeadTailConcat(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -60,6 +63,7 @@ class HeadTailConcat(nn.Module):
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
         return head_tail_concat
+
 
 class HeadTailConcatLinear(nn.Module):
 
@@ -85,6 +89,7 @@ class HeadTailConcatLinear(nn.Module):
 
         return linear_projection
 
+
 class EntityStart(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -104,6 +109,7 @@ class EntityStart(nn.Module):
         e1_e2_concat = torch.cat((emb_e1, emb_e2), dim=-1) # [batch_size, 2 * enc_dim]
 
         return e1_e2_concat
+
 
 class EntityStartLinear(nn.Module):
 
@@ -129,6 +135,7 @@ class EntityStartLinear(nn.Module):
 
         return e1_e2_concat
 
+
 class CLSTokenLinear(nn.Module):
     def __init__(self, args, dictionary):
         super().__init__()
@@ -136,6 +143,15 @@ class CLSTokenLinear(nn.Module):
 
     def forward(self, x, src_tokens, **unused):
         return self.linear(x[:, 0, :])
+
+
+class CLSTokenLayerNorm(nn.Module):
+    def __init__(self, args, dictionary):
+        super().__init__()
+        self.layer_norm = nn.LayerNorm(args.encoder_embed_dim)
+
+    def forward(self, x, src_tokens, **unused):
+        return self.layer_norm(x[:, 0, :])
 
 
 encoder_head_dict = {
@@ -146,4 +162,5 @@ encoder_head_dict = {
     'entity_start': EntityStart,
     'entity_start_linear': EntityStartLinear,
     'cls_token_linear': CLSTokenLinear,
+    'cls_token_layer_norm': CLSTokenLayerNorm,
 }
