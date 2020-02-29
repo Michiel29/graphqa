@@ -88,6 +88,7 @@ def main(args, init_distributed=False):
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
     max_update = args.max_update or math.inf
+
     lr = trainer.get_lr()
     train_meter = StopwatchMeter()
     train_meter.start()
@@ -277,9 +278,7 @@ def cli_main():
     parser = options.get_training_parser()
     parser.add_argument('--config', type=str, nargs='*', help='paths to JSON files of experiment configurations, from high to low priority')
     parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
-    pre_parsed_args = parser.parse_args()
-
-
+    pre_parsed_args, unknown = parser.parse_known_args()
 
     config_dict = {}
     for config_path in pre_parsed_args.config:
