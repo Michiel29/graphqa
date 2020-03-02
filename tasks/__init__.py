@@ -4,3 +4,4 @@ from .relation_inference import RelationInferenceTask
 from .masked_lm_em import MaskedLMEMTask
 from .triplet_inference import TripletInferenceTask
 from .mtb import MTBTask
+from .multi_task import MultiTask

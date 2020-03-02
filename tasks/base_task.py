@@ -8,10 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class BaseTask(FairseqTask):
-    def __init__(self, args, dictionary):
+    def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
         self.seed = args.seed
         self.dictionary = dictionary
+        self.entity_dictionary = entity_dictionary
+        self.mask_type = args.mask_type
 
     def reduce_metrics(self, logging_outputs, criterion):
         if not any('ntokens' in log for log in logging_outputs):

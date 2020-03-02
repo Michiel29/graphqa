@@ -33,6 +33,7 @@ class AnnotatedTextDataset(FairseqDataset):
         self.alpha = alpha
         # TODO(urikz): Use this seed below
         self.seed = seed
+        self.epoch = 0
 
     def __getitem__(self, index, use_train_data_for_valid=False):
 

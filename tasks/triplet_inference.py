@@ -29,8 +29,5 @@ class TripletInferenceTask(RelationInferenceTask):
             len(self.entity_dictionary),
             self.dictionary,
             shift_annotations=1, # because of the PrependTokenDataset
+            mask_type=self.mask_type,
         )
-
-    @property
-    def source_dictionary(self):
-        return self.dictionary

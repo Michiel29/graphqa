@@ -45,6 +45,7 @@ class FewRelDataset(FairseqDataset):
         self.n_shot = n_shot
         self.dataset_size = dataset_size
         self.seed = seed
+        self.epoch = 0
 
         self.relation_index = defaultdict(list)
         for idx in range(len(self.relation_data)):
@@ -52,9 +53,9 @@ class FewRelDataset(FairseqDataset):
 
         self.data = []
 
-        logger.info('creating %d examples with seed %d' % (dataset_size, self.seed))
+        logger.info('creating %d examples with seed %d and epoch %d' % (dataset_size, self.seed, self.epoch))
 
-        with numpy_seed(self.seed):
+        with numpy_seed(self.seed, self.epoch):
             for _ in range(self.dataset_size):
 
                 exemplars = []

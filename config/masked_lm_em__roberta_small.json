@@ -9,7 +9,6 @@
     "random_token_prob": 0.1,
     "freq_weighted_replacement": false,
     "mask_whole_words": true,
-
     "bpe": "gpt2",
 
     "encoder_layers": 12,

@@ -11,7 +11,6 @@ from fairseq.data import (
     PrependTokenDataset,
     Dictionary
 )
-from fairseq.tasks import FairseqTask
 
 from utils.data_utils import CustomDictionary, EntityDictionary
 from datasets import FixedSizeDataset, GraphDataset
@@ -22,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 class RelationInferenceTask(BaseTask):
     """Task for training inference models."""
+    def __init__(self, args, dictionary, entity_dictionary):
+        super().__init__(args, dictionary, entity_dictionary)
+        self.load_graph()
 
     @staticmethod
     def add_args(parser):
@@ -31,30 +33,6 @@ class RelationInferenceTask(BaseTask):
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
-
-        """Optional"""
-        # optional arguments here
-
-    def __init__(self, args, dictionary, entity_dictionary):
-        super().__init__(args, dictionary)
-        self.entity_dictionary = entity_dictionary
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
-
-        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-        entity_dictionary = EntityDictionary.load(entity_dict_path)
-
-        logger.info('dictionary: {} types'.format(len(dictionary)))
-        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
-
-        task = cls(args, dictionary, entity_dictionary)
-
-        task.load_graph()
-
-        return task
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         raise NotImplementedError

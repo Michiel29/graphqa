@@ -15,25 +15,22 @@ from fairseq.data import (
 )
 from utils.data_utils import CustomDictionary, EntityDictionary
 from fairseq.data.encoders.utils import get_whole_word_mask
-from fairseq.tasks import FairseqTask, register_task
+from fairseq.tasks import register_task
 
 from datasets import (
     AnnotatedTextDataset,
     FixedSizeDataset,
     SelectDictionaryDataset,
 )
+from tasks import BaseTask
+
 
 logger = logging.getLogger(__name__)
 
 
 @register_task('masked_lm_em')
-class MaskedLMEMTask(FairseqTask):
+class MaskedLMEMTask(BaseTask):
     """Task for masked language model (entity mention) models."""
-    def __init__(self, args, dictionary, entity_dictionary):
-        super().__init__(args)
-        self.seed = args.seed
-        self.dictionary = dictionary
-        self.mask_type = args.mask_type
 
     @staticmethod
     def add_args(parser):
@@ -50,10 +47,22 @@ class MaskedLMEMTask(FairseqTask):
         parser.add_argument('--mask-whole-words', default=True, action='store_true',
                             help='mask whole words; you may also want to set --bpe')
 
+
+    @classmethod
+    def setup_task(cls, args, **kwargs):
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
+
+        logger.info('dictionary: {} types'.format(len(dictionary)))
+
+        task = cls(args, dictionary, None)
+        return task
+
+
     # TODO(urikz): refactor this
     def load_annotated_text(self, split):
-        text_path = os.path.join(self.args.data_path, split + '.text')
-        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
+        text_path = os.path.join(self.args.data_path, 'mlm.' + split + '.text')
+        annotation_path = os.path.join(self.args.data_path, 'mlm.' + split + '.annotations')
 
         text_data =  data_utils.load_indexed_dataset(
             text_path,
@@ -155,27 +164,3 @@ class MaskedLMEMTask(FairseqTask):
                 src_dataset.sizes,
             ],
         )
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
-
-        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-        entity_dictionary = EntityDictionary.load(entity_dict_path)
-
-        logger.info('dictionary: {} types'.format(len(dictionary)))
-        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
-
-        task = cls(args, dictionary, entity_dictionary)
-        task.load_dataset('train')
-
-        return task
-
-    @property
-    def source_dictionary(self):
-        return self.dictionary
-
-    @property
-    def target_dictionary(self):
-        return self.dictionary

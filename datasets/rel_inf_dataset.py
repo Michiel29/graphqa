@@ -18,13 +18,14 @@ class RelInfDataset(AnnotatedTextDataset):
         n_entities,
         dictionary,
         shift_annotations,
+        mask_type,
     ):
         super().__init__(
-            text_data,
-            annotation_data,
-            dictionary,
-            shift_annotations,
-            mask_type='head_tail',
+            text_data=text_data,
+            annotation_data=annotation_data,
+            dictionary=dictionary,
+            shift_annotations=shift_annotations,
+            mask_type=mask_type,
             assign_head_tail_randomly=True,
         )
         self.k_negative = k_negative
