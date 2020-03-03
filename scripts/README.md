@@ -49,33 +49,64 @@ Processing Wiki: 100%|█| 42137/42137 [08:38<00:00 , s=2.35e+7, ann=6.87e+7, f_
 
 # MTB Triplet Datasets
 
+## What is an MTB triplet?
+An MTB triplet is a directed triplet of the form (sentence_id, entity_1, entity_2), which has been verified to satisfy case0 (i.e, there exists at least one other sentence containing entity_1 and entity_2) and case1 (i.e., there exists at least one other sentence containing entity_1 but not entity_2). 
+
+Thus, an MTB triplet can be used as the first sentence in a positive sentence pair (case0) or a strong negative sentence pair (case1), with respect to entity_1 and entity_2. Recall that weak negative pairs are those in which the two constituent sentences share no entities (case2).
+
+## How to use the MTB triplet dataset
+
+#### 1. Run the following script to build the MTB triplets array
+```
+python scripts/prepare_mtb_triplets.py --data-path ../data/nki/bin-v3-threshold20
+```
+or
+```
+python scripts/prepare_mtb_triplets.py --data-path ../data/nki/bin-v3-threshold20-small
+```
+
+You will then get `mtb_triplet_train.npy` and `mtb_triplet_valid.npy` files inside your data directory. These files contain a numpy array of all MTB triplets in the train and validation sets, respectively.
+
+#### 2. Run the MTB dataloader
+For MTB training/validation, the dataloader will create an `MTBTripletsDataset` class, which samples triplets from the corresponding MTB triplet array. 
+
+The the `__getitem__` method in `MTBDataset` is responsible for sampling sentence pairs satisfying either case0, case1, or case2. To sample a sentence pair, the `__getitem__` method will first sample a triplet via `MTBTripletsDataset`. This triplet corresponds to the first sentence of the sentence pair. 
+
+Then, a case is randomly selected, based on predetermined probabilities for case0, case1, and case2. 
+
+After that, the `__getitem__` method will use the sentence and entity IDs from that triplet to sample a second sentence satisfying the selected case. 
+
 ## bin-v3-threshold20
 #### train
-- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_train.npy` 
-- number of triplets: 174,109,469
-- number of sentences: 23,520,420
-- triplet dataset generation time: 17.5 mins
-- epoch runtime: ~40 hrs
+- __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_train.npy` 
+- __size of data__: 3.9 GB
+- __number of triplets__: 174,109,469
+- __number of sentences__: 23,520,420
+- __triplet dataset generation time__: 17.5 mins
+- __epoch runtime__: ~40 hrs
 #### valid
-- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_valid.npy`
-- number of triplets: 1,470,813 
-- number of sentences: 237,147
-- triplet dataset generation time: 16 secs
-- epoch runtime: ~14 mins
+- __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_valid.npy`
+- __size of data__: 34 MB
+- __number of triplets__: 1,470,813 
+- __number of sentences__: 237,147
+- __triplet dataset generation time__: 16 secs
+- __epoch runtime__: ~14 mins
 
 ## bin-v3-threshold20-small
 #### train
-- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_train.npy`
-- number of triplets: 15,717,417
-- number of sentences: 2,138,107
-- triplet dataset generation time: 88 secs 
-- epoch runtime: ~3.5 hrs
+- __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_train.npy`
+- __size of data__: 360 MB
+- __number of triplets__: 15,717,417
+- __number of sentences__: 2,138,107
+- __triplet dataset generation time__: 88 secs 
+- __epoch runtime__: ~3.5 hrs
 #### valid
-- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_valid.npy`
-- number of triplets: 1,470,813
-- number of sentences: 237,147
-- triplet dataset generation time: 8 secs
-- epoch runtime: ~10 mins
+- __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_valid.npy`
+- __size of data__: 34 MB
+- __number of triplets__: 1,470,813
+- __number of sentences__: 237,147
+- __triplet dataset generation time__: 8 secs
+- __epoch runtime__: ~10 mins
 
 ## Note
 - Epoch runtime estimates computed using 3 Titan Xp GPUs and 1 worker.
