@@ -45,3 +45,29 @@ Processing Wiki: 100%|█| 42137/42137 [08:38<00:00 , s=2.35e+7, ann=6.87e+7, f_
 > $ python scripts/prepare_fewrel.py --roberta /data2/urikz/nki/roberta --data /data2/urikz/fewrel/val_wiki.json --output /data2/urikz/fewrel/bin/valid --append-eos
 
 > $ python scripts/prepare_fewrel.py --roberta /data2/urikz/nki/roberta --data /data2/urikz/fewrel/train_wiki.json --output /data2/urikz/fewrel/bin/train --append-eos
+
+
+# MTB Triplet Datasets
+
+## bin-v3-threshold20
+#### train
+- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_train.npy` 
+- 174109469 triplets
+- ~40 hrs/epoch
+#### valid
+- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_valid.npy`
+- 1470813 triplets
+- ~14 mins/epoch
+
+## bin-v3-threshold20-small
+#### train
+- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_train.npy`
+- 15717417 triplets
+- ~3.5 hrs/epoch
+#### valid
+- data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_valid.npy`
+- 1470813 triplets
+- ~10 mins/epoch
+
+## Note
+- All runtime estimates computed using 3 Titan Xp GPUs and 1 worker.
