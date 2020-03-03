@@ -52,22 +52,30 @@ Processing Wiki: 100%|█| 42137/42137 [08:38<00:00 , s=2.35e+7, ann=6.87e+7, f_
 ## bin-v3-threshold20
 #### train
 - data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_train.npy` 
-- 174109469 triplets
-- ~40 hrs/epoch
+- number of triplets: 174,109,469
+- number of sentences: 23,520,420
+- triplet dataset generation time: 17.5 mins
+- epoch runtime: ~40 hrs
 #### valid
 - data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_valid.npy`
-- 1470813 triplets
-- ~14 mins/epoch
+- number of triplets: 1,470,813 
+- number of sentences: 237,147
+- triplet dataset generation time: 16 secs
+- epoch runtime: ~14 mins
 
 ## bin-v3-threshold20-small
 #### train
 - data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_train.npy`
-- 15717417 triplets
-- ~3.5 hrs/epoch
+- number of triplets: 15,717,417
+- number of sentences: 2,138,107
+- triplet dataset generation time: 88 secs 
+- epoch runtime: ~3.5 hrs
 #### valid
 - data path: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_valid.npy`
-- 1470813 triplets
-- ~10 mins/epoch
+- number of triplets: 1,470,813
+- number of sentences: 237,147
+- triplet dataset generation time: 8 secs
+- epoch runtime: ~10 mins
 
 ## Note
-- All runtime estimates computed using 3 Titan Xp GPUs and 1 worker.
+- Epoch runtime estimates computed using 3 Titan Xp GPUs and 1 worker.
