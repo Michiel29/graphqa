@@ -31,7 +31,7 @@ class RobertaWrapper(RobertaModel):
         else:
             self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args, encoder.dictionary)
 
-    def forward(self, src_tokens, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=False, masked_tokens=None, use_lm_head=False, **unused):
         """
         Args:
             src_tokens (LongTensor): input tokens of shape `(batch, src_len)`
@@ -51,11 +51,12 @@ class RobertaWrapper(RobertaModel):
         """
         x, extra = self.extract_features(src_tokens, return_all_hiddens=return_all_hiddens)
 
-        if not features_only:
+        if use_lm_head:
+            x = self.output_layer(x, src_tokens=src_tokens, masked_tokens=masked_tokens)
+        elif not features_only:
             if self.encoder_head_dropout is not None:
                 x = self.encoder_head_dropout(x)
             x = self.custom_output_layer(x, src_tokens=src_tokens, masked_tokens=masked_tokens)
-
         return x, extra
 
     def load_from_pretrained(self, filename, args):
