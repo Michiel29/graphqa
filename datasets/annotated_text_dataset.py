@@ -14,7 +14,7 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         mask_type,
-        assign_head_tail_randomly=False,
+        assign_head_tail,
         alpha=None,
         seed=31415,
     ):
@@ -25,17 +25,17 @@ class AnnotatedTextDataset(FairseqDataset):
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end']
-        self.assign_head_tail_randomly = assign_head_tail_randomly
+        self.assign_head_tail = assign_head_tail
         self.alpha = alpha
         # TODO(urikz): Use this seed below
         self.seed = seed
 
-    def __getitem__(self, index, e1=None, e2=None):
+    def __getitem__(self, index, e1, e2):
         mention = self.text_data[index]
         annotations = self.annotation_data[index]
 
         if self.mask_type == 'head_tail':
-            item = self.head_tail_mask(mention, annotations)
+            item = self.head_tail_mask(mention, annotations, e1, e2)
         elif self.mask_type == 'start_end':
             item = self.start_end_mask(mention, annotations, e1, e2)
 
@@ -57,25 +57,33 @@ class AnnotatedTextDataset(FairseqDataset):
             self.text_data.sizes,
         ])
 
-    def head_tail_mask(self, mention, annotations):
+    def assign_head_tail_randomly(self, annotations):
         annotations = annotations.split(3)
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
         assert len(unique_entity_ids) >= 2
+        head_entity, tail_entity = np.random.choice(
+            unique_entity_ids,
+            size=2,
+            replace=False,
+        )
 
-        if self.assign_head_tail_randomly:
-            head_entity, tail_entity = np.random.choice(
-                unique_entity_ids,
-                size=2,
-                replace=False,
-            )
-        else:
-            head_entity, tail_entity = unique_entity_ids[:2]
+        return head_entity, tail_entity
 
+    def assign_head_tail_first(self, annotations):
+        annotations = annotations.split(3)
+        unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
+        assert len(unique_entity_ids) >= 2
+        head_entity, tail_entity = unique_entity_ids[:2]
+
+        return head_entity, tail_entity
+
+    def head_tail_mask(self, mention, annotations, head_entity, tail_entity):
         entity_replacement = {
             head_entity: self.dictionary.head(),
             tail_entity: self.dictionary.tail(),
         }
 
+        annotations = annotations.split(3)
         for annotation in annotations:
             annotation_entity = annotation[2].item()
             if annotation_entity in entity_replacement:

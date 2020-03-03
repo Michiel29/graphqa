@@ -28,6 +28,8 @@ class TripletInferenceTask(RelationInferenceTask):
             self.args.k_negative,
             len(self.entity_dictionary),
             self.dictionary,
+            self.args.mask_type,
+            self.args.assign_head_tail,
             shift_annotations=1, # because of the PrependTokenDataset
         )
 

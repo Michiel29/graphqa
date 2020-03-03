@@ -31,6 +31,10 @@ class RelationInferenceTask(BaseTask):
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
+        parser.add_argument('--mask-type', default='head_tail', type=str,
+                            help='method for masking entities in a sentence')
+        parser.add_argument('--assign-head-tail', default='random', type=str,
+                            help='method for assigning head and tail entities in a sentence')
 
         """Optional"""
         # optional arguments here

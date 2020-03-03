@@ -17,6 +17,8 @@ class RelInfDataset(AnnotatedTextDataset):
         k_negative,
         n_entities,
         dictionary,
+        mask_type,
+        assign_head_tail,
         shift_annotations,
     ):
         super().__init__(
@@ -24,15 +26,24 @@ class RelInfDataset(AnnotatedTextDataset):
             annotation_data,
             dictionary,
             shift_annotations,
-            mask_type='head_tail',
-            assign_head_tail_randomly=True,
+            mask_type,
+            assign_head_tail,
         )
+        self.text_data = text_data
+        self.annotation_data = annotation_data
         self.k_negative = k_negative
         self.n_entities = n_entities
         self.graph = graph
 
     def __getitem__(self, index):
-        item = super().__getitem__(index)
+        annotations = self.annotation_data[index]
+
+        if self.assign_head_tail == 'random':
+            head_entity, tail_entity = self.assign_head_tail_randomly(annotations)
+        elif self.assign_head_tail == 'first':
+            head_entity, tail_entity = self.assign_head_tail_first(annotations)
+
+        item = super().__getitem__(index, head_entity, tail_entity)
         head = item['head']
         tail = item['tail']
 
