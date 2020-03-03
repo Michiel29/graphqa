@@ -14,8 +14,6 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         mask_type,
-        graph_text_data=None,
-        graph_annotation_data=None,
         assign_head_tail_randomly=False,
         alpha=None,
         seed=31415,
@@ -27,26 +25,19 @@ class AnnotatedTextDataset(FairseqDataset):
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end']
-        self.graph_text_data = graph_text_data
-        self.graph_annotation_data = graph_annotation_data
         self.assign_head_tail_randomly = assign_head_tail_randomly
         self.alpha = alpha
         # TODO(urikz): Use this seed below
         self.seed = seed
 
-    def __getitem__(self, index, use_train_data_for_valid=False):
-
-        if use_train_data_for_valid:
-            mention = self.graph_text_data[index]
-            annotations = self.graph_annotation_data[index]
-        else:
-            mention = self.text_data[index]
-            annotations = self.annotation_data[index]
+    def __getitem__(self, index, e1=None, e2=None):
+        mention = self.text_data[index]
+        annotations = self.annotation_data[index]
 
         if self.mask_type == 'head_tail':
             item = self.head_tail_mask(mention, annotations)
         elif self.mask_type == 'start_end':
-            item = self.start_end_mask(mention, annotations)
+            item = self.start_end_mask(mention, annotations, e1, e2)
 
         return item
 
@@ -103,40 +94,27 @@ class AnnotatedTextDataset(FairseqDataset):
             'nsentences': 1,
         }
 
-    def start_end_mask(self, mention, annotations):
+    def start_end_mask(self, mention, annotations, e1_temp, e2_temp):
         annotations_list = annotations.split(3)
         entity_ids = annotations[2::3].numpy()
         unique_entity_ids = np.unique(entity_ids)
         assert len(unique_entity_ids) >= 2
 
-        if self.assign_head_tail_randomly:
-            e1_temp, e2_temp = np.random.choice(
-                unique_entity_ids,
-                size=2,
-                replace=False,
-            )
-
-            e1_temp_indices = np.where(entity_ids == e1_temp)[0]
-            e2_temp_indices = np.where(entity_ids == e2_temp)[0]
-
-            e1_temp_idx = np.random.choice(e1_temp_indices)
-            e2_temp_idx = np.random.choice(e2_temp_indices)
-
-            if e1_temp_idx < e2_temp_idx:
-                e1 = e1_temp
-                e1_idx = e1_temp_idx
-                e2 = e2_temp
-                e2_idx = e2_temp_idx
-            else:
-                e1 = e2_temp
-                e1_idx = e2_temp_idx
-                e2 = e1_temp
-                e2_idx = e1_temp_idx
-
+        # Get e1 and e2 indices
+        e1_indices = np.where(entity_ids == e1_temp)[0]
+        e2_indices = np.where(entity_ids == e2_temp)[0]
+        e1_temp_idx = np.random.choice(e1_indices)
+        e2_temp_idx = np.random.choice(e2_indices)
+        if e1_temp_idx < e2_temp_idx:
+            e1 = e1_temp
+            e1_idx = e1_temp_idx
+            e2 = e2_temp
+            e2_idx = e2_temp_idx
         else:
-            e1, e2 = unique_entity_ids[:2]
-            e1_idx = 0
-            e2_idx = 1
+            e1 = e2_temp
+            e1_idx = e2_temp_idx
+            e2 = e1_temp
+            e2_idx = e1_temp_idx
 
         # Get e1 and e2 start/end indices
         e1_annotation = annotations_list[e1_idx][2].item()

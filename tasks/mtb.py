@@ -15,7 +15,7 @@ from fairseq.data import (
 from fairseq.tasks import FairseqTask, register_task
 
 from tasks import RelationInferenceTask
-from datasets import MTBDataset, FixedSizeDataset
+from datasets import FixedSizeDataset, MTBDataset 
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class MTBTask(RelationInferenceTask):
         self.entity_dictionary = entity_dictionary
         self.seed = args.seed
         self.dictionary = dictionary
-
+    
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         """Load a given dataset split.
         Args:
@@ -72,8 +72,10 @@ class MTBTask(RelationInferenceTask):
             self.args.case0_prob,
             self.args.case1_prob,
             self.args.n_tries,
+            self.args.alpha,
+            self.args.data_path,
             shift_annotations=1, # because of the PrependTokenDataset
-            alpha=self.args.alpha,
+
         )
 
     def get_batch_iterator(

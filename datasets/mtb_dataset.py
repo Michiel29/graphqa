@@ -1,6 +1,8 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import logging
 
+import os
 from copy import deepcopy
 import random
 import numpy as np
@@ -8,7 +10,9 @@ import numpy.random as rd
 
 from fairseq.data import FairseqDataset
 
-from datasets import AnnotatedTextDataset
+from datasets import AnnotatedTextDataset, MTBTripletsDataset
+
+logger = logging.getLogger(__name__)
 
 class MTBDataset(AnnotatedTextDataset):
 
@@ -26,8 +30,9 @@ class MTBDataset(AnnotatedTextDataset):
         case0_prob,
         case1_prob,
         n_tries,
-        shift_annotations,
         alpha,
+        data_path,
+        shift_annotations,
     ):
         super().__init__(
             text_data,
@@ -35,28 +40,62 @@ class MTBDataset(AnnotatedTextDataset):
             dictionary,
             shift_annotations,
             mask_type='start_end',
-            graph_text_data=graph_text_data,
-            graph_annotation_data=graph_annotation_data,
             alpha=alpha,
         )
         self.split = split
         assert split in ['train', 'valid']
         self.text_data = text_data
         self.graph = graph
+        self.graph_text_data = graph_text_data
+        self.graph_annotation_data = graph_annotation_data
         self.n_entities = n_entities
         self.max_positions = max_positions
         self.case0_prob = case0_prob
         self.case1_prob = case1_prob
         self.n_tries = n_tries
+        self.data_path = data_path
+
+        self.mtb_triplets = self.load_mtb_triplets()
+        self.mtb_triplets_sizes = np.take(self.text_data.sizes, self.mtb_triplets.sentence_array, 0)
         self.all_entities = [*range(self.n_entities)]
+
+    def __len__(self):
+        return len(self.mtb_triplets)
+
+    def num_tokens(self, index):
+        return self.sizes[index]
+
+    def size(self, index):
+        return self.sizes[index]
+   
+    def ordered_indices(self):
+        """Sorts by sentence length, randomly shuffled within sentences of same length"""
+        return np.lexsort([
+            np.random.permutation(len(self)),
+            self.sizes,
+        ]) 
+
+    @property
+    def sizes(self):
+        return self.mtb_triplets_sizes
 
     @property
     def supports_prefetch(self):
         """Whether this dataset supports prefetching."""
         return False
 
+    def load_mtb_triplets(self):
+        mtb_triplets_path = os.path.join(self.data_path, 'mtb_triplets_' + self.split + '.npy')
+        mtb_triplets_data = np.load(mtb_triplets_path)
+
+        if mtb_triplets_data is None:
+            raise FileNotFoundError('Dataset (mtb triplets) not found: {}'.format(mtb_triplets_path))
+           
+        logger.info('loaded {} mtb {} triplets'.format(len(mtb_triplets_data), self.split))
+
+        return MTBTripletsDataset(mtb_triplets_data)
+
     def sample_neighbor(self, e1_neighbors, e1_edges, e2_candidates_idx=None, i=None):
-        
         if e2_candidates_idx is None:
             e2_idx = random.choice(list(range(len(e1_neighbors))))
         else:
@@ -68,16 +107,15 @@ class MTBDataset(AnnotatedTextDataset):
 
         return e2, e1_e2_edges 
 
-    def sample_mention(self, edges, target, next_case):
-
+    def sample_mention(self, edges, e1, e2, target, next_case):
         n_mentionB_candidates = min(self.n_tries, len(edges))
         mentionB_candidates_idx = torch.randperm(len(edges))[:n_mentionB_candidates]
 
         for i, m in enumerate(mentionB_candidates_idx):
             if self.split == 'train':
-                mentionB = super().__getitem__(edges[m])['mention']
+                mentionB = super().__getitem__(edges[m], e1, e2)['mention']
             else:
-                mentionB = super().__getitem__(edges[m], True)['mention']
+                mentionB = self.start_end_mask(self.graph_text_data[edges[m]], self.graph_annotation_data[edges[m]], e1, e2)['mention']
                 
             if len(mentionB) < self.max_positions:
                 return mentionB, target, None
@@ -87,8 +125,7 @@ class MTBDataset(AnnotatedTextDataset):
         return None, None, next_case
 
     def __getitem__(self, index):
-
-        item = super().__getitem__(index)
+        item = super().__getitem__(*tuple(self.mtb_triplets[index]))
 
         mentionA = item['mention']
         e1A = item['e1']
@@ -98,7 +135,7 @@ class MTBDataset(AnnotatedTextDataset):
         
         e1A_neighbors = self.graph[e1A]['neighbors'].numpy()
         e1A_edges = self.graph[e1A]['edges'].numpy()
-
+        
         while case is not None:
 
             # Case 0: mentionA and mentionB share both head and tail entities
@@ -117,7 +154,7 @@ class MTBDataset(AnnotatedTextDataset):
                     continue
 
                 e1A_e2A_edges = np.take(e1A_edges, e1A_e2A_idx, 0)
-                mentionB, target, case = self.sample_mention(e1A_e2A_edges, 1, 1)
+                mentionB, target, case = self.sample_mention(e1A_e2A_edges, e1B, e2B, 1, 1)
 
             # Case 1: mentionA and mentionB share only one entity
             elif case == 1:
@@ -140,7 +177,7 @@ class MTBDataset(AnnotatedTextDataset):
                     if len(e1B_e2B_edges) < 1:
                         continue
 
-                    mentionB, target, case = self.sample_mention(e1B_e2B_edges, 0, 2)
+                    mentionB, target, case = self.sample_mention(e1B_e2B_edges, e1B, e2B, 0, 2)
 
                     if case is None:
                         break
@@ -170,7 +207,7 @@ class MTBDataset(AnnotatedTextDataset):
                 if len(e1B_e2B_edges) < 1:
                     continue
             
-                mentionB, target, case = self.sample_mention(e1B_e2B_edges, 0, 2)
+                mentionB, target, case = self.sample_mention(e1B_e2B_edges, e1B, e2B, 0, 2)
 
         return {
             'mentionA': mentionA,
@@ -185,7 +222,7 @@ class MTBDataset(AnnotatedTextDataset):
             'ntokens_AB': len(mentionA) + len(mentionB),
             'mentionB_len': len(mentionB)
         }
-
+    
     def collater(self, instances):
         if len(instances) == 0:
             return None

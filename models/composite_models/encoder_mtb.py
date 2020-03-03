@@ -1,3 +1,4 @@
+from pudb import set_trace
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -44,7 +45,7 @@ class EncoderMTBModel(BaseFairseqModel):
             mentionB_enc.append(cur_mentionB_enc)
         mentionB_enc = torch.cat(mentionB_enc, dim=0) 
         mentionB_enc = self.mention_linear(mentionB_enc) # [batch_size, ent_dim]
-        
+                
         scores = (mentionA_enc * mentionB_enc).sum(dim=-1) 
 
         #inspect_batch(batch, self.task, scores)
