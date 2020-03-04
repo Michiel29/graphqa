@@ -57,6 +57,8 @@ Thus, an MTB triplet can be used as the first sentence in a positive sentence pa
 ## How to use the MTB triplet dataset
 First, we assume here that the dataset is `bin-v3-threshold20`, but we also generate MTB triplets for `bin-v3-threshold20-small`.
 
+__TODO: Compress Steps 1-2 into a single script and fewer data files__
+
 #### 1. Create the helper data files
 Run the following scripts to create the helper data files:
 ```
@@ -69,9 +71,6 @@ This will save the following data files to your data directory:
 - `unique_entities.bin`, `unique_entities.idx`
 
 #### 2. Build the MTB triplets array
-
-__TODO: Compress Step 2 into a single script and fewer data files__
-
 Run the following script to build the MTB triplets array: 
 ```
 python scripts/prepare_mtb_triplets.py --data-path ../data/nki/bin-v3-threshold20
