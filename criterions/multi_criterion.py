@@ -8,12 +8,13 @@ from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 
 
-@register_criterion('masked_lm_custom')
+@register_criterion('multi_criterion')
 class MultiCriterion(FairseqCriterion):
 
-    def __init__(self, criterion_dict):
-        super().__init__(None, None)
+    def __init__(self, criterion_dict, weight_dict, task):
+        super().__init__(None, task)
         self.criterion_dict = nn.ModuleDict(criterion_dict)
+        self.weight_dict = weight_dict
 
     @classmethod
     def build_criterion(cls, args, task):
@@ -21,28 +22,21 @@ class MultiCriterion(FairseqCriterion):
 
     def forward(self, model, sample, reduce=True):
         total_loss = 0
-        total_sample_size = {}
         total_logging_output = {}
         for task_name, criterion in self.criterion_dict.items():
-            loss, sample_size, logging_output = criterion(model, sample[task_name], reduce=reduce)
-            total_loss += loss # * weight
-            total_sample_size[task_name] = sample_size
+            total_sample_size = sample[task_name]['sample_size']
+            loss, _, logging_output = criterion(model, sample[task_name], reduce=reduce)
+            total_loss += self.weight_dict[task_name] * loss / total_sample_size
             for k, v in logging_output.items():
                 total_logging_output[task_name + '_' + k] = v
-        return total_loss, total_sample_size, total_logging_output
+        total_logging_output['loss'] = total_loss
+        return total_loss, 1, total_logging_output
 
-    @classmethod
-    def reduce_metrics(cls, logging_outputs: List[Dict[str, Any]]) -> None:
-        """Aggregate logging outputs from data parallel training."""
-        utils.deprecation_warning(
-            'Criterions should implement the reduce_metrics API. '
-            'Falling back to deprecated aggregate_logging_outputs API.'
-        )
-        agg_logging_outputs = cls.aggregate_logging_outputs(logging_outputs)
-        for k, v in agg_logging_outputs.items():
-            if k in {'nsentences', 'ntokens', 'sample_size'}:
-                continue
-            metrics.log_scalar(k, v)
+    def reduce_metrics(self, logging_outputs) -> None:
+        assert len(logging_outputs) == 1
+        metrics.log_scalar('loss', logging_outputs[0]['loss'], round=1)
+        for task_name, criterion in self.criterion_dict.items():
+            criterion.reduce_metrics(logging_outputs, prefix=task_name + '_')
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

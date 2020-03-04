@@ -9,11 +9,8 @@ def read_json(path):
 def update_namespace(namespace, input_dict):
     """Add dictionary to argparse namespace. Only adds arguments that are not already in parser"""
     for key, value in input_dict.items():
-        if isinstance(value, dict):
-            update_namespace(namespace, value)
-        else:
-            if not hasattr(namespace, key):
-                setattr(namespace, key, value)
+        if not hasattr(namespace, key):
+            setattr(namespace, key, value)
 
 def modify_factory(config):
     """Overrides defaults of argparser with config values where applicable"""

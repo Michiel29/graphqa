@@ -53,18 +53,18 @@ class CrossEntropy(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs) -> None:
+    def reduce_metrics(logging_outputs, prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
-        loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
-        sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-        accuracy_sum = sum(log.get('accuracy', 0) for log in logging_outputs)
+        loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
+        sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
+        accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
 
-        ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
-        nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
+        ntokens = sum(log.get(prefix + 'ntokens', 0) for log in logging_outputs)
+        nsentences = sum(log.get(prefix + 'nsentences', 0) for log in logging_outputs)
 
-        metrics.log_scalar('accuracy', accuracy_sum / sample_size, sample_size, round=3)
-        metrics.log_scalar('loss', loss_sum / sample_size, sample_size, round=3)
+        metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
+        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, sample_size, round=3)
 
 
     @staticmethod

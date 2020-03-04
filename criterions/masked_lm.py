@@ -34,7 +34,7 @@ class MaskedLmCustomLoss(FairseqCriterion):
         if sample_size == 0:
             masked_tokens = None
 
-        logits = model(**sample['net_input'], masked_tokens=masked_tokens)[0]
+        logits = model.encoder(**sample['net_input'], masked_tokens=masked_tokens, use_lm_head=True)[0]
         targets = model.get_targets(sample, [logits])
 
         if sample_size != 0:
@@ -75,20 +75,20 @@ class MaskedLmCustomLoss(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs) -> None:
+    def reduce_metrics(logging_outputs, prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
-        loss_sum = utils.item(sum(log.get('loss', 0) for log in logging_outputs))
-        sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
-        sample_size_ht = utils.item(sum(log.get('sample_size_ht', 0) for log in logging_outputs))
-        sample_size_w = utils.item(sum(log.get('sample_size_w', 0) for log in logging_outputs))
+        loss_sum = utils.item(sum(log.get(prefix + 'loss', 0) for log in logging_outputs))
+        sample_size = utils.item(sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs))
+        sample_size_ht = utils.item(sum(log.get(prefix + 'sample_size_ht', 0) for log in logging_outputs))
+        sample_size_w = utils.item(sum(log.get(prefix + 'sample_size_w', 0) for log in logging_outputs))
 
-        metrics.log_scalar('loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
-        metrics.log_derived('ppl', lambda meters: utils.get_perplexity(meters['loss'].avg))
+        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
+        metrics.log_derived(prefix + 'ppl', lambda meters: utils.get_perplexity(meters[prefix + 'loss'].avg))
 
-        accuracy = sum(log.get('accuracy', 0) for log in logging_outputs)
-        accuracy_ht = sum(log.get('accuracy_ht', 0) for log in logging_outputs)
-        accuracy_w = sum(log.get('accuracy_w', 0) for log in logging_outputs)
+        accuracy = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+        accuracy_ht = sum(log.get(prefix + 'accuracy_ht', 0) for log in logging_outputs)
+        accuracy_w = sum(log.get(prefix + 'accuracy_w', 0) for log in logging_outputs)
 
         accuracy = accuracy / sample_size if sample_size > 0 else 0
         accuracy_ht = accuracy_ht / sample_size_ht if sample_size_ht > 0 else 0
@@ -99,13 +99,13 @@ class MaskedLmCustomLoss(FairseqCriterion):
         accuracy_w = accuracy_w.round() if isinstance(accuracy_w, torch.Tensor) else round(accuracy_w, 3)
 
         # Hack round because "round" in log_scalar is broken
-        metrics.log_scalar('acc', accuracy, 0, round=3)
-        metrics.log_scalar('acc_ht', accuracy_ht, 0, round=3)
-        metrics.log_scalar('acc_w', accuracy_w, 0, round=3)
+        metrics.log_scalar(prefix + 'acc', accuracy, 0, round=3)
+        metrics.log_scalar(prefix + 'acc_ht', accuracy_ht, 0, round=3)
+        metrics.log_scalar(prefix + 'acc_w', accuracy_w, 0, round=3)
 
-        metrics.log_scalar('num_masked', sample_size, 0, round=3, priority=1e9)
-        metrics.log_scalar('num_masked_ht', sample_size_ht, 0, round=3, priority=1e9)
-        metrics.log_scalar('num_masked_w', sample_size_w, 0, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked', sample_size, 0, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked_ht', sample_size_ht, 0, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked_w', sample_size_w, 0, round=3, priority=1e9)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
