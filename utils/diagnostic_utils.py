@@ -1,3 +1,4 @@
+from pudb import set_trace
 import numpy as np
 np.set_printoptions(suppress=True)
 
@@ -23,7 +24,7 @@ class Diagnostic():
     )
 
     filter_tokens = [cd.pad_df]
-    replace_tokens = [cd.head_token_df, cd.tail_token_df, cd.unk_ent_token_df]
+    replace_tokens = [cd.head_token_df, cd.tail_token_df]
 
     def __init__(self, task):
         self.bpe = get_encoder(self.encoder_json, self.vocab_bpe)
@@ -42,7 +43,7 @@ class Diagnostic():
 
         return decoded_sentence
 
-    def inspect_batch(self, batch, scores=None):
+    def inspect_batch(self, batch, ent_filter=None, scores=None):
 
         batch_size = batch['nsentences']
         mention_id = batch['mention']
@@ -64,6 +65,8 @@ class Diagnostic():
             decoded_mention = self.decode_sentence(mention_id[i])
 
             if self.task.args.task == 'triplet_inference':
+                if head_id[i,0] not in ent_filter or tail_id[i,0] not in ent_filter:
+                    continue
                 pos_head_ent = self.task.entity_dictionary[head_id[i,0]]
                 pos_tail_ent = self.task.entity_dictionary[tail_id[i,0]]
                 neg_head_ent = [self.task.entity_dictionary[head_id[i,j]] for j in range(1, head_id.shape[1])]
