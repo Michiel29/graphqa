@@ -40,6 +40,7 @@ class MTBDataset(AnnotatedTextDataset):
             dictionary,
             shift_annotations,
             mask_type='start_end',
+            assign_head_tail=None,
             alpha=alpha,
         )
         self.split = split
