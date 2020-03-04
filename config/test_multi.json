@@ -1,0 +1,61 @@
+{
+    "task": "multi_task",
+    "tasks": {
+        "triplet_inference": {
+            "max_sentences": 20,
+            "max_tokens": 2e4,
+            "criterion": "cross_entropy_custom",
+            "weight": 1
+        },
+        "masked_lm_em": {
+            "max_sentences": 20,
+            "max_tokens": 16000,
+            "criterion": "masked_lm_custom",
+            "weight": 0.1
+        }
+    },
+    "arch": "encoder_triplet__roberta_small",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
+    "mask_type": "head_tail",
+
+    "entity_dim": 256,
+
+    "encoder_layers": 12,
+    "encoder_embed_dim": 256,
+    "encoder_output_layer_type": "bag_of_words_linear",
+    "encoder_representation_dim": 256,
+
+    "mask_prob": 0.15,
+    "leave_unmasked_prob": 0.1,
+    "random_token_prob": 0.1,
+    "freq_weighted_replacement": false,
+    "mask_whole_words": true,
+    "bpe": "gpt2",
+    "reload": true,
+
+    "k_negative": 1,
+
+    "max_update": 125000,
+    "max_sentences": 2e3,
+    "max_positions": 128,
+    "skip_invalid_size_inputs_valid_test": true,
+    "max_tokens": 2e4,
+    "required_batch_size_multiple": 1,
+
+
+
+    "num_workers": 0,
+    "save_dir": "../save/",
+    "restore_file": false,
+    // "restore_file": "checkpoint_last.pt",
+    "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt",
+    "ddp_backend": "no_c10d",
+
+    "criterion": "cross_entropy_custom",
+    "tensorboard_logdir": "../save/test",
+
+    "n_train_examples": 1000,
+    "n_valid_examples": 1000,
+    "lr": [0.0000001],
+    "lr_scheduler": "polynomial_decay"
+}
