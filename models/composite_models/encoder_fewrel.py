@@ -24,11 +24,11 @@ class EncoderFewRelModel(BaseFairseqModel):
 
     def forward(self, batch):
 
-        goal_mention = batch['mention'] # [batch_size, n_tokens]
+        goal_text = batch['text'] # [batch_size, n_tokens]
         exemplars = batch['exemplars'] # [batch_size, n_way * n_shot, n_tokens]
         batch_size = batch['batch_size']
 
-        goal_enc, _ = self.encoder(goal_mention)
+        goal_enc, _ = self.encoder(goal_text)
         goal_enc = goal_enc.unsqueeze(-1) # [batch_size, enc_dim, 1]
         exemplar_encs, _ = self.encoder(exemplars) # [batch_size, n_way * n_shot, enc_dim]
         reshaped_exemplar_encs = torch.reshape(exemplar_encs, (batch_size, self.n_way, self.n_shot, -1))

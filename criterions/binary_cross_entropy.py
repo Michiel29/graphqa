@@ -1,4 +1,3 @@
-from pudb import set_trace
 import math
 
 import numpy as np
@@ -35,13 +34,13 @@ class BinaryCrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
-        model_output = model(sample)
+        logits = model(sample)
         target = sample['target'].float()
 
-        loss = F.binary_cross_entropy_with_logits(model_output, target, reduction='sum' if reduce else 'none')
+        loss = F.binary_cross_entropy_with_logits(logits, target, reduction='sum' if reduce else 'none')
 
-        output_prob = torch.sigmoid(model_output)
-        predicted_class = output_prob.round()
+        probs = torch.sigmoid(logits)
+        predicted_class = probs >= 0.5
         accuracy = (predicted_class == target).float().sum()
 
         sample_size = target.numel()

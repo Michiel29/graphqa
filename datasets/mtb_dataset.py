@@ -1,65 +1,66 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import logging
 
+import os
 from copy import deepcopy
-import random
 import numpy as np
 import numpy.random as rd
 
 from fairseq.data import FairseqDataset
 
-from datasets import AnnotatedTextDataset
 
-class MTBDataset(AnnotatedTextDataset):
+logger = logging.getLogger(__name__)
+
+
+class MTBDataset(FairseqDataset):
 
     def __init__(
         self,
-        split,
-        text_data,
-        annotation_data,
+        split_dataset,
+        train_dataset,
         graph,
-        graph_text_data,
-        graph_annotation_data,
         n_entities,
         dictionary,
-        max_positions,
         case0_prob,
         case1_prob,
         n_tries,
-        shift_annotations,
-        alpha,
+        seed,
     ):
-        super().__init__(
-            text_data,
-            annotation_data,
-            dictionary,
-            shift_annotations,
-            mask_type='start_end',
-            graph_text_data=graph_text_data,
-            graph_annotation_data=graph_annotation_data,
-            alpha=alpha,
-        )
-        self.split = split
-        assert split in ['train', 'valid']
-        self.text_data = text_data
+        self.split_dataset = split_dataset
+        self.train_dataset = train_dataset
         self.graph = graph
         self.n_entities = n_entities
-        self.max_positions = max_positions
+        self.dictionary = dictionary
         self.case0_prob = case0_prob
         self.case1_prob = case1_prob
         self.n_tries = n_tries
-        self.all_entities = [*range(self.n_entities)]
+        self.seed = seed
         self.epoch = 0
 
+    def __len__(self):
+        return len(self.split_dataset)
+
+    def num_tokens(self, index):
+        return self.sizes[index]
+
+    def size(self, index):
+        return self.sizes[index]
+
+    def ordered_indices(self):
+        """Sorts by sentence length, randomly shuffled within sentences of same length"""
+        return np.lexsort([
+            rd.permutation(len(self)),
+            self.sizes,
+        ])
+
     @property
-    def supports_prefetch(self):
-        """Whether this dataset supports prefetching."""
-        return False
+    def sizes(self):
+        return self.split_dataset.sizes
 
     def sample_neighbor(self, e1_neighbors, e1_edges, e2_candidates_idx=None, i=None):
-
         if e2_candidates_idx is None:
-            e2_idx = random.choice(list(range(len(e1_neighbors))))
+            e2_idx = rd.randint(len(e1_neighbors))
         else:
             e2_idx = e2_candidates_idx[i].item()
 
@@ -69,31 +70,22 @@ class MTBDataset(AnnotatedTextDataset):
 
         return e2, e1_e2_edges
 
-    def sample_mention(self, edges, target, next_case):
-
+    def sample_mention(self, edges, e1, e2, target, next_case):
         n_mentionB_candidates = min(self.n_tries, len(edges))
         mentionB_candidates_idx = torch.randperm(len(edges))[:n_mentionB_candidates]
 
         for i, m in enumerate(mentionB_candidates_idx):
-            if self.split == 'train':
-                mentionB = super().__getitem__(edges[m])['mention']
-            else:
-                mentionB = super().__getitem__(edges[m], True)['mention']
-
-            if len(mentionB) < self.max_positions:
-                return mentionB, target, None
-            else:
-                continue
+            mentionB = self.train_dataset.__getitem__(edges[m], head_entity=e1, tail_entity=e2)['text']
+            return mentionB, target, None
 
         return None, None, next_case
 
     def __getitem__(self, index):
+        item = self.split_dataset[index]
 
-        item = super().__getitem__(index)
-
-        mentionA = item['mention']
-        e1A = item['e1']
-        e2A = item['e2']
+        mentionA = item['text']
+        e1A = item['head']
+        e2A = item['tail']
 
         case = rd.multinomial(1, [self.case0_prob, self.case1_prob, 1-self.case0_prob-self.case1_prob]).argmax()
 
@@ -118,7 +110,7 @@ class MTBDataset(AnnotatedTextDataset):
                     continue
 
                 e1A_e2A_edges = np.take(e1A_edges, e1A_e2A_idx, 0)
-                mentionB, target, case = self.sample_mention(e1A_e2A_edges, 1, 1)
+                mentionB, target, case = self.sample_mention(e1A_e2A_edges, e1B, e2B, 1, 1)
 
             # Case 1: mentionA and mentionB share only one entity
             elif case == 1:
@@ -141,7 +133,7 @@ class MTBDataset(AnnotatedTextDataset):
                     if len(e1B_e2B_edges) < 1:
                         continue
 
-                    mentionB, target, case = self.sample_mention(e1B_e2B_edges, 0, 2)
+                    mentionB, target, case = self.sample_mention(e1B_e2B_edges, e1B, e2B, 0, 2)
 
                     if case is None:
                         break
@@ -149,7 +141,7 @@ class MTBDataset(AnnotatedTextDataset):
             # Case 2: mentionA and mentionB share no entities
             else:
                 while True:
-                    e1B = random.choice(self.all_entities)
+                    e1B = rd.randint(self.n_entities)
                     if e1B not in [e1A, e2A]:
                         break
 
@@ -171,7 +163,7 @@ class MTBDataset(AnnotatedTextDataset):
                 if len(e1B_e2B_edges) < 1:
                     continue
 
-                mentionB, target, case = self.sample_mention(e1B_e2B_edges, 0, 2)
+                mentionB, target, case = self.sample_mention(e1B_e2B_edges, e1B, e2B, 0, 2)
 
         return {
             'mentionA': mentionA,

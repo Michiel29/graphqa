@@ -17,30 +17,18 @@ class FewRelDataset(FairseqDataset):
 
     def __init__(
         self,
-        text_data,
-        annotation_data,
-        relation_data,
+        annotation_text_dataset,
+        relation_dataset,
         dictionary,
         mask_type,
         n_way,
         n_shot,
         dataset_size,
-        shift_annotations,
         seed,
     ):
-        self.text_data = text_data
-        self.annotation_data = annotation_data
-        self.relation_data = relation_data
+        self.annotation_text_dataset = annotation_text_dataset
+        self.relation_dataset = relation_dataset
         self.dictionary = dictionary
-        self.dataset = AnnotatedTextDataset(
-            text_data=self.text_data,
-            annotation_data=self.annotation_data,
-            dictionary=self.dictionary,
-            shift_annotations=shift_annotations,
-            assign_head_tail_randomly=False,
-            mask_type=mask_type,
-            seed=seed,
-        )
         self.n_way = n_way
         self.n_shot = n_shot
         self.dataset_size = dataset_size
@@ -48,8 +36,8 @@ class FewRelDataset(FairseqDataset):
         self.epoch = 0
 
         self.relation_index = defaultdict(list)
-        for idx in range(len(self.relation_data)):
-            self.relation_index[self.relation_data[idx].item()].append(idx)
+        for idx in range(len(self.relation_dataset)):
+            self.relation_index[self.relation_dataset[idx].item()].append(idx)
 
         self.data = []
 
@@ -66,22 +54,22 @@ class FewRelDataset(FairseqDataset):
                 negative_relations = sample_relations[1:]
 
                 # Sample goal sentence + n_shot exemplar sentences for correct class
-                positive_mention_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
+                positive_text_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
 
-                goal_mention_idx = positive_mention_idxs[0]
-                exemplars += list(positive_mention_idxs[1:])
+                goal_text_idx = positive_text_idxs[0]
+                exemplars += list(positive_text_idxs[1:])
 
                 # Sample n_shot exemplar sentences for other classes
                 for rel in negative_relations:
                     rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                     exemplars += list(rel_examplar_idxs)
 
-                all_ids = [goal_mention_idx] + [idx for idx in exemplars]
-                total_tokens = sum([self.dataset.num_tokens(idx) for idx in all_ids])
+                all_ids = [goal_text_idx] + [idx for idx in exemplars]
+                total_tokens = sum([self.annotation_text_dataset.num_tokens(idx) for idx in all_ids])
 
-                # Generate list of instances, each corresponding to a dict with id of goal mention, list of exemplars and the total nr of tokens in goal mention and exemplar sentences
+                # Generate list of instances, each corresponding to a dict with id of goal text, list of exemplars and the total nr of tokens in goal text and exemplar sentences
                 self.data.append({
-                    'mention_id': goal_mention_idx,
+                    'text_id': goal_text_idx,
                     'exemplars': exemplars,
                     'size': total_tokens,
                 })
@@ -91,10 +79,10 @@ class FewRelDataset(FairseqDataset):
     def __getitem__(self, index):
         id_dict = self.data[index]
         return {
-            'mention': self.dataset[id_dict['mention_id']]['mention'],
+            'text': self.annotation_text_dataset[id_dict['text_id']]['text'],
             'exemplars': [
-                self.dataset[mention_id]['mention']
-                for mention_id in id_dict['exemplars']
+                self.annotation_text_dataset[text_id]['text']
+                for text_id in id_dict['exemplars']
             ],
         }
 
@@ -120,21 +108,21 @@ class FewRelDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        mention = []
+        text = []
         exemplars = []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
-            mention.append(instance['mention'])
+            text.append(instance['text'])
             exemplars += instance['exemplars']
-            ntokens += sum([len(s) for s in instance['exemplars']])
+            ntokens += len(instance['text']) + sum([len(s) for s in instance['exemplars']])
             nsentences += 1 + len(instance['exemplars'])
 
-        padded_mention = pad_sequence(mention, batch_first=True, padding_value=self.dictionary.pad())
+        padded_mention = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
         padded_exemplars = pad_sequence(exemplars, batch_first=True, padding_value=self.dictionary.pad())
 
         return {
-            'mention': padded_mention,
+            'text': padded_mention,
             'exemplars': padded_exemplars,
             'target': torch.zeros(len(instances), dtype=torch.long),
             'batch_size': len(instances),

@@ -6,16 +6,23 @@ import numpy as np
 from fairseq.data import (
     data_utils,
     Dictionary,
-    iterators,
     FairseqDataset,
-    PrependTokenDataset
+    iterators,
 )
 from fairseq.tasks import register_task
 
 from tasks import BaseTask
-from datasets import FewRelDataset, FixedSizeDataset
-
-from utils.data_utils import CustomDictionary
+from datasets import (
+    AnnotatedTextDataset,
+    FewRelDataset,
+    FilteredDataset,
+    filter_by_max_length
+)
+from utils.data_utils import (
+    CustomDictionary,
+    load_annotated_text,
+    safe_load_indexed_dataset,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,63 +48,41 @@ class FewRelTask(BaseTask):
         return cls(args, dictionary, None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        """Load a given dataset split.
-        Args:
-            split (str): name of the split (e.g., train, valid, test)
-        """
-        assert split in ['train', 'test', 'valid']
-        split_path = os.path.join(self.args.data_path, split)
-
-        text_path = os.path.join(self.args.data_path, split + '.text')
-        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
-        relation_path = os.path.join(self.args.data_path, split + '.relations')
-
-        text_data =  data_utils.load_indexed_dataset(
-            text_path,
-            None,
-            dataset_impl='mmap',
+        text_data, annotation_data = load_annotated_text(
+            self.args.data_path,
+            split,
+            self.dictionary.bos(),
         )
-
-        if text_data is None:
-            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
-
-        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
-
-        annotation_data = data_utils.load_indexed_dataset(
-            annotation_path,
-            None,
-            dataset_impl='mmap',
+        relation_data = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.relations')
         )
-
-        if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
-
-        relation_data = data_utils.load_indexed_dataset(
-            relation_path,
-            None,
-            dataset_impl='mmap',
-        )
-
-        if relation_data is None:
-            raise FileNotFoundError('Dataset (relations) not found: {}'.format(relation_path))
-
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-
-        text_data = FixedSizeDataset(text_data, n_examples)
-        annotation_data = FixedSizeDataset(annotation_data, n_examples)
-        relation_data = FixedSizeDataset(relation_data, n_examples)
-
-        dataset = FewRelDataset(
+        annotated_text_dataset = AnnotatedTextDataset(
             text_data=text_data,
             annotation_data=annotation_data,
-            relation_data=relation_data,
+            dictionary=self.dictionary,
+            shift_annotations=1,
+            mask_type=self.args.mask_type,
+            assign_head_tail='first',
+            seed=self.seed,
+            alpha=self.args.alpha,
+        )
+        annotated_text_dataset, indices = filter_by_max_length(
+            AnnotatedTextDataset,
+            self.args.max_positions,
+        )
+
+        relation_dataset = FilteredDataset(relation_data, indices)
+
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples'))
+
+        dataset = FewRelDataset(
+            annotation_text_dataset=annotated_text_dataset,
+            relation_dataset=relation_dataset,
             dictionary=self.dictionary,
             mask_type=self.mask_type,
             n_way=self.args.n_way,
             n_shot=self.args.n_shot,
-            # TODO(urikz): Remove this
             dataset_size=n_examples,
-            shift_annotations=1, # because of the PrependTokenDataset
             seed=self.seed,
         )
 

@@ -8,12 +8,11 @@ from fairseq.data import (
     data_utils,
     iterators,
     FairseqDataset,
-    PrependTokenDataset,
     Dictionary
 )
 
 from utils.data_utils import CustomDictionary, EntityDictionary
-from datasets import FixedSizeDataset, GraphDataset
+from datasets import GraphDataset
 from tasks import BaseTask
 
 logger = logging.getLogger(__name__)
@@ -33,40 +32,13 @@ class RelationInferenceTask(BaseTask):
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
+        parser.add_argument('--mask-type', default='head_tail', type=str,
+                            help='method for masking entities in a sentence')
+        parser.add_argument('--assign-head-tail', default='random', type=str,
+                            help='method for assigning head and tail entities in a sentence')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         raise NotImplementedError
-
-    def load_annotated_text(self, split):
-        text_path = os.path.join(self.args.data_path, split + '.text')
-        annotation_path = os.path.join(self.args.data_path, split + '.annotations')
-
-        text_data =  data_utils.load_indexed_dataset(
-            text_path,
-            None,
-            dataset_impl='mmap',
-        )
-
-        if text_data is None:
-            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
-
-        annotation_data =  data_utils.load_indexed_dataset(
-            annotation_path,
-            None,
-            dataset_impl='mmap',
-        )
-
-        if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
-
-        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
-
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-
-        text_data = FixedSizeDataset(text_data, n_examples)
-        annotation_data = FixedSizeDataset(annotation_data, n_examples)
-
-        return text_data, annotation_data
 
     def load_graph(self):
         neighbor_path = os.path.join(self.args.data_path, 'neighbors')

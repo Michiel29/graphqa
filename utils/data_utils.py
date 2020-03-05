@@ -1,6 +1,9 @@
-from fairseq.data import Dictionary
 from collections import defaultdict
 from itertools import combinations
+import os
+
+from fairseq.data import data_utils, Dictionary, PrependTokenDataset
+
 
 class CustomDictionary(Dictionary):
     """Dictionary with entity tokens"""
@@ -18,19 +21,19 @@ class CustomDictionary(Dictionary):
     unk_df="<unk>"
     bos_df="<s>"
 
-    def __init__(self, head_token=head_token_df, 
+    def __init__(self, head_token=head_token_df,
                         tail_token = tail_token_df,
                         blank_token=blank_token_df,
-                        e1_start_token=e1_start_token_df, 
-                        e1_end_token=e1_end_token_df, 
-                        e2_start_token=e2_start_token_df, 
-                        e2_end_token=e2_end_token_df, 
+                        e1_start_token=e1_start_token_df,
+                        e1_end_token=e1_end_token_df,
+                        e2_start_token=e2_start_token_df,
+                        e2_end_token=e2_end_token_df,
                         pad=pad_df, eos=eos_df, unk=unk_df, bos=bos_df):
         super().__init__(pad, eos, unk, bos)
 
         self.head_token = head_token
         self.tail_token = tail_token
-        
+
         self.blank_token = blank_token
         self.e1_start_token = e1_start_token
         self.e1_end_token = e1_end_token
@@ -39,10 +42,10 @@ class CustomDictionary(Dictionary):
 
     def add_from_file(self, f):
         Dictionary.add_from_file(self, f)
-        
+
         self.head_index = self.add_symbol(self.head_token)
         self.tail_index = self.add_symbol(self.tail_token)
-        
+
         self.blank_index = self.add_symbol(self.blank_token)
         self.e1_start_index = self.add_symbol(self.e1_start_token)
         self.e1_end_index = self.add_symbol(self.e1_end_token)
@@ -82,3 +85,28 @@ class EntityDictionary(Dictionary):
         self.symbols = []
         self.count = []
         self.indices = {}
+
+
+def safe_load_indexed_dataset(path):
+    data =  data_utils.load_indexed_dataset(
+        path,
+        None,
+        dataset_impl='mmap',
+    )
+    if data is None:
+        raise FileNotFoundError('Dataset not found: {}'.format(path))
+    return data
+
+
+def load_annotated_text(data_path, prefix, bos):
+    return (
+        PrependTokenDataset(
+            safe_load_indexed_dataset(
+                os.path.join(data_path, prefix + '.text'),
+            ),
+            bos,
+        ),
+        safe_load_indexed_dataset(
+            os.path.join(data_path, prefix + '.annotations'),
+        ),
+    )

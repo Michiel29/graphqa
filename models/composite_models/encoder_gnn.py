@@ -20,10 +20,10 @@ class EncoderGNNModel(BaseFairseqModel):
         super().__init__()
 
         self.args = args
-        
+
         self.encoder = encoder
         self.gnn_model = gnn_model
-        
+
         mention_dim = args.mention_dim
         emb_dim = args.emb_dim
 
@@ -33,7 +33,7 @@ class EncoderGNNModel(BaseFairseqModel):
             self.embedder_dict[str(arity)] = nn.Linear(mention_dim, emb_dim[arity], padding_idx=0)
 
         # Define scoring MLPs
-        self.mlp_dict = nn.ModuleDict() 
+        self.mlp_dict = nn.ModuleDict()
         for k, v in args.layer_sizes.items():
             self.mlp_dict[k] = MLP_factory(v, dropout, layer_norm)
 
@@ -41,7 +41,7 @@ class EncoderGNNModel(BaseFairseqModel):
         x_emb = {}
         for arity in x.keys():
             x_emb_idx = (x[arity] + 1).long()
-            x_emb[arity] = self.embedder_dict[str(arity)](x_emb_idx) 
+            x_emb[arity] = self.embedder_dict[str(arity)](x_emb_idx)
         return x_emb
 
     def select_goal_encoding(x_enc, goal_arity):
@@ -53,7 +53,7 @@ class EncoderGNNModel(BaseFairseqModel):
 
         goal_arity = batch['goal_arity']
 
-        mention_encoding = self.encoder(batch['mention'])
+        text_encoding = self.encoder(batch['text'])
 
         # TODO: add subgraph selection model
         # subgraph = subgraph_selector(batch['goal_entities'], batch['mention'])
@@ -61,10 +61,10 @@ class EncoderGNNModel(BaseFairseqModel):
         subgraph_embedding = self.embed_subgraph(subgraph)
 
         subgraph_encoding = self.gnn_model(subgraph_embedding)
-        
+
         goal_encoding = self.select_goal_encoding(subgraph_encoding, goal_arity)
 
-        final_encoding = torch.cat((goal_encoding, mention_encoding), dim=-1) 
+        final_encoding = torch.cat((goal_encoding, text_encoding), dim=-1)
 
         score = self.mlp[goal_arity](final_encoding)
         normalized_scores = F.softmax(score, dim=-1)
@@ -82,7 +82,7 @@ class EncoderGNNModel(BaseFairseqModel):
 
     @classmethod
     def build_model(cls, args, task):
-        
+
         encoder = encoder_dict[args.encoder_type](args)
         gnn_model = gnn_dict[args.gnn_type](args)
 

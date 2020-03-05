@@ -11,19 +11,24 @@ from fairseq.data import (
     NumelDataset,
     NumSamplesDataset,
     PadDataset,
-    PrependTokenDataset,
-    SortDataset,
 )
-from utils.data_utils import CustomDictionary, EntityDictionary
 from fairseq.data.encoders.utils import get_whole_word_mask
 from fairseq.tasks import register_task
 
 from datasets import (
     AnnotatedTextDataset,
-    FixedSizeDataset,
     SelectDictionaryDataset,
+    filter_by_max_length,
+    prune_dataset_size,
+    ShuffledDataset,
 )
 from tasks import BaseTask
+from utils.data_utils import (
+    CustomDictionary,
+    EntityDictionary,
+    load_annotated_text,
+    safe_load_indexed_dataset,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -59,75 +64,46 @@ class MaskedLMEMTask(BaseTask):
         task = cls(args, dictionary, None)
         return task
 
-
-    # TODO(urikz): refactor this
-    def load_annotated_text(self, split):
-        text_path = os.path.join(self.args.data_path, 'mlm.' + split + '.text')
-        annotation_path = os.path.join(self.args.data_path, 'mlm.' + split + '.annotations')
-
-        text_data =  data_utils.load_indexed_dataset(
-            text_path,
-            None,
-            dataset_impl='mmap',
+    def load_dataset(self, split, epoch=0, combine=False, **kwargs):
+        text_data, annotation_data = load_annotated_text(
+            self.args.data_path,
+            split,
+            self.dictionary.bos(),
         )
-
-        if text_data is None:
-            raise FileNotFoundError('Dataset (text) not found: {}'.format(text_path))
-
-        annotation_data =  data_utils.load_indexed_dataset(
-            annotation_path,
-            None,
-            dataset_impl='mmap',
+        annotated_text_dataset = AnnotatedTextDataset(
+            text_data=text_data,
+            annotation_data=annotation_data,
+            dictionary=self.dictionary,
+            shift_annotations=1,
+            mask_type=self.args.mask_type,
+            assign_head_tail='random',
+            seed=self.seed,
+            alpha=self.args.alpha,
         )
-
-        if annotation_data is None:
-            raise FileNotFoundError('Dataset (annotation) not found: {}'.format(annotation_path))
-
-        text_data = PrependTokenDataset(text_data, self.dictionary.bos())
 
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-
-        text_data = FixedSizeDataset(text_data, n_examples)
-        annotation_data = FixedSizeDataset(annotation_data, n_examples)
-
-        return text_data, annotation_data
-
-    def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        """Load a given dataset split.
-        Args:
-            split (str): name of the split (e.g., train, valid, test)
-        """
-
-        # Don't reload datasets that were already setup earlier
-        if split in self.datasets:
-            return
-
-        text_data, annotation_data = self.load_annotated_text(split)
         dataset = SelectDictionaryDataset(
-            AnnotatedTextDataset(
-                text_data=text_data,
-                annotation_data=annotation_data,
-                dictionary=self.dictionary,
-                mask_type=self.mask_type,
-                shift_annotations=1, # because of the PrependTokenDataset
-                assign_head_tail_randomly=True,
+            prune_dataset_size(
+                filter_by_max_length(
+                    annotated_text_dataset,
+                    self.args.max_positions,
+                )[0],
+                n_examples,
+                self.seed,
             ),
-            'mention',
+            'text',
         )
 
         # create masked input and targets
         mask_whole_words = get_whole_word_mask(self.args, self.source_dictionary) \
             if self.args.mask_whole_words else None
 
-        # Random generation of masks depends on
-        # 1. seed (which is provided here)
-        # 2. epoch (which is set in get_batch_iterator via dataset.set_epoch())
         src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
             dataset,
             self.dictionary,
             pad_idx=self.dictionary.pad(),
             mask_idx=self.dictionary.mask(),
-            seed=self.seed + epoch,
+            seed=self.seed,
             mask_prob=self.args.mask_prob,
             leave_unmasked_prob=self.args.leave_unmasked_prob,
             random_token_prob=self.args.random_token_prob,
@@ -135,10 +111,7 @@ class MaskedLMEMTask(BaseTask):
             mask_whole_words=mask_whole_words,
         )
 
-        with data_utils.numpy_seed(self.args.seed + epoch):
-            shuffle = np.random.permutation(len(src_dataset))
-
-        self.datasets[split] = SortDataset(
+        self.datasets[split] = ShuffledDataset(
                 NestedDictionaryDataset(
                 {
                     'id': IdDataset(),
@@ -160,8 +133,5 @@ class MaskedLMEMTask(BaseTask):
                 },
                 sizes=[src_dataset.sizes],
             ),
-            sort_order=[
-                shuffle,
-                src_dataset.sizes,
-            ],
+            sizes=src_dataset.sizes,
         )

@@ -4,6 +4,8 @@ import numpy as np
 import numpy.random as rd
 
 from fairseq.data import FairseqDataset
+from fairseq.data import data_utils
+
 
 class AnnotatedTextDataset(FairseqDataset):
 
@@ -14,11 +16,9 @@ class AnnotatedTextDataset(FairseqDataset):
         dictionary,
         shift_annotations,
         mask_type,
-        graph_text_data=None,
-        graph_annotation_data=None,
-        assign_head_tail_randomly=False,
-        alpha=None,
-        seed=31415,
+        assign_head_tail,
+        seed,
+        alpha,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
@@ -26,28 +26,37 @@ class AnnotatedTextDataset(FairseqDataset):
         self.shift_annotations = shift_annotations
         self.dictionary = dictionary
         self.mask_type = mask_type
-        assert self.mask_type in ['head_tail', 'start_end']
-        self.graph_text_data = graph_text_data
-        self.graph_annotation_data = graph_annotation_data
-        self.assign_head_tail_randomly = assign_head_tail_randomly
+        assert self.mask_type in ['head_tail', 'start_end', None]
+        self.assign_head_tail = assign_head_tail
+        assert self.assign_head_tail in ['random', 'first', None]
         self.alpha = alpha
-        # TODO(urikz): Use this seed below
         self.seed = seed
         self.epoch = 0
 
-    def __getitem__(self, index, use_train_data_for_valid=False):
+    def __getitem__(self, index, head_entity=None, tail_entity=None):
+        text = self.text_data[index]
+        annotations = self.annotation_data[index]
 
-        if use_train_data_for_valid:
-            mention = self.graph_text_data[index]
-            annotations = self.graph_annotation_data[index]
-        else:
-            mention = self.text_data[index]
-            annotations = self.annotation_data[index]
+        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+            if head_entity is None:
+                assert tail_entity is None
+                if self.assign_head_tail == 'random':
+                    head_entity, tail_entity = self.assign_head_tail_randomly(annotations)
+                elif self.assign_head_tail == 'first':
+                    head_entity, tail_entity = self.assign_head_tail_first(annotations)
+            else:
+                assert tail_entity is not None
 
-        if self.mask_type == 'head_tail':
-            item = self.head_tail_mask(mention, annotations)
-        elif self.mask_type == 'start_end':
-            item = self.start_end_mask(mention, annotations)
+            if self.mask_type == 'head_tail':
+                item = self.head_tail_mask(text, annotations, head_entity, tail_entity)
+            elif self.mask_type == 'start_end':
+                item = self.start_end_mask(text, annotations, head_entity, tail_entity)
+            else:
+                item = {
+                    'text': text,
+                    'ntokens': len(text),
+                    'nsentences': 1,
+                }
 
         return item
 
@@ -60,6 +69,10 @@ class AnnotatedTextDataset(FairseqDataset):
     def size(self, index):
         return self.text_data.sizes[index]
 
+    @property
+    def sizes(self):
+        return self.text_data.sizes
+
     def ordered_indices(self):
         """Sorts by sentence length, randomly shuffled within sentences of same length"""
         return np.lexsort([
@@ -67,77 +80,69 @@ class AnnotatedTextDataset(FairseqDataset):
             self.text_data.sizes,
         ])
 
-    def head_tail_mask(self, mention, annotations):
+    def assign_head_tail_randomly(self, annotations):
         annotations = annotations.split(3)
         unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
         assert len(unique_entity_ids) >= 2
+        head_entity, tail_entity = np.random.choice(
+            unique_entity_ids,
+            size=2,
+            replace=False,
+        )
+        return head_entity, tail_entity
 
-        if self.assign_head_tail_randomly:
-            head_entity, tail_entity = np.random.choice(
-                unique_entity_ids,
-                size=2,
-                replace=False,
-            )
-        else:
-            head_entity, tail_entity = unique_entity_ids[:2]
+    def assign_head_tail_first(self, annotations):
+        annotations = annotations.split(3)
+        unique_entity_ids = np.unique([annotation[2] for annotation in annotations])
+        assert len(unique_entity_ids) >= 2
+        return unique_entity_ids[:2]
 
+    def head_tail_mask(self, text, annotations, head_entity, tail_entity):
         entity_replacement = {
             head_entity: self.dictionary.head(),
             tail_entity: self.dictionary.tail(),
         }
 
+        annotations = annotations.split(3)
         for annotation in annotations:
             annotation_entity = annotation[2].item()
             if annotation_entity in entity_replacement:
                 ent_start = annotation[0].item() + self.shift_annotations
                 ent_end = annotation[1].item() + self.shift_annotations
-                mention[ent_start:ent_end] = -1
-                mention[ent_start] = entity_replacement[annotation_entity]
+                text[ent_start:ent_end] = -1
+                text[ent_start] = entity_replacement[annotation_entity]
 
-        mention = mention[mention != -1]
+        text = text[text != -1]
 
         return {
-            'mention': mention,
+            'text': text,
             'head': head_entity,
             'tail': tail_entity,
-            'ntokens': len(mention),
+            'ntokens': len(text),
             'nsentences': 1,
         }
 
-    def start_end_mask(self, mention, annotations):
+    def start_end_mask(self, text, annotations, e1_temp, e2_temp):
         annotations_list = annotations.split(3)
         entity_ids = annotations[2::3].numpy()
         unique_entity_ids = np.unique(entity_ids)
         assert len(unique_entity_ids) >= 2
 
-        if self.assign_head_tail_randomly:
-            e1_temp, e2_temp = np.random.choice(
-                unique_entity_ids,
-                size=2,
-                replace=False,
-            )
-
-            e1_temp_indices = np.where(entity_ids == e1_temp)[0]
-            e2_temp_indices = np.where(entity_ids == e2_temp)[0]
-
-            e1_temp_idx = np.random.choice(e1_temp_indices)
-            e2_temp_idx = np.random.choice(e2_temp_indices)
-
-            if e1_temp_idx < e2_temp_idx:
-                e1 = e1_temp
-                e1_idx = e1_temp_idx
-                e2 = e2_temp
-                e2_idx = e2_temp_idx
-            else:
-                e1 = e2_temp
-                e1_idx = e2_temp_idx
-                e2 = e1_temp
-                e2_idx = e1_temp_idx
-
+        # Get e1 and e2 indices
+        e1_indices = np.where(entity_ids == e1_temp)[0]
+        e2_indices = np.where(entity_ids == e2_temp)[0]
+        e1_temp_idx = np.random.choice(e1_indices)
+        e2_temp_idx = np.random.choice(e2_indices)
+        if e1_temp_idx < e2_temp_idx:
+            e1 = e1_temp
+            e1_idx = e1_temp_idx
+            e2 = e2_temp
+            e2_idx = e2_temp_idx
         else:
-            e1, e2 = unique_entity_ids[:2]
-            e1_idx = 0
-            e2_idx = 1
+            e1 = e2_temp
+            e1_idx = e2_temp_idx
+            e2 = e1_temp
+            e2_idx = e1_temp_idx
 
         # Get e1 and e2 start/end indices
         e1_annotation = annotations_list[e1_idx][2].item()
@@ -148,19 +153,19 @@ class AnnotatedTextDataset(FairseqDataset):
         e2_start = annotations_list[e2_idx][0].item() + self.shift_annotations
         e2_end = annotations_list[e2_idx][1].item() + self.shift_annotations
 
-        # Initialize new mention with -1's
-        mention_new = -1 * torch.ones(mention.shape[0]+4).long()
+        # Initialize new text with -1's
+        text_new = -1 * torch.ones(text.shape[0]+4).long()
 
-        # Copy over non-entity tokens from original mention to new mention
-        mention_new[:e1_start] = mention[:e1_start]
-        mention_new[e1_end+2:e2_start+2] = mention[e1_end:e2_start]
-        mention_new[e2_end+4:] = mention[e2_end:]
+        # Copy over non-entity tokens from original text to new text
+        text_new[:e1_start] = text[:e1_start]
+        text_new[e1_end+2:e2_start+2] = text[e1_end:e2_start]
+        text_new[e2_end+4:] = text[e2_end:]
 
-        # Insert e1 and e2 start/end tokens into new mention
-        mention_new[e1_start] = self.dictionary.e1_start()
-        mention_new[e1_end+1] = self.dictionary.e1_end()
-        mention_new[e2_start+2] = self.dictionary.e2_start()
-        mention_new[e2_end+3] = self.dictionary.e2_end()
+        # Insert e1 and e2 start/end tokens into new text
+        text_new[e1_start] = self.dictionary.e1_start()
+        text_new[e1_end+1] = self.dictionary.e1_end()
+        text_new[e2_start+2] = self.dictionary.e2_start()
+        text_new[e2_end+3] = self.dictionary.e2_end()
 
         # For each entity, randomly decide whether to mask it with a [BLANK] token
         #   - NO, with probability alpha
@@ -168,27 +173,25 @@ class AnnotatedTextDataset(FairseqDataset):
         mask_decision = np.random.choice(2, 2, p=[self.alpha, 1 - self.alpha])
 
         if mask_decision[0] == 1:
-            mention_new[e1_start+1] = self.dictionary.blank()
+            text_new[e1_start+1] = self.dictionary.blank()
         else:
-            mention_new[e1_start+1:e1_end+1] = mention[e1_start:e1_end]
+            text_new[e1_start+1:e1_end+1] = text[e1_start:e1_end]
 
         if mask_decision[1] == 1:
-            mention_new[e2_start+3] = self.dictionary.blank()
+            text_new[e2_start+3] = self.dictionary.blank()
         else:
-            mention_new[e2_start+3:e2_end+3] = mention[e2_start:e2_end]
+            text_new[e2_start+3:e2_end+3] = text[e2_start:e2_end]
 
-        # Remove any -1's in new mention left over after [BLANK] masking
-        mention_new = mention_new[mention_new != -1]
+        # Remove any -1's in new text left over after [BLANK] masking
+        text_new = text_new[text_new != -1]
 
         return {
-            'mention': mention_new,
-            'e1': e1,
-            'e2': e2
+            'text': text_new,
+            'head': e1,
+            'tail': e2,
+            'ntokens': len(text_new),
+            'nsentences': 1,
         }
-
-    @property
-    def sizes(self):
-        return self.text_data.sizes
 
     @property
     def supports_prefetch(self):

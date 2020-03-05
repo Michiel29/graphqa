@@ -1,5 +1,6 @@
 from datasets import RelInfDataset
 
+
 class GraphDataset(RelInfDataset):
     def retrieve_subgraph(self, ent1, ent2):
         raise NotImplementedError

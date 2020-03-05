@@ -1,5 +1,6 @@
 import logging
 import warnings
+import os
 
 from fairseq import metrics, utils
 from fairseq.data import (
@@ -8,6 +9,11 @@ from fairseq.data import (
     iterators,
 )
 from fairseq.tasks import FairseqTask
+
+from utils.data_utils import (
+    CustomDictionary,
+    EntityDictionary,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +25,20 @@ class BaseTask(FairseqTask):
         self.dictionary = dictionary
         self.entity_dictionary = entity_dictionary
         self.mask_type = args.mask_type
+
+    @classmethod
+    def setup_task(cls, args, **kwargs):
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
+
+        entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
+        entity_dictionary = EntityDictionary.load(entity_dict_path)
+
+        logger.info('dictionary: {} types'.format(len(dictionary)))
+        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
+
+        task = cls(args, dictionary, entity_dictionary)
+        return task
 
     def reduce_metrics(self, logging_outputs, criterion):
         if not any('ntokens' in log for log in logging_outputs):
@@ -84,14 +104,8 @@ class BaseTask(FairseqTask):
         dataset.set_epoch(epoch)
 
         # get indices ordered by example size
-        with data_utils.numpy_seed(seed):
+        with data_utils.numpy_seed(seed, epoch):
             indices = dataset.ordered_indices()
-
-        # filter examples that are too large
-        if max_positions is not None:
-            indices = data_utils.filter_by_size(
-                indices, dataset, max_positions, raise_exception=(not ignore_invalid_inputs),
-            )
 
         # create mini-batches with given size constraints
         batch_sampler = data_utils.batch_by_size(

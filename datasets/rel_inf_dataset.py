@@ -4,8 +4,10 @@ import numpy as np
 import numpy.random as rd
 
 from fairseq.data import FairseqDataset
+from fairseq.data import data_utils
 
 from datasets import AnnotatedTextDataset
+
 
 class RelInfDataset(AnnotatedTextDataset):
 
@@ -19,6 +21,8 @@ class RelInfDataset(AnnotatedTextDataset):
         dictionary,
         shift_annotations,
         mask_type,
+        seed,
+        alpha,
     ):
         super().__init__(
             text_data=text_data,
@@ -26,7 +30,9 @@ class RelInfDataset(AnnotatedTextDataset):
             dictionary=dictionary,
             shift_annotations=shift_annotations,
             mask_type=mask_type,
-            assign_head_tail_randomly=True,
+            assign_head_tail='random',
+            seed=seed,
+            alpha=alpha,
         )
         self.k_negative = k_negative
         self.n_entities = n_entities
@@ -37,34 +43,30 @@ class RelInfDataset(AnnotatedTextDataset):
         head = item['head']
         tail = item['tail']
 
-        replace_heads = rd.randint(2, size=self.k_negative)
+        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+            replace_heads = rd.randint(2, size=self.k_negative)
 
-        head_neighbors = self.graph[head]['neighbors']
-        tail_neighbors = self.graph[tail]['neighbors']
+            head_neighbors = self.graph[head]['neighbors']
+            tail_neighbors = self.graph[tail]['neighbors']
 
-        tail_head_neighbors = [tail_neighbors, head_neighbors]
+            tail_head_neighbors = [tail_neighbors, head_neighbors]
 
-        replacement_entities = []
+            replacement_entities = []
 
-        for replace_head in replace_heads:
-            replacement_neighbors, static_neighbors = tail_head_neighbors[replace_head], tail_head_neighbors[1 - replace_head]
+            for replace_head in replace_heads:
+                replacement_neighbors, static_neighbors = tail_head_neighbors[replace_head], tail_head_neighbors[1 - replace_head]
 
-            if len(replacement_neighbors) > 0:
-                replacement_entity = rd.choice(replacement_neighbors)
-            elif len(static_neighbors) > 0:
-                replacement_entity = rd.choice(static_neighbors)
-            else:
-                replacement_entity = rd.randint(self.n_entities)
+                if len(replacement_neighbors) > 0:
+                    replacement_entity = rd.choice(replacement_neighbors)
+                elif len(static_neighbors) > 0:
+                    replacement_entity = rd.choice(static_neighbors)
+                else:
+                    replacement_entity = rd.randint(self.n_entities)
 
-            replacement_entities.append(replacement_entity)
+                replacement_entities.append(replacement_entity)
 
-        item['head'] = [head] + [head if not replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
-        item['tail'] = [tail] + [tail if replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
-        item['target'] = 0
+            item['head'] = [head] + [head if not replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
+            item['tail'] = [tail] + [tail if replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
+            item['target'] = 0
 
         return item
-
-    @property
-    def supports_prefetch(self):
-        """Whether this dataset supports prefetching."""
-        return False

@@ -2,7 +2,7 @@
     "task": "masked_lm_em",
     "arch": "roberta_small",
     "mask_type": "head_tail",
-    "data_path": "../data/nki/bin-v3-threshold20",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
 
     "mask_prob": 0.15,
     "leave_unmasked_prob": 0.1,
@@ -10,6 +10,7 @@
     "freq_weighted_replacement": false,
     "mask_whole_words": true,
     "bpe": "gpt2",
+    "alpha": null,
 
     "encoder_layers": 12,
     "encoder_embed_dim": 256,
@@ -41,11 +42,11 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 3,
+    "num_workers": 0,
     "save_dir": "../save/",
     "restore_file": false,
-    //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
-    "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
+    "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt",
+
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
 

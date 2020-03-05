@@ -34,7 +34,11 @@ class MaskedLmCustomLoss(FairseqCriterion):
         if sample_size == 0:
             masked_tokens = None
 
-        logits = model.encoder(**sample['net_input'], masked_tokens=masked_tokens, use_lm_head=True)[0]
+        if hasattr(model, 'encoder'):
+            encoder = model.encoder
+        else:
+            encoder = model
+        logits = encoder(**sample['net_input'], masked_tokens=masked_tokens, use_lm_head=True)[0]
         targets = model.get_targets(sample, [logits])
 
         if sample_size != 0:

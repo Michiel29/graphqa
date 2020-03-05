@@ -1,6 +1,6 @@
 import logging
 import os
-
+from itertools import combinations
 import numpy as np
 import torch
 
@@ -15,9 +15,27 @@ from fairseq.data import (
 from fairseq.tasks import FairseqTask, register_task
 
 from tasks import RelationInferenceTask
-from datasets import MTBDataset, FixedSizeDataset
+
+from datasets import (
+    GraphDataset,
+    MTBDataset,
+    MTBTripletsDataset,
+    AnnotatedTextDataset,
+    SelectDictionaryDataset,
+    filter_by_max_length,
+    prune_dataset_size,
+    ShuffledDataset,
+)
+
+from utils.data_utils import (
+    CustomDictionary,
+    EntityDictionary,
+    load_annotated_text,
+    safe_load_indexed_dataset,
+)
 
 logger = logging.getLogger(__name__)
+
 
 @register_task('mtb')
 class MTBTask(RelationInferenceTask):
@@ -38,107 +56,95 @@ class MTBTask(RelationInferenceTask):
         parser.add_argument('--alpha', default=0.7, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
 
-        """Optional"""
-        # optional arguments here
+    def create_graph(self, annotation_data, n_entities, indices_to_keep):
+        entity_neighbors = [list() for entity in range(n_entities)]
+        entity_edges = [list() for entity in range(n_entities)]
 
-    def __init__(self, args, dictionary, entity_dictionary):
-        super().__init__(args, dictionary, entity_dictionary)
-        self.entity_dictionary = entity_dictionary
-        self.seed = args.seed
-        self.dictionary = dictionary
+        for sentence_idx in indices_to_keep:
+            entity_ids = np.unique(annotation_data[sentence_idx].reshape(3, -1)[0])
+
+            for a, b in combinations(entity_ids, 2):
+                entity_neighbors[a].append(b)
+                entity_neighbors[b].append(a)
+
+                entity_edges[a].append(sentence_idx)
+                entity_edges[b].append(sentence_idx)
+
+        return GraphDataset(entity_neighbors, entity_edges)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        """Load a given dataset split.
-        Args:
-            split (str): name of the split (e.g., train, valid, test)
-        """
+        train_text_data, train_annotation_data = load_annotated_text(
+            self.args.data_path,
+            'train',
+            self.dictionary.bos(),
+        )
 
-        text_data, annotation_data = self.load_annotated_text(split)
-        if split == 'valid':
-            graph_text_data, graph_annotation_data = self.load_annotated_text('train')
-        else:
-            graph_text_data, graph_annotation_data = None, None 
-
-        self.datasets[split] = MTBDataset(
-            split,
-            text_data,
-            annotation_data,
-            self.graph,
-            graph_text_data,
-            graph_annotation_data,
-            len(self.entity_dictionary),
-            self.dictionary,
-            self.args.max_positions,
-            self.args.case0_prob,
-            self.args.case1_prob,
-            self.args.n_tries,
-            shift_annotations=1, # because of the PrependTokenDataset
+        train_annotated_text_dataset = AnnotatedTextDataset(
+            text_data=train_text_data,
+            annotation_data=train_annotation_data,
+            dictionary=self.dictionary,
+            shift_annotations=1,
+            mask_type=self.args.mask_type,
+            assign_head_tail=None,
+            seed=self.seed,
             alpha=self.args.alpha,
         )
 
-    def get_batch_iterator(
-        self, dataset, max_tokens=None, max_sentences=None, max_positions=None,
-        ignore_invalid_inputs=False, required_batch_size_multiple=1,
-        seed=1, num_shards=1, shard_id=0, num_workers=0, epoch=0):
-        """ 
-        Get an iterator that yields batches of data from the given dataset.
+        if split == 'train':
+            split_annotated_text_dataset = train_annotated_text_dataset
+        else:
+            text_data, annotation_data = load_annotated_text(
+                self.args.data_path,
+                split,
+                self.dictionary.bos(),
+            )
 
-        Args:
-            dataset (~fairseq.data.FairseqDataset): dataset to batch
-            max_tokens (int, optional): max number of tokens in each batch
-                (default: None).
-            max_sentences (int, optional): max number of sentences in each
-                batch (default: None).
-            max_positions (optional): max sentence length supported by the
-                model (default: None).
-            ignore_invalid_inputs (bool, optional): don't raise Exception for
-                sentences that are too long (default: False).
-            required_batch_size_multiple (int, optional): require batch size to
-                be a multiple of N (default: 1).
-            seed (int, optional): seed for random number generator for
-                reproducibility (default: 1).
-            num_shards (int, optional): shard the data iterator into N
-                shards (default: 1).
-            shard_id (int, optional): which shard of the data iterator to
-                return (default: 0).
-            num_workers (int, optional): how many subprocesses to use for data
-                loading. 0 means the data will be loaded in the main process
-                (default: 0).
-            epoch (int, optional): the epoch to start the iterator from
-                (default: 0).
-        Returns:
-            ~fairseq.iterators.EpochBatchIterator: a batched iterator over the
-                given dataset split
-        """
+            split_annotated_text_dataset = AnnotatedTextDataset(
+                text_data=text_data,
+                annotation_data=annotation_data,
+                dictionary=self.dictionary,
+                shift_annotations=1,
+                mask_type=self.args.mask_type,
+                assign_head_tail=None,
+                seed=self.seed,
+                alpha=self.args.alpha,
+            )
 
-        assert isinstance(dataset, FairseqDataset)
+        mtb_triplets_path = os.path.join(self.args.data_path, 'mtb_triplets_' + split + '.npy')
+        mtb_triplets_loaded = np.load(mtb_triplets_path, mmap_mode='r')
 
-        # get indices ordered by example size
-        with data_utils.numpy_seed(seed):
-            indices = dataset.ordered_indices()
+        split_dataset = MTBTripletsDataset(split_annotated_text_dataset, mtb_triplets_loaded)
 
-        # filter examples that are too large
-        if max_positions is not None:
-            indices = data_utils.filter_by_size(
-                indices, dataset, max_positions-4, raise_exception=(not ignore_invalid_inputs),
-            )   
+        split_dataset = filter_by_max_length(
+            split_dataset,
+            self.args.max_positions,
+        )[0]
+        train_annotated_text_dataset, sentences_to_keep = filter_by_max_length(
+            train_annotated_text_dataset,
+            self.args.max_positions,
+        )
+        self.graph = self.create_graph(
+            train_annotation_data,
+            len(self.entity_dictionary),
+            sentences_to_keep,
+        )
 
-        # create mini-batches with given size constraints
-        batch_sampler = data_utils.batch_by_size(
-            indices, dataset.size, max_tokens=max_tokens, max_sentences=max_sentences,
-            required_batch_size_multiple=required_batch_size_multiple,
-        )   
+        dataset = MTBDataset(
+            split_dataset=split_dataset,
+            train_dataset=train_annotated_text_dataset,
+            graph=self.graph,
+            n_entities=len(self.entity_dictionary),
+            dictionary=self.dictionary,
+            case0_prob=self.args.case0_prob,
+            case1_prob=self.args.case1_prob,
+            n_tries=self.args.n_tries,
+            seed=self.seed,
+        )
 
-        # return a reusable, sharded iterator
-        epoch_iter = iterators.EpochBatchIterator(
-            dataset=dataset,
-            collate_fn=dataset.collater,
-            batch_sampler=batch_sampler,
-            seed=seed,
-            num_shards=num_shards,
-            shard_id=shard_id,
-            num_workers=num_workers,
-            epoch=epoch,
-        )   
-        
-        return epoch_iter
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
+        dataset = prune_dataset_size(
+            dataset,
+            n_examples,
+            self.seed,
+        )
+        self.datasets[split] = dataset

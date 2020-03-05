@@ -11,6 +11,8 @@ import tasks
 from models.triplet import triplet_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
+from utils.diagnostic_utils import Diagnostic
+
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
 
@@ -29,21 +31,25 @@ class EncoderTripletModel(BaseFairseqModel):
         self.task = task
         self._max_positions = args.max_positions
 
+        #self.diag = Diagnostic(task)
+
     def max_positions(self):
         return self._max_positions
 
     def forward(self, batch):
 
-        mention_enc, _ = self.encoder(batch['mention']) # [batch_size, enc_dim]
+        text_enc, _ = self.encoder(batch['text']) # [batch_size, enc_dim]
 
         head_emb = self.entity_embedder(batch['head']) # [batch_size, (1 + k_negative), ent_dim]
         tail_emb = self.entity_embedder(batch['tail']) # [batch_size, (1 + k_negative), ent_dim]
 
         multiply_view = [-1] * len(head_emb.shape)
         multiply_view[-2] = head_emb.shape[-2]
-        mention_enc = mention_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
+        text_enc = text_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
-        scores = self.triplet_model(mention_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
+        scores = self.triplet_model(text_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
+
+        #self.diag.inspect_batch(batch, ent_filter=[9, 36])
 
         return scores
 
