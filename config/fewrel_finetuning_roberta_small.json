@@ -4,14 +4,15 @@
     "n_way": 5,
     "n_shot": 1,
 
-    "n_train_examples": 25000,
+    "n_train_examples": 50000,
     "n_valid_examples": 5000,
     "n_test_examples": -1,
     "seed": 239,
     "reload": true,
 
     "arch": "encoder_fewrel__roberta_small",
-    "mask_type": "head_tail",
+    "mask_type": null,
+    "alpha": null,
     "encoder_layers": 12,
     "encoder_embed_dim": 256,
     "encoder_ffn_embed_dim": 1024,
@@ -21,7 +22,7 @@
     "attention_dropout": 0.1,
     "weight_decay": 0.1,
 
-    "max_epoch": 20,
+    "max_epoch": 10,
     "total_num_update": 7820,
     // "total_num_update": 100000000,
     "warmup_updates": 500,
@@ -29,11 +30,12 @@
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
     "clip_norm": 0.0,
-    "lr": [1e-5],
+    "lr": [5e-6],
     "lr_scheduler": "polynomial_decay",
 
-    "max_sentences": 64,
-    "max_tokens": 2e4,
+    "max_sentences": 32,
+    "update_freq": [2],
+    "max_tokens": 15000,
     "required_batch_size_multiple": 1,
 
     "num_workers": 2,
