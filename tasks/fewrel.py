@@ -67,7 +67,7 @@ class FewRelTask(BaseTask):
             alpha=self.args.alpha,
         )
         annotated_text_dataset, indices = filter_by_max_length(
-            AnnotatedTextDataset,
+            annotated_text_dataset,
             self.args.max_positions,
         )
 
