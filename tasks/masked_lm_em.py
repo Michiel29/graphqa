@@ -84,10 +84,7 @@ class MaskedLMEMTask(BaseTask):
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
         dataset = SelectDictionaryDataset(
             prune_dataset_size(
-                filter_by_max_length(
-                    annotated_text_dataset,
-                    self.args.max_positions,
-                )[0],
+                self.filter_by_max_positions(annotated_text_dataset),
                 n_examples,
                 self.seed,
             ),

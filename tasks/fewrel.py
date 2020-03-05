@@ -16,7 +16,6 @@ from datasets import (
     AnnotatedTextDataset,
     FewRelDataset,
     FilteredDataset,
-    filter_by_max_length
 )
 from utils.data_utils import (
     CustomDictionary,
@@ -66,9 +65,8 @@ class FewRelTask(BaseTask):
             seed=self.seed,
             alpha=self.args.alpha,
         )
-        annotated_text_dataset, indices = filter_by_max_length(
+        annotated_text_dataset, indices = self.filter_by_max_length(
             annotated_text_dataset,
-            self.args.max_positions,
         )
 
         relation_dataset = FilteredDataset(relation_data, indices)

@@ -56,22 +56,6 @@ class MTBTask(RelationInferenceTask):
         parser.add_argument('--alpha', default=0.7, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
 
-    def create_graph(self, annotation_data, n_entities, indices_to_keep):
-        entity_neighbors = [list() for entity in range(n_entities)]
-        entity_edges = [list() for entity in range(n_entities)]
-
-        for sentence_idx in indices_to_keep:
-            entity_ids = np.unique(annotation_data[sentence_idx].reshape(3, -1)[0])
-
-            for a, b in combinations(entity_ids, 2):
-                entity_neighbors[a].append(b)
-                entity_neighbors[b].append(a)
-
-                entity_edges[a].append(sentence_idx)
-                entity_edges[b].append(sentence_idx)
-
-        return GraphDataset(entity_neighbors, entity_edges)
-
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         train_text_data, train_annotation_data = load_annotated_text(
             self.args.data_path,
@@ -115,19 +99,17 @@ class MTBTask(RelationInferenceTask):
 
         split_dataset = MTBTripletsDataset(split_annotated_text_dataset, mtb_triplets_loaded)
 
-        split_dataset = filter_by_max_length(
-            split_dataset,
-            self.args.max_positions,
-        )[0]
-        train_annotated_text_dataset, sentences_to_keep = filter_by_max_length(
-            train_annotated_text_dataset,
-            self.args.max_positions,
-        )
-        self.graph = self.create_graph(
-            train_annotation_data,
-            len(self.entity_dictionary),
-            sentences_to_keep,
-        )
+        split_dataset = self.filter_by_max_positions(split_dataset)
+
+        # train_annotated_text_dataset, sentences_to_keep = filter_by_max_length(
+        #     train_annotated_text_dataset,
+        #     self.args.max_positions,
+        # )
+        # self.graph = self.create_graph(
+        #     train_annotation_data,
+        #     len(self.entity_dictionary),
+        #     sentences_to_keep,
+        # )
 
         dataset = MTBDataset(
             split_dataset=split_dataset,
@@ -138,6 +120,7 @@ class MTBTask(RelationInferenceTask):
             case0_prob=self.args.case0_prob,
             case1_prob=self.args.case1_prob,
             n_tries=self.args.n_tries,
+            max_positions=self.args.max_positions,
             seed=self.seed,
         )
 

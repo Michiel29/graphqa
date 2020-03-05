@@ -10,6 +10,7 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask
 
+from datasets import filter_by_max_length
 from utils.data_utils import (
     CustomDictionary,
     EntityDictionary,
@@ -125,6 +126,16 @@ class BaseTask(FairseqTask):
             epoch=epoch,
         )
         return epoch_iter
+
+    def filter_by_max_positions(self, dataset, return_indices=False):
+        filtered_dataset, indicies = filter_by_max_length(
+            dataset,
+            self.args.max_positions - 4, # to account for the entity markers
+        )
+        if return_indices:
+            return filtered_dataset, indicies
+        else:
+            return filtered_dataset
 
     @property
     def source_dictionary(self):

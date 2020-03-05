@@ -25,6 +25,7 @@ class MTBDataset(FairseqDataset):
         case0_prob,
         case1_prob,
         n_tries,
+        max_positions,
         seed,
     ):
         self.split_dataset = split_dataset
@@ -35,6 +36,7 @@ class MTBDataset(FairseqDataset):
         self.case0_prob = case0_prob
         self.case1_prob = case1_prob
         self.n_tries = n_tries
+        self.max_positions = max_positions
         self.seed = seed
         self.epoch = 0
 
@@ -76,7 +78,8 @@ class MTBDataset(FairseqDataset):
 
         for i, m in enumerate(mentionB_candidates_idx):
             mentionB = self.train_dataset.__getitem__(edges[m], head_entity=e1, tail_entity=e2)['text']
-            return mentionB, target, None
+            if len(mentionB) <= self.max_positions:
+                return mentionB, target, None
 
         return None, None, next_case
 

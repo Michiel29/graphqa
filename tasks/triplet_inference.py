@@ -38,10 +38,7 @@ class TripletInferenceTask(RelationInferenceTask):
         )
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
         dataset = prune_dataset_size(
-            filter_by_max_length(
-                dataset,
-                self.args.max_positions,
-            )[0],
+            self.filter_by_max_positions(dataset),
             n_examples,
             self.seed,
         )
