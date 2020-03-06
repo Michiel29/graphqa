@@ -47,10 +47,8 @@ class MTBTask(RelationInferenceTask):
 
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
-        parser.add_argument('--case0_prob', default=0.5, type=float,
-                            help='probability of sampling a pair of texts which share both head and tail entities')
-        parser.add_argument('--case1_prob', default=0.4, type=float,
-                            help='probability of sampling a pair of texts which share only one entity')
+        parser.add_argument('--strong_prob', default=0.8, type=float,
+                            help='probability of sampling a strong negative')
         parser.add_argument('--n_tries_neighbor', default=100, type=int,
                             help='number of attempts to sample neighbors for a given case')
         parser.add_argument('--n_tries_text', default=100, type=int,
@@ -119,8 +117,7 @@ class MTBTask(RelationInferenceTask):
             graph=self.graph,
             n_entities=len(self.entity_dictionary),
             dictionary=self.dictionary,
-            case0_prob=self.args.case0_prob,
-            case1_prob=self.args.case1_prob,
+            strong_prob=self.args.strong_prob,
             n_tries_neighbor=self.args.n_tries_neighbor,
             n_tries_text=self.args.n_tries_text,
             max_positions=self.args.max_positions,

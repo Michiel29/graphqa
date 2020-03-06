@@ -38,12 +38,16 @@ class EncoderMTBModel(BaseFairseqModel):
         textA_enc = self.text_linear(textA_enc) # [batch_size, ent_dim]
 
         textB_enc = []
+        B2A = []
         for cluster_id, cluster_texts in batch['textB'].items():
             cur_textB_enc, _ = self.encoder(cluster_texts)
             textB_enc.append(cur_textB_enc)
+            B2A += batch['B2A'][cluster_id]
         textB_enc = torch.cat(textB_enc, dim=0) 
         textB_enc = self.text_linear(textB_enc) # [batch_size, ent_dim]
                 
+        textA_enc = torch.index_select(textA_enc, 0, torch.cuda.LongTensor(B2A))
+
         scores = (textA_enc * textB_enc).sum(dim=-1) 
 
         return scores

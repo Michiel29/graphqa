@@ -7,8 +7,7 @@
     //"data_path": "../data/nki/bin-v3-threshold20",
 
     "mask_type": "start_end",
-    "case0_prob": 0.5,
-    "case1_prob": 0.4,
+    "strong_prob": 0.8,
     "n_tries_neighbor": 100,
     "n_tries_text": 100,
     "alpha": 0.7,
@@ -25,8 +24,8 @@
     "encoder_output_layer_type": "entity_start",
 
     "max_epoch": 4,
-    "warmup_updates": 4559,
-    //"warmup_updates": 50359,
+    "warmup_updates": 2590, // 0.06 * max_epoch * num_updates 
+    //"warmup_updates": 0,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
@@ -38,8 +37,8 @@
     "dropout": 0.1,
     "attention_dropout": 0.1,
 
-    "max_sentences": 300, // max number of textA sentences per batch
-    "max_tokens": 1.5e4, // max number of textA tokens per batch
+    "max_sentences": 260, // max number of textA sentences per batch
+    "max_tokens": 1.2e4, // max number of textA tokens per batch
     //"max_sentences": 64, // max number of textA sentences per batch
     //"max_tokens": 1.5e3, // max number of textA tokens per batch
     "max_positions": 128,

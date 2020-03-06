@@ -22,8 +22,7 @@ class MTBDataset(FairseqDataset):
         graph,
         n_entities,
         dictionary,
-        case0_prob,
-        case1_prob,
+        strong_prob,
         n_tries_neighbor,
         n_tries_text,
         max_positions,
@@ -35,8 +34,7 @@ class MTBDataset(FairseqDataset):
         self.n_texts = len(train_dataset)
         self.n_entities = n_entities
         self.dictionary = dictionary
-        self.case0_prob = case0_prob
-        self.case1_prob = case1_prob
+        self.strong_prob = strong_prob
         self.n_tries_neighbor = n_tries_neighbor
         self.n_tries_text = n_tries_text
         self.max_positions = max_positions
@@ -81,57 +79,45 @@ class MTBDataset(FairseqDataset):
 
         return e2B, e1B_e2B_edges
 
-    def sample_text(self, edges, e1B, e2B, target, next_case):
+    def sample_text(self, edges, e1B, e2B):
         n_textB_candidates = min(self.n_tries_text, len(edges))
         textB_candidates_idx = torch.randperm(len(edges))[:n_textB_candidates]
 
         for i, m in enumerate(textB_candidates_idx):
             textB = self.train_dataset.__getitem__(edges[m], head_entity=e1B, tail_entity=e2B)['text']
             if len(textB) <= self.max_positions:
-                return textB, target, None
+                return textB
 
-        # Generally, there should always be candidates satisfying case0 and case1. 
+        # Generally, there should always be candidates satisfying both case0 and case1. 
         # We only move on to the next case if all of these candidates are longer than max_positions.
-        return None, None, next_case
+        return None
 
-    def __getitem__(self, index):
-        item = self.split_dataset[index]
+    def sample_positive_pair(self, e1, e2, e1_neighbors, e1_edges):
+        # Get all indices of e1_neighbors, for which the neighbor is e2
+        e1_e2_idx = np.flatnonzero(e1_neighbors == e2)
+        
+        # e1 and e2 are not mentioned in any training text
+        if len(e1_e2_idx) < 1:
+            raise Exception("Case 0 -- e1 and e2 are not mentioned in any training text")
+        
+        # e1 and e2 are mentioned in only one training text
+        elif len(e1_e2_idx) == 1:
+            raise Exception("Case 0 -- e1 and e2 are mentioned in only one training text")
 
-        textA = item['text']
-        e1A = item['head']
-        e2A = item['tail']
+        # Get all edges between e1 and e2
+        e1_e2_edges = np.take(e1_edges, e1_e2_idx, 0)
 
-        case = rd.multinomial(1, [self.case0_prob, self.case1_prob, 1-self.case0_prob-self.case1_prob]).argmax()
+        # Sample textB from e1_e2_edges
+        textB_pos = self.sample_text(e1_e2_edges, e1, e2)
 
-        e1A_neighbors = self.graph[e1A]['neighbors'].numpy()
-        e1A_edges = self.graph[e1A]['edges'].numpy()
+        return textB_pos
 
-        while case is not None:
-            # Case 0: textA and textB share both e1 and e2
-            if case == 0:
+    def sample_negative_pair(self, e1A, e2A, e1A_neighbors, e1A_edges, neg_type): 
 
-                # Set e1B and e2B to be e1A and e2A, respectively
-                e1B, e2B = e1A, e2A
+        while neg_type is not None:
 
-                # Get all indices of e1A_neighbors, for which the neighbor is e2A
-                e1A_e2A_idx = np.flatnonzero(e1A_neighbors == e2A)
-                
-                # e1A and e2A are not mentioned in any training text
-                if len(e1A_e2A_idx) < 1:
-                    raise Exception("Case 0 -- e1A and e2A are not mentioned in any training text")
-                
-                # e1A and e2A are mentioned in only one training text
-                elif len(e1A_e2A_idx) == 1:
-                    raise Exception("Case 0 -- e1A and e2A are mentioned in only one training text")
-
-                # Get all edges between e1A and e2A
-                e1A_e2A_edges = np.take(e1A_edges, e1A_e2A_idx, 0)
-
-                # Sample textB from e1A_e2A_edges
-                textB, target, case = self.sample_text(e1A_e2A_edges, e1B, e2B, 1, 1)
-
-            # Case 1: textA and textB share only e1
-            elif case == 1:
+            # Sample a strong negative: textA and textB share only e1
+            if neg_type == 0:
                 # Set e1B to be e1A
                 e1B = e1A
 
@@ -163,22 +149,26 @@ class MTBDataset(FairseqDataset):
                     # Sample e2B, and return an array of edges between e1B and e2B
                     e2B, e1B_e2B_edges = self.sample_neighbor(e1B_neighbors, e1B_unique_neighbors, e1B_edges, e2A, e2B_candidates_idx, i)
 
-                    # No sentences texting e1B and e2B that do not also text e1A
+                    # No sentences mentioning e1B and e2B that do not also text e1A
                     if len(e1B_e2B_edges) == 0 and i == n_e2B_candidates-1:
-                        #raise Exception("Case 1 -- No sentences texting e1B and e2B that do not also text e1A")
-                        case = 2
+                        #raise Exception("Case 1 -- No sentences mentioning e1B and e2B that do not also text e1A")
+                        neg_type = 1
                         continue
                     elif len(e1B_e2B_edges) == 0:
                         continue
 
                     # Sample textB from e1B_e2B_edges
-                    textB, target, case = self.sample_text(e1B_e2B_edges, e1B, e2B, 0, 2)
+                    textB_neg = self.sample_text(e1B_e2B_edges, e1B, e2B)
 
-                    if case is None:
+                    if textB_neg is not None:
+                        neg_type = None
                         break
+                    else:
+                        neg_type = 1
 
-            # Case 2: textA and textB share no entities
+            # Sample a weak negative: textA and textB share no entities
             else:
+
                 while True:
                     # Sample an index for textB from the list of all texts
                     textB_idx = rd.randint(self.n_texts)
@@ -197,53 +187,80 @@ class MTBDataset(FairseqDataset):
                     e1B, e2B = np.random.choice(unique_entity_ids, size=2, replace=False)
 
                     # Retrieve textB token sequence, with e1B and e2B marked 
-                    textB = self.train_dataset.__getitem__(textB_idx, e1B, e2B)['text']
+                    textB_neg = self.train_dataset.__getitem__(textB_idx, e1B, e2B)['text']
 
                     # Check that textB is not longer than max_positions
-                    if len(textB) > self.max_positions:
+                    if len(textB_neg) > self.max_positions:
                         continue
                     else:
-                        target = 0
-                        case = None
+                        neg_type = None
                         break
 
-            
+        return textB_neg, e1B, e2B
+
+
+    def __getitem__(self, index):
+        item = self.split_dataset[index]
+
+        textA = item['text']
+        e1A = item['head']
+        e2A = item['tail']
+
+        # Sample type of negative pair: 0 (strong) or 1 (weak)
+        neg_type = rd.multinomial(1, [self.strong_prob, 1-self.strong_prob]).argmax()
+
+        # Get neighbors and edges for e1A
+        e1A_neighbors = self.graph[e1A]['neighbors'].numpy()
+        e1A_edges = self.graph[e1A]['edges'].numpy()
+
+        # Sample positive text pair: textA and textB share both e1 and e2
+        textB_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges)
+
+        # Sample negative text pair
+        if textB_pos is not None:
+            textB_neg, e1B_neg, e2B_neg = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type)
+            target_pos, target_neg = 1, 0
+        else:
+            textA, textB_neg = None, None
+            target_pos, target_neg = None, None
+
         return {
             'textA': textA,
-            'textB': textB,
-            'e1A': e1A,
-            'e2A': e2A,
-            'e1B': e1B,
-            'e2B': e2B,
-            'target': target,
-            'ntokens': len(textA),
-            'nsentences': 1,
-            'ntokens_AB': len(textA) + len(textB),
-            'textB_len': len(textB)
+            'textB_pos': textB_pos,
+            'textB_neg': textB_neg,
+            'target_pos': target_pos,
+            'target_neg': target_neg,
+            'ntokens': len(textA) if textA is not None else 0,
+            'nsentences': 1 if textA is not None else 0,
+            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_neg) if textA is not None else 0,
+            'textB_pos_len': len(textB_pos) if textA is not None else 0,
+            'textB_neg_len': len(textB_neg) if textA is not None else 0,
         }
 
     def collater(self, instances):
-        if len(instances) == 0:
+        batch_size = len(instances)
+        if batch_size == 0:
             return None
 
         textA_list = []
         textB_dict = {}
-        e1A_list = []
-        e2A_list = []
-        e1B_list = []
-        e2B_list = []
-        target_list = []
+        B2A_dict = {}
+        target_dict = {}
         ntokens = 0
         nsentences = 0
         ntokens_AB = 0
 
-        textB_len_list = [instance['textB_len'] for instance in instances]
-        textB_mean = np.mean(textB_len_list)
-        textB_std = np.std(textB_len_list)
-        textB_max = np.max(textB_len_list)
+        textB_pos_len_list = [instance['textB_pos_len'] for instance in instances]
+        textB_neg_len_list = [instance['textB_neg_len'] for instance in instances]
+        textB_len_list = np.array(textB_pos_len_list + textB_neg_len_list)
+        textB_len_list_nonzero = textB_len_list[textB_len_list > 0]
+        
+        textB_mean = np.mean(textB_len_list_nonzero)
+        textB_std = np.std(textB_len_list_nonzero)
+        textB_max = np.max(textB_len_list_nonzero)
 
         cluster_candidates = [
-                                np.where(textB_len_list < textB_mean - 1.5*textB_std)[0], # len < mean-1.5*std
+                                np.where(np.logical_and(textB_len_list > 0, textB_len_list < textB_mean - 1.5*textB_std))[0], # len < mean-1.5*std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - 1.5*textB_std, textB_len_list < textB_mean - textB_std))[0], # mean-1.5*std <= len < mean-std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - textB_std, textB_len_list < textB_mean - 0.5*textB_std))[0], # mean-std <= len < mean-0.5*std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - 0.5*textB_std, textB_len_list < textB_mean))[0], # mean-0.5*std <= len < mean
@@ -252,27 +269,39 @@ class MTBDataset(FairseqDataset):
                                 np.where(np.logical_and(textB_len_list >= textB_mean + textB_std, textB_len_list < textB_mean + 1.5*textB_std))[0], # mean+std <= len < mean+1.5*std
                                 np.where(textB_len_list >= textB_mean + 1.5*textB_std)[0] # mean+1.5*std <= len
                              ]
-
+        
         textB_clusters = {}
         cluster_id = 0
         for c in cluster_candidates:
             if len(c) > 0:
                 textB_clusters[cluster_id] = c
                 textB_dict[cluster_id] = []
+                B2A_dict[cluster_id] = []
+                target_dict[cluster_id] = []
                 cluster_id += 1
 
         for i, instance in enumerate(instances):
-            textA_list.append(instance['textA'])
-            for cluster_id, cluster_instance_ids in textB_clusters.items():
-                if i in cluster_instance_ids:
-                    textB_dict[cluster_id].append(instance['textB'])
-                    break
 
-            e1A_list.append(instance['e1A'])
-            e2A_list.append(instance['e2A'])
-            e1B_list.append(instance['e1B'])
-            e2B_list.append(instance['e2B'])
-            target_list.append(instance['target'])
+            if instance['textA'] is None:
+                continue
+
+            textA_list.append(instance['textA'])
+
+            B2A_pos, B2A_neg = False, False
+            for cluster_id, cluster_instance_ids in textB_clusters.items():
+                if not B2A_pos and i in cluster_instance_ids[cluster_instance_ids < batch_size]:
+                    textB_dict[cluster_id].append(instance['textB_pos'])
+                    B2A_dict[cluster_id].append(i)
+                    target_dict[cluster_id].append(instance['target_pos'])
+                    B2A_pos = True
+                if not B2A_neg and i in cluster_instance_ids[cluster_instance_ids >= batch_size]-batch_size:
+                    textB_dict[cluster_id].append(instance['textB_neg'])
+                    B2A_dict[cluster_id].append(i)
+                    target_dict[cluster_id].append(instance['target_neg'])
+                    B2A_neg = True
+                if B2A_pos and B2A_neg:
+                    break
+            
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -280,20 +309,19 @@ class MTBDataset(FairseqDataset):
         padded_textA = pad_sequence(textA_list, batch_first=True, padding_value=self.dictionary.pad())
         padded_textB = {}
         padded_textB_size = 0
+        target_list = []
         for cluster_id, cluster_texts in textB_dict.items():
             padded_textB[cluster_id] = pad_sequence(cluster_texts, batch_first=True, padding_value=self.dictionary.pad())
             padded_textB_size += torch.numel(padded_textB[cluster_id])
+            target_list += target_dict[cluster_id]
 
         return {
             'textA': padded_textA,
             'textB': padded_textB,
             'textB_size': padded_textB_size,
-            'e1A': torch.LongTensor(e1A_list),
-            'e2A': torch.LongTensor(e2A_list),
-            'e1B': torch.LongTensor(e1B_list),
-            'e2B': torch.LongTensor(e2B_list),
+            'B2A': B2A_dict,
             'target': torch.LongTensor(target_list),
-            'size': len(instances),
+            'size': batch_size,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'ntokens_AB': ntokens_AB,
