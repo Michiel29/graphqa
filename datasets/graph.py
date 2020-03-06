@@ -11,6 +11,10 @@ class GraphDataset(FairseqDataset):
         self.entity_neighbors = entity_neighbors
         self.entity_edges = entity_edges
         self.edges_to_keep = None
+        self.epoch = 0
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
     def __getitem__(self, index):
         # if self.edges_to_keep is None:

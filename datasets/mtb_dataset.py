@@ -40,6 +40,9 @@ class MTBDataset(FairseqDataset):
         self.seed = seed
         self.epoch = 0
 
+    def set_epoch(self, epoch):
+        self.epoch = epoch
+
     def __len__(self):
         return len(self.split_dataset)
 

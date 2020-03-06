@@ -4,8 +4,8 @@
     "n_way": 5,
     "n_shot": 1,
 
-    "n_train_examples": 50000,
-    "n_valid_examples": 5000,
+    "n_train_examples": -1,
+    "n_valid_examples": -1,
     "n_test_examples": -1,
     "seed": 239,
     "reload": true,

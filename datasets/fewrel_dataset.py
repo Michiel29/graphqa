@@ -3,11 +3,10 @@ import logging
 import numpy as np
 import numpy.random as rd
 import torch
-
 from torch.nn.utils.rnn import pad_sequence
 
-from fairseq.data import FairseqDataset
-from fairseq.data.data_utils import numpy_seed
+from fairseq.data import data_utils, FairseqDataset
+
 from datasets import AnnotatedTextDataset
 
 logger = logging.getLogger(__name__)
@@ -23,15 +22,15 @@ class FewRelDataset(FairseqDataset):
         mask_type,
         n_way,
         n_shot,
-        dataset_size,
         seed,
     ):
         self.annotation_text_dataset = annotation_text_dataset
         self.relation_dataset = relation_dataset
         self.dictionary = dictionary
         self.n_way = n_way
+        assert self.n_way > 1
         self.n_shot = n_shot
-        self.dataset_size = dataset_size
+        assert self.n_way > 0
         self.seed = seed
         self.epoch = 0
 
@@ -39,61 +38,57 @@ class FewRelDataset(FairseqDataset):
         for idx in range(len(self.relation_dataset)):
             self.relation_index[self.relation_dataset[idx].item()].append(idx)
 
-        self.data = []
-
-        logger.info('creating %d examples with seed %d and epoch %d' % (dataset_size, self.seed, self.epoch))
-
-        with numpy_seed(self.seed, self.epoch):
-            for _ in range(self.dataset_size):
-
-                exemplars = []
-
-                # Sample n_way relation types and choose the first one as correct label
-                sample_relations = rd.choice(list(self.relation_index.keys()), size=self.n_way, replace=False)
-                positive_relation = sample_relations[0]
-                negative_relations = sample_relations[1:]
-
-                # Sample goal sentence + n_shot exemplar sentences for correct class
-                positive_text_idxs = rd.choice(self.relation_index[positive_relation], size=self.n_shot + 1, replace=False)
-
-                goal_text_idx = positive_text_idxs[0]
-                exemplars += list(positive_text_idxs[1:])
-
-                # Sample n_shot exemplar sentences for other classes
-                for rel in negative_relations:
-                    rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
-                    exemplars += list(rel_examplar_idxs)
-
-                all_ids = [goal_text_idx] + [idx for idx in exemplars]
-                total_tokens = sum([self.annotation_text_dataset.num_tokens(idx) for idx in all_ids])
-
-                # Generate list of instances, each corresponding to a dict with id of goal text, list of exemplars and the total nr of tokens in goal text and exemplar sentences
-                self.data.append({
-                    'text_id': goal_text_idx,
-                    'exemplars': exemplars,
-                    'size': total_tokens,
-                })
-
-        self.sizes = np.array([instance['size'] for instance in self.data])
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
     def __getitem__(self, index):
-        id_dict = self.data[index]
+        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+            target_item = self.annotation_text_dataset[index]
+            target_relation = self.relation_dataset[index]
+            relations = rd.choice(
+                list(self.relation_index.keys()),
+                size=self.n_way,
+                replace=False,
+            ).tolist()
+            if target_relation in relations:
+                relations.remove(target_relation)
+            else:
+                relations = relations[:self.n_way - 1]
+
+            relations = [target_relation.item()] + relations
+
+            exemplars = []
+            for rel in relations:
+                rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
+                exemplars += [
+                    self.annotation_text_dataset[idx]['text']
+                    for idx in rel_examplar_idxs
+                ]
+
+            ntokens, nsentences = len(target_item['text']), 1
+            for exemplar in exemplars:
+                nsentences += 1
+                ntokens += len(exemplars)
+
         return {
-            'text': self.annotation_text_dataset[id_dict['text_id']]['text'],
-            'exemplars': [
-                self.annotation_text_dataset[text_id]['text']
-                for text_id in id_dict['exemplars']
-            ],
+            'text': target_item['text'],
+            'exemplars': exemplars,
+            'ntokens': ntokens,
+            'nsentences': nsentences,
         }
 
     def __len__(self):
-        return len(self.data)
+        return len(self.annotation_text_dataset)
 
     def num_tokens(self, index):
-        return self.data[index]['size']
+        return self.sizes[index]
 
     def size(self, index):
-        return self.data[index]['size']
+        return self.sizes[index]
+
+    @property
+    def sizes(self):
+        return self.annotation_text_dataset.sizes
 
     def ordered_indices(self):
         """Sorts by sentence length, randomly shuffled within sentences of same length"""

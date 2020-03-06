@@ -3,8 +3,7 @@ import torch
 import numpy as np
 import numpy.random as rd
 
-from fairseq.data import FairseqDataset
-from fairseq.data import data_utils
+from fairseq.data import data_utils, FairseqDataset
 
 
 class AnnotatedTextDataset(FairseqDataset):
@@ -32,6 +31,9 @@ class AnnotatedTextDataset(FairseqDataset):
         self.alpha = alpha
         self.seed = seed
         self.epoch = 0
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
     def __getitem__(self, index, head_entity=None, tail_entity=None):
         text = self.text_data[index]
@@ -192,8 +194,3 @@ class AnnotatedTextDataset(FairseqDataset):
             'ntokens': len(text_new),
             'nsentences': 1,
         }
-
-    @property
-    def supports_prefetch(self):
-        """Whether this dataset supports prefetching."""
-        return False

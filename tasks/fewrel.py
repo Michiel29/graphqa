@@ -16,6 +16,7 @@ from datasets import (
     AnnotatedTextDataset,
     FewRelDataset,
     FilteredDataset,
+    prune_dataset_size,
 )
 from utils.data_utils import (
     CustomDictionary,
@@ -65,13 +66,21 @@ class FewRelTask(BaseTask):
             seed=self.seed,
             alpha=self.args.alpha,
         )
-        annotated_text_dataset, indices = self.filter_by_max_length(
+        annotated_text_dataset, indices = self.filter_by_max_positions(
             annotated_text_dataset,
+            return_indices=True,
         )
-
         relation_dataset = FilteredDataset(relation_data, indices)
 
         n_examples = int(getattr(self.args, 'n_' + split + '_examples'))
+        if n_examples > 0:
+            annotated_text_dataset, indices = prune_dataset_size(
+                annotated_text_dataset,
+                n_examples,
+                self.seed,
+                return_indices=True,
+            )
+            relation_dataset = FilteredDataset(relation_dataset, indices)
 
         dataset = FewRelDataset(
             annotation_text_dataset=annotated_text_dataset,
@@ -80,7 +89,6 @@ class FewRelTask(BaseTask):
             mask_type=self.mask_type,
             n_way=self.args.n_way,
             n_shot=self.args.n_shot,
-            dataset_size=n_examples,
             seed=self.seed,
         )
 

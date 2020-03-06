@@ -39,10 +39,16 @@ def filter_by_max_length(dataset, max_positions, size=-1):
     return FilteredDataset(dataset, data_indices), data_indices
 
 
-def prune_dataset_size(dataset, size, seed):
+def prune_dataset_size(dataset, size, seed, return_indices=False):
     if size == -1:
-        return dataset
+        if return_indices:
+            return dataset, None
+        else:
+            return dataset
     else:
         with data_utils.numpy_seed(hash('prune_dataset_size'), seed):
             data_indices = rd.choice(len(dataset), size, replace=False)
-        return FilteredDataset(dataset, data_indices)
+        if return_indices:
+            return FilteredDataset(dataset, data_indices), data_indices
+        else:
+            return FilteredDataset(dataset, data_indices)
