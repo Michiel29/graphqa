@@ -48,11 +48,13 @@ class MTBTask(RelationInferenceTask):
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
         parser.add_argument('--case0_prob', default=0.5, type=float,
-                            help='probability of sampling a pair of sentences which share both head and tail entities')
-        parser.add_argument('--case1_prob', default=0.35, type=float,
-                            help='probability of sampling a pair of sentences which share only one entity')
-        parser.add_argument('--n_tries', default=10, type=int,
-                            help='number of attempts to sample mentions for a given case')
+                            help='probability of sampling a pair of texts which share both head and tail entities')
+        parser.add_argument('--case1_prob', default=0.4, type=float,
+                            help='probability of sampling a pair of texts which share only one entity')
+        parser.add_argument('--n_tries_neighbor', default=100, type=int,
+                            help='number of attempts to sample neighbors for a given case')
+        parser.add_argument('--n_tries_text', default=100, type=int,
+                            help='number of attempts to sample texts for a given case')
         parser.add_argument('--alpha', default=0.7, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
 
@@ -119,7 +121,8 @@ class MTBTask(RelationInferenceTask):
             dictionary=self.dictionary,
             case0_prob=self.args.case0_prob,
             case1_prob=self.args.case1_prob,
-            n_tries=self.args.n_tries,
+            n_tries_neighbor=self.args.n_tries_neighbor,
+            n_tries_text=self.args.n_tries_text,
             max_positions=self.args.max_positions,
             seed=self.seed,
         )

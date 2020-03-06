@@ -43,25 +43,11 @@ def main(args):
         vocab_size=n_entities
     )
 
-    '''
-    neighbor_len_builder = indexed_dataset.make_builder(
-        neighbor_len_path + '.bin',
-        impl='mmap',
-        vocab_size=n_entities
-    )
-    '''
     edge_builder = indexed_dataset.make_builder(
         edge_path + '.bin',
         impl='mmap',
         vocab_size=len(annotation_data)
     )
-    '''
-    edge_len_builder = indexed_dataset.make_builder(
-        edge_len_path + '.bin',
-        impl='mmap',
-        vocab_size=len(annotation_data)
-    )
-    '''
 
     print('creating indexed datasets')
     unique_neighbors_len = []
@@ -73,14 +59,10 @@ def main(args):
         unique_edges_len.append(len(unique_edges))
 
         neighbor_builder.add_item(torch.IntTensor(unique_neighbors))
-        #neighbor_len_builder.add_item(torch.IntTensor(unique_neighbors_len))
         edge_builder.add_item(torch.IntTensor(unique_edges))
-        #edge_len_builder.add_item(torch.IntTensor(unique_edges_len))
 
     neighbor_builder.finalize(neighbor_path + '.idx')
-    #neighbor_len_builder.finalize(neighbor_len_path + '.idx')
     edge_builder.finalize(edge_path + '.idx')
-    #edge_len_builder.finalize(edge_len_path + '.idx')
 
     np.save(neighbor_len_path + '.npy', unique_neighbors_len)
     np.save(edge_len_path + '.npy', unique_edges_len)

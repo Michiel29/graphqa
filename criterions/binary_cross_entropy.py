@@ -51,7 +51,7 @@ class BinaryCrossEntropy(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'ntokens_AB': sample['ntokens_AB'],
-            'ntokens_mem': torch.numel(sample['mentionA']) + sample['mentionB_size'],
+            'ntokens_mem': torch.numel(sample['textA']) + sample['textB_size'],
         }
         return loss, sample_size, logging_output
 

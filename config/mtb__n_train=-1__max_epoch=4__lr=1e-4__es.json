@@ -6,10 +6,11 @@
     "data_path": "../data/nki/bin-v3-threshold20-small",
     //"data_path": "../data/nki/bin-v3-threshold20",
 
+    "mask_type": "start_end",
     "case0_prob": 0.5,
     "case1_prob": 0.4,
-    "n_tries": 20,
-    "mask_type": "start_end",
+    "n_tries_neighbor": 100,
+    "n_tries_text": 100,
     "alpha": 0.7,
 
     "entity_dim": 256,
@@ -37,10 +38,10 @@
     "dropout": 0.1,
     "attention_dropout": 0.1,
 
-    "max_sentences": 300, // max number of mentionA sentences per batch
-    "max_tokens": 1.5e4, // max number of mentionA tokens per batch
-    //"max_sentences": 64, // max number of mentionA sentences per batch
-    //"max_tokens": 1.5e3, // max number of mentionA tokens per batch
+    "max_sentences": 300, // max number of textA sentences per batch
+    "max_tokens": 1.5e4, // max number of textA tokens per batch
+    //"max_sentences": 64, // max number of textA sentences per batch
+    //"max_tokens": 1.5e3, // max number of textA tokens per batch
     "max_positions": 128,
     "update_freq": [1],
 
@@ -51,13 +52,12 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 0, // set at least 1 worker
+    "num_workers": 6, // set at least 1 worker
     //"num_workers": 0, // set at least 1 worker
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
     "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt",
-    // "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
     "fp16": false,

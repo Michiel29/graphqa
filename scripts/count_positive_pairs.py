@@ -37,7 +37,7 @@ def main(args):
             ent_pair_counts = pickle.load(f)
     else:
         print('building entity pair count dict')
-        ent_pair_counts = get_entity_pair_counts(annotation_data_dict['train'], entities['train'])
+        ent_pair_counts = get_entity_pair_counts(annotation_data_dict['train'], entities_dict['train'])
         print('saving entity pair count dict')
         with open(ent_pair_counts_path, 'wb') as f:
             pickle.dump(ent_pair_counts, f, pickle.HIGHEST_PROTOCOL)
@@ -102,7 +102,7 @@ def get_entity_pair_counts(annotation_data, entities):
     ent_pair_counts = defaultdict(int) # for each entity pair, counts number of sentences containing it
     for sentence_id in tqdm(range(len(annotation_data))):
         for p in permutations(entities[sentence_id].numpy(), 2):
-            ent_pair_counts[frozenset(p)] += 1
+            ent_pair_counts[p] += 1
 
     return ent_pair_counts
 

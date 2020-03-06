@@ -23,9 +23,9 @@ class EncoderMTBModel(BaseFairseqModel):
         self.encoder_embed_dim = args.encoder_embed_dim
         self.encoder = encoder
         if args.encoder_output_layer_type == 'bag_of_words':
-            self.mention_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
+            self.text_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
         elif args.encoder_output_layer_type in ['head_tail_concat', 'entity_start']:
-            self.mention_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
+            self.text_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
 
         self.task = task
         self._max_positions = args.max_positions
@@ -35,17 +35,17 @@ class EncoderMTBModel(BaseFairseqModel):
 
     def forward(self, batch):
 
-        mentionA_enc, _ = self.encoder(batch['mentionA']) # [batch_size, enc_dim]
-        mentionA_enc = self.mention_linear(mentionA_enc) # [batch_size, ent_dim]
+        textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
+        textA_enc = self.text_linear(textA_enc) # [batch_size, ent_dim]
 
-        mentionB_enc = []
-        for cluster_id, cluster_mentions in batch['mentionB'].items():
-            cur_mentionB_enc, _ = self.encoder(cluster_mentions)
-            mentionB_enc.append(cur_mentionB_enc)
-        mentionB_enc = torch.cat(mentionB_enc, dim=0) 
-        mentionB_enc = self.mention_linear(mentionB_enc) # [batch_size, ent_dim]
+        textB_enc = []
+        for cluster_id, cluster_texts in batch['textB'].items():
+            cur_textB_enc, _ = self.encoder(cluster_texts)
+            textB_enc.append(cur_textB_enc)
+        textB_enc = torch.cat(textB_enc, dim=0) 
+        textB_enc = self.text_linear(textB_enc) # [batch_size, ent_dim]
                 
-        scores = (mentionA_enc * mentionB_enc).sum(dim=-1) 
+        scores = (textA_enc * textB_enc).sum(dim=-1) 
 
         #inspect_batch(batch, self.task, scores)
 

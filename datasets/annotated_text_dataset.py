@@ -130,7 +130,15 @@ class AnnotatedTextDataset(FairseqDataset):
         unique_entity_ids = np.unique(entity_ids)
         assert len(unique_entity_ids) >= 2
 
-        # Get e1 and e2 indices
+        # Get e1 and e2 indices (directed)
+        e1, e2 = e1_temp, e2_temp
+        e1_indices = np.where(entity_ids == e1)[0]
+        e2_indices = np.where(entity_ids == e2)[0]
+        e1_idx = np.random.choice(e1_indices)
+        e2_idx = np.random.choice(e2_indices)
+
+        # Get e1 and e2 indices (undirected) -- MTB paper does this, but it invalidates our directed case1 pre-filtering
+        '''
         e1_indices = np.where(entity_ids == e1_temp)[0]
         e2_indices = np.where(entity_ids == e2_temp)[0]
         e1_temp_idx = np.random.choice(e1_indices)
@@ -145,6 +153,7 @@ class AnnotatedTextDataset(FairseqDataset):
             e1_idx = e2_temp_idx
             e2 = e1_temp
             e2_idx = e1_temp_idx
+        '''
 
         # Get e1 and e2 start/end indices
         e1_annotation = annotations_list[e1_idx][2].item()

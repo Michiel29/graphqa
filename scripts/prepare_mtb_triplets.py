@@ -1,3 +1,4 @@
+from pudb import set_trace
 import os
 from collections import defaultdict
 from itertools import permutations
@@ -37,7 +38,7 @@ def main(args):
             ent_pair_counts = pickle.load(f)
     else:
         print('building entity pair count dict')
-        ent_pair_counts = get_entity_pair_counts(annotation_data_dict['train'], entities['train'])
+        ent_pair_counts = get_entity_pair_counts(annotation_data_dict['train'], entities_dict['train'])
         print('saving entity pair count dict')
         with open(ent_pair_counts_path, 'wb') as f:
             pickle.dump(ent_pair_counts, f, pickle.HIGHEST_PROTOCOL)
@@ -49,7 +50,7 @@ def main(args):
         print('building mtb triplets list')
         mtb_triplets = get_mtb_triplets(ent_pair_counts, annotation_data_dict[split], entities_dict[split], neighbors, neighbors_len, edges, edges_len)
 
-        print('saving mtb triplets list to file\n')
+        print('saving mtb triplets list to file')
         mtb_path = os.path.join(args.data_path, 'mtb_triplets_'+split)
         print('{} mtb triplets'.format(len(mtb_triplets)))
         np.save(mtb_path + '.npy', mtb_triplets)
@@ -99,10 +100,10 @@ def load_helper_datasets(data_path, splits):
     return entities_dict, neighbors, neighbors_len, edges, edges_len
 
 def get_entity_pair_counts(annotation_data, entities):
-    ent_pair_counts = defaultdict(int) # for each entity pair, counts number of sentences containing it
+    ent_pair_counts = defaultdict(int) # for each directed entity pair, counts the number of sentences containing it
     for sentence_id in tqdm(range(len(annotation_data))):
         for p in permutations(entities[sentence_id].numpy(), 2):
-            ent_pair_counts[frozenset(p)] += 1
+            ent_pair_counts[p] += 1
 
     return ent_pair_counts
 
@@ -110,27 +111,32 @@ def get_mtb_triplets(ent_pair_counts, annotation_data, entities, neighbors, neig
     mtb_triplets = []
     for sentence_id in tqdm(range(len(annotation_data))):
         for p in permutations(entities[sentence_id].numpy(), 2):
-            # Check case0
-            case0 = ent_pair_counts[frozenset(p)] > 1 
+            # Check case0 (i.e., are there at least two sentences mentioning both e1 and e2?)
+            case0 = ent_pair_counts[p] > 1 
+            if case0 is False:
+                continue
 
-            # Check case1
-            if neighbors_len[p[0]] == 0 or neighbors_len[p[1]] == 0:
+            # Check case1 (i.e., does e1 have at least one neighbor which is not also neighbors with e2?)
+            if neighbors_len[p[0]] < 2: # e1 doesn't have any neighbors besides e2 
                 case1 = False
-            elif neighbors_len[p[0]] > neighbors_len[p[1]] or edges_len[p[0]] > edges_len[p[1]]:
+            elif neighbors_len[p[0]] > neighbors_len[p[1]]: # e1 has more neighbors than e2 does --> e1 has at least one neighbor which isn't in e2's neighbor list
                 case1 = True
             else:
-                e1_edges, e2_edges = edges[p[0]].numpy(), edges[p[1]].numpy()
-                if e1_edges[0] < e2_edges[0] or e1_edges[-1] > e2_edges[-1]:
+                e1_neighbors, e2_neighbors = neighbors[p[0]].numpy(), neighbors[p[1]].numpy()
+                e1_neighbors, e2_neighbors = e1_neighbors[e1_neighbors != p[1]], e2_neighbors[e2_neighbors != p[0]]
+                if e1_neighbors[0] < e2_neighbors[0]: # e1's lowest-index neighbor is not in e2's neighbor list 
+                    case1 = True
+                elif e1_neighbors[-1] > e2_neighbors[-1]: # e1's highest-index neighbor is not in e2's neighbor list
                     case1 = True
                 else:
-                    for i in range(edges_len[p[0]]):
-                        if e1_edges[i] not in e2_edges:
+                    for i in range(1, neighbors_len[p[0]]-1): # iterate through all of e1's neighbors, besides the first and last ones (we already checked those)
+                        if e1_neighbors[i] not in e2_neighbors[1:-1]: # e1 has a neighbor which is not in e2's neighbor list
                             case1 = True
                             break
-                        elif i == edges_len[p[0]]-1:
+                        elif i == neighbors_len[p[0]]-2: # all of e1's neighbors are in e2's neighbor list
                             case1 = False
             
-            # If case0 and case1 are true, then add the current triplet to mtb_triplets
+            # If case0 and case1 are both true, then add the current triplet to mtb_triplets
             if case0 and case1:
                 mtb_triplets.append((sentence_id, p[0], p[1]))
 
