@@ -10,7 +10,6 @@ from fairseq.models import BaseFairseqModel
 import tasks
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 
-# from utils.diagnostic_utils import inspect_batch
 
 @register_model('encoder_mtb')
 class EncoderMTBModel(BaseFairseqModel):
@@ -46,8 +45,6 @@ class EncoderMTBModel(BaseFairseqModel):
         textB_enc = self.text_linear(textB_enc) # [batch_size, ent_dim]
                 
         scores = (textA_enc * textB_enc).sum(dim=-1) 
-
-        #inspect_batch(batch, self.task, scores)
 
         return scores
 
