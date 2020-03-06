@@ -93,34 +93,34 @@ After that, the `__getitem__` method will use the sentence and entity IDs from t
 ## bin-v3-threshold20
 #### train
 - __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_train.npy` 
-- __size of data__: 3.9GB
-- __number of triplets__: 173,948,278
+- __size of data__: 2.9GB
+- __number of triplets__: 125,755,179
 - __number of sentences__: 23,520,420
-- __triplet dataset generation time__: 53m (6m for ent_pair_counts; 49m for mtb_triplets)
-- __epoch runtime__: ~36h
+- __triplet dataset generation time__: 5:38:55 (05:12 for ent_pair_dict; 5:26:43 for mtb_triplets)
+- __epoch runtime__: 
 #### valid
 - __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20/mtb_triplets_valid.npy`
-- __size of data__: 29MB
-- __number of triplets__: 1,238,670 
+- __size of data__: 25MB
+- __number of triplets__: 1,065,258
 - __number of sentences__: 237,147
-- __triplet dataset generation time__: 6.5m (6m for ent_pair_counts; 29s for mtb_triplets)
-- __epoch runtime__: ~11.5m
+- __triplet dataset generation time__: 07:58 (05:12 for ent_pair_dict; 02:56 for mtb_triplets)
+- __epoch runtime__: 
 
 ## bin-v3-threshold20-small
 #### train
 - __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_train.npy`
-- __size of data__: 356MB
-- __number of triplets__: 15,527,749
+- __size of data__: 173MB
+- __number of triplets__: 7,528,652
 - __number of sentences__: 2,138,107
-- __triplet dataset generation time__: 4m (31s for ent_pair_counts; 3.5m for mtb_triplets)
-- __epoch runtime__: ~3.5h
+- __triplet dataset generation time__: 05:37 (00:26 for ent_pair_dict; 05:11 for mtb_triplets)
+- __epoch runtime__: 
 #### valid
 - __data path__: `waldstein.usc.edu:/data1/aarchan/self_inference/data/nki/bin-v3-threshold20-small/mtb_triplets_valid.npy`
-- __size of data__: 18MB
-- __number of triplets__: 746,529
+- __size of data__: 13MB
+- __number of triplets__: 556,327
 - __number of sentences__: 237,147
-- __triplet dataset generation time__: 50s (31s for ent_pair_counts; 19s for mtb_triplets)
-- __epoch runtime__: ~4.5m
+- __triplet dataset generation time__: 00:54 (00:26 for ent_pair_dict; 00:28 for mtb_triplets)
+- __epoch runtime__: 
 
 ## Note
 Epoch runtime estimates computed using the following settings: 
