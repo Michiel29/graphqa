@@ -16,7 +16,10 @@ class MaskedLmCustomLoss(FairseqCriterion):
         super().__init__(args, task)
         self.head_idx = task.target_dictionary.head() if task.target_dictionary is not None else -100
         self.tail_idx = task.target_dictionary.tail() if task.target_dictionary is not None else -100
-
+        self.e1_start_idx = task.target_dictionary.e1_start() if task.target_dictionary is not None else -100
+        self.e1_end_idx = task.target_dictionary.e1_end() if task.target_dictionary is not None else -100
+        self.e2_start_idx = task.target_dictionary.e2_start() if task.target_dictionary is not None else -100
+        self.e2_end_idx = task.target_dictionary.e2_end() if task.target_dictionary is not None else -100
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -44,7 +47,14 @@ class MaskedLmCustomLoss(FairseqCriterion):
         if sample_size != 0:
             targets = targets[masked_tokens]
 
-        head_tail_mask = ((targets == self.head_idx) | (targets == self.tail_idx)).float()
+        head_tail_mask = (
+            (targets == self.head_idx)
+            | (targets == self.tail_idx)
+            | (targets == self.e1_start_idx)
+            | (targets == self.e1_end_idx)
+            | (targets == self.e2_start_idx)
+            | (targets == self.e2_end_idx)
+        ).float()
         words_mask = 1 - head_tail_mask
 
         predicted_class = torch.argmax(logits, dim=1)
