@@ -1,7 +1,10 @@
+import logging
 import numpy.random as rd
 import numpy as np
 
 from fairseq.data import BaseWrapperDataset, data_utils
+
+logger = logging.getLogger(__name__)
 
 
 class FilteredDataset(BaseWrapperDataset):
@@ -36,6 +39,11 @@ class FilteredDataset(BaseWrapperDataset):
 
 def filter_by_max_length(dataset, max_positions, size=-1):
     data_indices = np.nonzero(dataset.sizes <= max_positions)[0]
+    logger.info('Filtered corpus by max length %d: keep %d out of %d ' % (
+        max_positions,
+        len(data_indices),
+        len(dataset),
+    ))
     return FilteredDataset(dataset, data_indices), data_indices
 
 

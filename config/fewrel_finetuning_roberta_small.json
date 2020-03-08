@@ -8,7 +8,6 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
     "seed": 239,
-    "reload": true,
 
     "arch": "encoder_fewrel__roberta_small",
     "mask_type": null,
@@ -23,14 +22,14 @@
     "weight_decay": 0.1,
 
     "max_epoch": 10,
-    "total_num_update": 7820,
+    "total_num_update": 7000,
     // "total_num_update": 100000000,
-    "warmup_updates": 500,
+    "warmup_updates": 420,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
     "adam_eps": 1e-6,
     "clip_norm": 0.0,
-    "lr": [5e-6],
+    "lr": [1e-5],
     "lr_scheduler": "polynomial_decay",
 
     "max_sentences": 32,

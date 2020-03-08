@@ -1,5 +1,4 @@
 from collections import defaultdict
-import logging
 import numpy as np
 import numpy.random as rd
 import torch
@@ -8,8 +7,6 @@ from torch.nn.utils.rnn import pad_sequence
 from fairseq.data import data_utils, FairseqDataset
 
 from datasets import AnnotatedTextDataset
-
-logger = logging.getLogger(__name__)
 
 
 class FewRelDataset(FairseqDataset):
