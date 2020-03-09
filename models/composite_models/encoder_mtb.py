@@ -9,6 +9,7 @@ from fairseq.models import BaseFairseqModel
 
 import tasks
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
+from utils.diagnostic_utils import Diagnostic
 
 
 @register_model('encoder_mtb')
@@ -29,6 +30,8 @@ class EncoderMTBModel(BaseFairseqModel):
         self.task = task
         self._max_positions = args.max_positions
 
+        #self.diag = Diagnostic(task)
+
     def max_positions(self):
         return self._max_positions
 
@@ -48,7 +51,9 @@ class EncoderMTBModel(BaseFairseqModel):
                 
         textA_enc = torch.index_select(textA_enc, 0, torch.cuda.LongTensor(B2A))
 
-        scores = (textA_enc * textB_enc).sum(dim=-1) 
+        scores = (textA_enc * textB_enc).sum(dim=-1)
+
+        #self.diag.inspect_batch(batch)
 
         return scores
 

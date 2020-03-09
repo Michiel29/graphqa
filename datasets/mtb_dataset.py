@@ -216,13 +216,13 @@ class MTBDataset(FairseqDataset):
         # Sample positive text pair: textA and textB share both e1 and e2
         textB_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges)
 
-        # Sample negative text pair
+        # Check if positive text pair was successfully sampled
         if textB_pos is not None:
+            # Sample negative text pair -- must be successful, at least for weak negatives
             textB_neg, e1B_neg, e2B_neg = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type)
             target_pos, target_neg = 1, 0
         else:
-            textA, textB_neg = None, None
-            target_pos, target_neg = None, None
+            return None
 
         return {
             'textA': textA,
@@ -230,14 +230,17 @@ class MTBDataset(FairseqDataset):
             'textB_neg': textB_neg,
             'target_pos': target_pos,
             'target_neg': target_neg,
-            'ntokens': len(textA) if textA is not None else 0,
-            'nsentences': 1 if textA is not None else 0,
-            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_neg) if textA is not None else 0,
-            'textB_pos_len': len(textB_pos) if textA is not None else 0,
-            'textB_neg_len': len(textB_neg) if textA is not None else 0,
+            'ntokens': len(textA),
+            'nsentences': 1,
+            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_neg),
+            'textB_pos_len': len(textB_pos),
+            'textB_neg_len': len(textB_neg),
         }
 
     def collater(self, instances):
+        # Filter out instances for which no positive text pair exists 
+        instances = [x for x in instances if x is not None]
+
         batch_size = len(instances)
         if batch_size == 0:
             return None
@@ -253,14 +256,13 @@ class MTBDataset(FairseqDataset):
         textB_pos_len_list = [instance['textB_pos_len'] for instance in instances]
         textB_neg_len_list = [instance['textB_neg_len'] for instance in instances]
         textB_len_list = np.array(textB_pos_len_list + textB_neg_len_list)
-        textB_len_list_nonzero = textB_len_list[textB_len_list > 0]
         
-        textB_mean = np.mean(textB_len_list_nonzero)
-        textB_std = np.std(textB_len_list_nonzero)
-        textB_max = np.max(textB_len_list_nonzero)
+        textB_mean = np.mean(textB_len_list)
+        textB_std = np.std(textB_len_list)
+        textB_max = np.max(textB_len_list)
 
         cluster_candidates = [
-                                np.where(np.logical_and(textB_len_list > 0, textB_len_list < textB_mean - 1.5*textB_std))[0], # len < mean-1.5*std
+                                np.where(textB_len_list < textB_mean - 1.5*textB_std)[0], # len < mean-1.5*std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - 1.5*textB_std, textB_len_list < textB_mean - textB_std))[0], # mean-1.5*std <= len < mean-std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - textB_std, textB_len_list < textB_mean - 0.5*textB_std))[0], # mean-std <= len < mean-0.5*std
                                 np.where(np.logical_and(textB_len_list >= textB_mean - 0.5*textB_std, textB_len_list < textB_mean))[0], # mean-0.5*std <= len < mean
@@ -281,10 +283,6 @@ class MTBDataset(FairseqDataset):
                 cluster_id += 1
 
         for i, instance in enumerate(instances):
-
-            if instance['textA'] is None:
-                continue
-
             textA_list.append(instance['textA'])
 
             B2A_pos, B2A_neg = False, False

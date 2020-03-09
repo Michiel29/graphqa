@@ -10,7 +10,6 @@ from fairseq.models import BaseFairseqModel
 import tasks
 from models.triplet import triplet_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
-
 from utils.diagnostic_utils import Diagnostic
 
 @register_model('encoder_triplet')
