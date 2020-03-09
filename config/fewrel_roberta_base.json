@@ -3,13 +3,15 @@
     "data_path": "../data/fewrel/bin",
     "n_way": 5,
     "n_shot": 1,
+    "seed": 239,
 
     "n_train_examples": 25000,
     "n_valid_examples": 5000,
     "n_test_examples": -1,
 
     "arch": "encoder_fewrel__roberta_base",
-    "mask_type": "head_tail",
+    "mask_type": "start_end",
+    "alpha": 0.7,
     "entity_dim": 256,
 
     "encoder_layers": 12,

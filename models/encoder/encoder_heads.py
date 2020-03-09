@@ -46,8 +46,14 @@ class HeadTailConcat(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
-        self.head_idx = dictionary.head()
-        self.tail_idx = dictionary.tail()
+        if args.mask_type == 'head_tail':
+            self.head_idx = dictionary.head()
+            self.tail_idx = dictionary.tail()
+        elif args.mask_type == 'start_end':
+            self.head_idx = dictionary.e1_start()
+            self.tail_idx = dictionary.e2_start()
+        else:
+            raise Exception('HeadTailConcat is unsupported for the mask type %s' % str(args.mask_type))
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
@@ -67,8 +73,14 @@ class HeadTailConcatLinear(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
-        self.head_idx = dictionary.head()
-        self.tail_idx = dictionary.tail()
+        if args.mask_type == 'head_tail':
+            self.head_idx = dictionary.head()
+            self.tail_idx = dictionary.tail()
+        elif args.mask_type == 'start_end':
+            self.head_idx = dictionary.e1_start()
+            self.tail_idx = dictionary.e2_start()
+        else:
+            raise Exception('HeadTailConcatLinear is unsupported for the mask type %s' % str(args.mask_type))
 
         self.linear = nn.Linear(2*args.encoder_embed_dim, args.encoder_representation_dim)
 

@@ -26,6 +26,9 @@ class AnnotatedTextDataset(FairseqDataset):
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end', None]
+        if self.mask_type == 'start_end':
+            self.start_tokens = [self.dictionary.e1_start(), self.dictionary.e2_start()]
+            self.end_tokens = [self.dictionary.e1_end(), self.dictionary.e2_end()]
         self.assign_head_tail = assign_head_tail
         assert self.assign_head_tail in ['random', 'first', None]
         self.alpha = alpha
@@ -124,16 +127,13 @@ class AnnotatedTextDataset(FairseqDataset):
             'nsentences': 1,
         }
 
-    def start_end_mask(self, text, annotations, e1_temp, e2_temp):
+    def start_end_mask(self, text, annotations, head_entity, tail_entity):
         annotations_list = annotations.split(3)
         entity_ids = annotations[2::3].numpy()
-        unique_entity_ids = np.unique(entity_ids)
-        assert len(unique_entity_ids) >= 2
 
         # Get e1 and e2 indices (directed)
-        e1, e2 = e1_temp, e2_temp
-        e1_indices = np.where(entity_ids == e1)[0]
-        e2_indices = np.where(entity_ids == e2)[0]
+        e1_indices = np.where(entity_ids == head_entity)[0]
+        e2_indices = np.where(entity_ids == tail_entity)[0]
         e1_idx = np.random.choice(e1_indices)
         e2_idx = np.random.choice(e2_indices)
 
@@ -154,52 +154,54 @@ class AnnotatedTextDataset(FairseqDataset):
             e2 = e1_temp
             e2_idx = e1_temp_idx
         '''
-
-        # Get e1 and e2 start/end indices
-        e1_annotation = annotations_list[e1_idx][2].item()
-        e1_start = annotations_list[e1_idx][0].item() + self.shift_annotations
-        e1_end = annotations_list[e1_idx][1].item() + self.shift_annotations
-
-        e2_annotation = annotations_list[e2_idx][2].item()
-        e2_start = annotations_list[e2_idx][0].item() + self.shift_annotations
-        e2_end = annotations_list[e2_idx][1].item() + self.shift_annotations
-
-        # Initialize new text with -1's
-        text_new = -1 * torch.ones(text.shape[0]+4).long()
-
-        # Copy over non-entity tokens from original text to new text
-        text_new[:e1_start] = text[:e1_start]
-        text_new[e1_end+2:e2_start+2] = text[e1_end:e2_start]
-        text_new[e2_end+4:] = text[e2_end:]
-
-        # Insert e1 and e2 start/end tokens into new text
-        text_new[e1_start] = self.dictionary.e1_start()
-        text_new[e1_end+1] = self.dictionary.e1_end()
-        text_new[e2_start+2] = self.dictionary.e2_start()
-        text_new[e2_end+3] = self.dictionary.e2_end()
-
         # For each entity, randomly decide whether to mask it with a [BLANK] token
         #   - NO, with probability alpha
         #   - YES, with probability 1-alpha
         mask_decision = np.random.choice(2, 2, p=[self.alpha, 1 - self.alpha])
 
-        if mask_decision[0] == 1:
-            text_new[e1_start+1] = self.dictionary.blank()
-        else:
-            text_new[e1_start+1:e1_end+1] = text[e1_start:e1_end]
+        # Get e1 and e2 start/end indices - we assume intervals don't overlap
+        start_entity_events = {
+            annotations_list[e1_idx][0].item() + self.shift_annotations: 0,
+            annotations_list[e2_idx][0].item() + self.shift_annotations: 1,
+        }
+        end_entity_events = {
+            annotations_list[e1_idx][1].item() + self.shift_annotations - 1: 0,
+            annotations_list[e2_idx][1].item() + self.shift_annotations - 1: 1,
+        }
+        current_entity = None
+        text_new = []
+        for text_index in range(len(text)):
+            if text_index in start_entity_events:
+                current_entity = start_entity_events[text_index]
+                text_new.append(self.start_tokens[current_entity])
+            # Check if we need to replace entity surface form with [BLANK]
+            if current_entity is not None and mask_decision[current_entity]:
+                # Check if we have already inserted [BLANK]
+                assert len(text_new) > 0
+                if text_new[-1] != self.dictionary.blank():
+                    text_new.append(self.dictionary.blank())
+            else:
+                text_new.append(text[text_index])
+            if text_index in end_entity_events:
+                assert current_entity == end_entity_events[text_index]
+                text_new.append(self.end_tokens[current_entity])
+                current_entity = None
 
-        if mask_decision[1] == 1:
-            text_new[e2_start+3] = self.dictionary.blank()
-        else:
-            text_new[e2_start+3:e2_end+3] = text[e2_start:e2_end]
+        if mask_decision.sum() == 0:
+            assert len(text_new) == len(text) + 4
 
-        # Remove any -1's in new text left over after [BLANK] masking
-        text_new = text_new[text_new != -1]
+        text_new = torch.LongTensor(text_new)
+        assert (text_new == self.dictionary.blank()).sum() == mask_decision.sum()
+
+        assert self.dictionary.e1_start() in text_new
+        assert self.dictionary.e1_end() in text_new
+        assert self.dictionary.e2_start() in text_new
+        assert self.dictionary.e2_end() in text_new
 
         return {
             'text': text_new,
-            'head': e1,
-            'tail': e2,
+            'head': head_entity,
+            'tail': tail_entity,
             'ntokens': len(text_new),
             'nsentences': 1,
         }
