@@ -1,5 +1,4 @@
 import logging
-import numpy.random as rd
 import numpy as np
 
 from fairseq.data import BaseWrapperDataset, data_utils
@@ -54,8 +53,8 @@ def prune_dataset_size(dataset, size, seed, return_indices=False):
         else:
             return dataset
     else:
-        with data_utils.numpy_seed(hash('prune_dataset_size'), seed):
-            data_indices = rd.choice(len(dataset), size, replace=False)
+        with data_utils.numpy_seed(31415, seed):
+            data_indices = np.random.choice(len(dataset), size, replace=False)
         if return_indices:
             return FilteredDataset(dataset, data_indices), data_indices
         else:
