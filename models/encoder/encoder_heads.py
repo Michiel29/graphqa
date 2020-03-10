@@ -6,17 +6,14 @@ class BoW(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
-        self.padding_idx = dictionary.pad()
-        self.head_idx = dictionary.head()
-        self.tail_idx = dictionary.tail()
+        weights = torch.ones(len(dictionary))
+        weights[dictionary.special_tokens()] = 0
+        self.weights = nn.Parameter(weights)
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
-        mask = ((src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)).unsqueeze(-1) # [batch_size, length, enc_dim]
-        masked_emb = x * mask
-        mask_sum = mask.sum(dim=-2) # [batch_size, enc_dim]
-        avg_emb = torch.sum(masked_emb, dim=-2) / mask_sum
-
+        mask = self.weights[src_tokens]
+        avg_emb = torch.bmm(mask.unsqueeze(-2), x).squeeze(-2) / torch.sum(mask, dim=-1, keepdim=True)
         return avg_emb
 
 
@@ -24,21 +21,16 @@ class BoWLinear(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
-        self.padding_idx = dictionary.pad()
-        self.head_idx = dictionary.head()
-        self.tail_idx = dictionary.tail()
-
+        weights = torch.ones(len(dictionary))
+        weights[dictionary.special_tokens()] = 0
+        self.weights = nn.Parameter(weights)
         self.linear = nn.Linear(args.encoder_embed_dim, args.encoder_representation_dim)
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
-        mask = ((src_tokens != self.padding_idx) & (src_tokens != self.head_idx) & (src_tokens != self.tail_idx)).unsqueeze(-1) # [batch_size, length, enc_dim]
-        masked_emb = x * mask
-        mask_sum = mask.sum(dim=-2) # [batch_size, enc_dim]
-        avg_emb = torch.sum(masked_emb, dim=-2) / mask_sum
-
+        mask = self.weights[src_tokens]
+        avg_emb = torch.bmm(mask.unsqueeze(-2), x).squeeze(-2) / torch.sum(mask, dim=-1, keepdim=True)
         linear_projection = self.linear(avg_emb)
-
         return linear_projection
 
 

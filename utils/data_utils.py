@@ -78,6 +78,19 @@ class CustomDictionary(Dictionary):
     def mask(self):
         return self.mask_index
 
+    def special_tokens(self):
+        return [
+            self.head(),
+            self.tail(),
+            self.blank(),
+            self.e1_start(),
+            self.e1_end(),
+            self.e2_start(),
+            self.e2_end(),
+            self.pad(),
+            self.mask(),
+        ]
+
 
 class EntityDictionary(Dictionary):
     """Dictionary with no special tokens"""
