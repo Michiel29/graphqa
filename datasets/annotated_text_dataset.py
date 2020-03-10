@@ -42,7 +42,7 @@ class AnnotatedTextDataset(FairseqDataset):
         text = self.text_data[index]
         annotations = self.annotation_data[index]
 
-        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+        with data_utils.numpy_seed(9031934, self.seed, self.epoch, index):
             if head_entity is None:
                 assert tail_entity is None
                 if self.assign_head_tail == 'random':

@@ -43,7 +43,7 @@ class RelInfDataset(AnnotatedTextDataset):
         head = item['head']
         tail = item['tail']
 
-        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+        with data_utils.numpy_seed(17101990, self.seed, self.epoch, index):
             replace_heads = rd.randint(2, size=self.k_negative)
 
             head_neighbors = self.graph[head]['neighbors']

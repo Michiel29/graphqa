@@ -39,7 +39,7 @@ class FewRelDataset(FairseqDataset):
         self.epoch = epoch
 
     def __getitem__(self, index):
-        with data_utils.numpy_seed(hash(self.__class__), self.seed, self.epoch, index):
+        with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
             target_item = self.annotation_text_dataset[index]
             target_relation = self.relation_dataset[index]
             relations = rd.choice(
