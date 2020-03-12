@@ -16,6 +16,7 @@ class FewRelDataset(FairseqDataset):
         annotation_text_dataset,
         relation_dataset,
         dictionary,
+        entity_dictionary,
         mask_type,
         n_way,
         n_shot,
@@ -24,6 +25,7 @@ class FewRelDataset(FairseqDataset):
         self.annotation_text_dataset = annotation_text_dataset
         self.relation_dataset = relation_dataset
         self.dictionary = dictionary
+        self.entity_dictionary = entity_dictionary
         self.n_way = n_way
         assert self.n_way > 1
         self.n_shot = n_shot
@@ -120,6 +122,7 @@ class FewRelDataset(FairseqDataset):
             'batch_size': len(instances),
             'ntokens': ntokens,
             'nsentences': nsentences,
+            'size': batch_size,
         }
 
     @property

@@ -8,7 +8,7 @@ import numpy as np
 import numpy.random as rd
 
 from fairseq.data import FairseqDataset
-
+from utils.diagnostic_utils import Diagnostic
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class MTBDataset(FairseqDataset):
         graph,
         n_entities,
         dictionary,
+        entity_dictionary,
         strong_prob,
         n_tries_neighbor,
         n_tries_text,
@@ -34,12 +35,16 @@ class MTBDataset(FairseqDataset):
         self.n_texts = len(train_dataset)
         self.n_entities = n_entities
         self.dictionary = dictionary
+        self.entity_dictionary = entity_dictionary
         self.strong_prob = strong_prob
         self.n_tries_neighbor = n_tries_neighbor
         self.n_tries_text = n_tries_text
         self.max_positions = max_positions
         self.seed = seed
         self.epoch = 0
+
+        #self.diag = Diagnostic(dictionary, entity_dictionary)
+        self.run_batch_diag = False
 
     def set_epoch(self, epoch):
         self.epoch = epoch
@@ -64,7 +69,7 @@ class MTBDataset(FairseqDataset):
     def sizes(self):
         return self.split_dataset.sizes
 
-    def sample_neighbor(self, e1B_neighbors, e1B_unique_neighbors, e1B_edges, e2A, e2B_candidates_idx, i):
+    def sample_neighbor(self, e1B_neighbors, e1B_unique_neighbors, e1B_edges, e1B, e2A, e2B_candidates_idx, i):
         e2B_idx = e2B_candidates_idx[i].item()
         e2B = e1B_unique_neighbors[e2B_idx]
         e1B_e2B_idx = np.flatnonzero(e1B_neighbors == e2B)
@@ -73,7 +78,7 @@ class MTBDataset(FairseqDataset):
         e1B_e2B_edges = []
         for i, edge in enumerate(all_e1B_e2B_edges):
             edge_entity_ids = self.train_dataset.annotation_data[edge][2::3].numpy()
-            if e2A not in edge_entity_ids: 
+            if e1B not in edge_entity_ids and e2A not in edge_entity_ids: 
                 e1B_e2B_edges.append(edge)
         e1B_e2B_edges = np.array(e1B_e2B_edges)
 
@@ -110,11 +115,12 @@ class MTBDataset(FairseqDataset):
         # Sample textB from e1_e2_edges
         textB_pos = self.sample_text(e1_e2_edges, e1, e2)
 
-        return textB_pos
+        return textB_pos, e1, e2
 
     def sample_negative_pair(self, e1A, e2A, e1A_neighbors, e1A_edges, neg_type): 
 
-        while neg_type is not None:
+        found_neg_pair = False
+        while not found_neg_pair:
 
             # Sample a strong negative: textA and textB share only e1
             if neg_type == 0:
@@ -147,7 +153,7 @@ class MTBDataset(FairseqDataset):
                 for i in range(n_e2B_candidates):
 
                     # Sample e2B, and return an array of edges between e1B and e2B
-                    e2B, e1B_e2B_edges = self.sample_neighbor(e1B_neighbors, e1B_unique_neighbors, e1B_edges, e2A, e2B_candidates_idx, i)
+                    e2B, e1B_e2B_edges = self.sample_neighbor(e1B_neighbors, e1B_unique_neighbors, e1B_edges, e1B, e2A, e2B_candidates_idx, i)
 
                     # No sentences mentioning e1B and e2B that do not also text e1A
                     if len(e1B_e2B_edges) == 0 and i == n_e2B_candidates-1:
@@ -161,15 +167,16 @@ class MTBDataset(FairseqDataset):
                     textB_neg = self.sample_text(e1B_e2B_edges, e1B, e2B)
 
                     if textB_neg is not None:
-                        neg_type = None
+                        found_neg_pair = True
                         break
-                    else:
+                    elif i == n_e2B_candidates-1:
                         neg_type = 1
+                    else:
+                        continue
 
             # Sample a weak negative: textA and textB share no entities
             else:
-
-                while True:
+                while not found_neg_pair:
                     # Sample an index for textB from the list of all texts
                     textB_idx = rd.randint(self.n_texts)
 
@@ -193,10 +200,10 @@ class MTBDataset(FairseqDataset):
                     if len(textB_neg) > self.max_positions:
                         continue
                     else:
-                        neg_type = None
-                        break
+                        found_neg_pair = True
 
-        return textB_neg, e1B, e2B
+
+        return textB_neg, e1B, e2B, neg_type
 
 
     def __getitem__(self, index):
@@ -214,17 +221,28 @@ class MTBDataset(FairseqDataset):
         e1A_edges = self.graph[e1A]['edges'].numpy()
 
         # Sample positive text pair: textA and textB share both e1 and e2
-        textB_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges)
+        textB_pos, e1B_pos, e2B_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges)
 
         # Check if positive text pair was successfully sampled
         if textB_pos is not None:
             # Sample negative text pair -- must be successful, at least for weak negatives
-            textB_neg, e1B_neg, e2B_neg = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type)
+            textB_neg, e1B_neg, e2B_neg, neg_type = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type)
             target_pos, target_neg = 1, 0
         else:
             return None
 
-        return {
+        assert e1A != e2A and e1B_pos != e2B_pos and e1B_neg != e2B_neg # check that e1 and e2 are different
+        assert e1A == e1B_pos and e2A == e2B_pos # check that entities are valid for positive pair
+        if neg_type == 0:
+            assert e1A == e1B_neg and e2A != e2B_neg # check that entities are valid for strong negative pair
+        else:
+            assert e1A != e1B_neg and e2A != e2B_neg # check that entities are valid for weak negative pair
+
+        # texts_dict = {'textA': textA, 'textB_pos': textB_pos, 'textB_neg': textB_neg}
+        # entities_dict = {'e1A': e1A, 'e2A': e2A, 'e1B_neg': e1B_neg, 'e2B_neg': e2B_neg}
+        # self.diag.inspect_mtb_pairs(texts_dict, entities_dict)
+
+        item_dict = {
             'textA': textA,
             'textB_pos': textB_pos,
             'textB_neg': textB_neg,
@@ -236,6 +254,16 @@ class MTBDataset(FairseqDataset):
             'textB_pos_len': len(textB_pos),
             'textB_neg_len': len(textB_neg),
         }
+
+        if self.run_batch_diag:
+            item_dict['e1A'] = e1A
+            item_dict['e2A'] = e2A
+            item_dict['e1B_neg'] = e1B_neg
+            item_dict['e2B_neg'] = e2B_neg
+        
+        return item_dict
+
+
 
     def collater(self, instances):
         # Filter out instances for which no positive text pair exists 
@@ -253,13 +281,20 @@ class MTBDataset(FairseqDataset):
         nsentences = 0
         ntokens_AB = 0
 
+        if self.run_batch_diag:
+            B2A_list = []
+            A2B = {}
+            e1A_list = []
+            e2A_list = []
+            e1B_neg_list = []
+            e2B_neg_list = []
+
         textB_pos_len_list = [instance['textB_pos_len'] for instance in instances]
         textB_neg_len_list = [instance['textB_neg_len'] for instance in instances]
         textB_len_list = np.array(textB_pos_len_list + textB_neg_len_list)
         
         textB_mean = np.mean(textB_len_list)
         textB_std = np.std(textB_len_list)
-        textB_max = np.max(textB_len_list)
 
         cluster_candidates = [
                                 np.where(textB_len_list < textB_mean - 1.5*textB_std)[0], # len < mean-1.5*std
@@ -300,6 +335,12 @@ class MTBDataset(FairseqDataset):
                 if B2A_pos and B2A_neg:
                     break
             
+            if self.run_batch_diag:
+                e1A_list.append(instance['e1A'])
+                e2A_list.append(instance['e2A'])
+                e1B_neg_list.append(instance['e1B_neg'])
+                e2B_neg_list.append(instance['e2B_neg'])
+
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -307,13 +348,15 @@ class MTBDataset(FairseqDataset):
         padded_textA = pad_sequence(textA_list, batch_first=True, padding_value=self.dictionary.pad())
         padded_textB = {}
         padded_textB_size = 0
-        target_list = []
+        target_list = []            
         for cluster_id, cluster_texts in textB_dict.items():
             padded_textB[cluster_id] = pad_sequence(cluster_texts, batch_first=True, padding_value=self.dictionary.pad())
             padded_textB_size += torch.numel(padded_textB[cluster_id])
             target_list += target_dict[cluster_id]
+            if self.run_batch_diag:
+                B2A_list += B2A_dict[cluster_id]
 
-        return {
+        batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
             'textB_size': padded_textB_size,
@@ -324,3 +367,13 @@ class MTBDataset(FairseqDataset):
             'nsentences': nsentences,
             'ntokens_AB': ntokens_AB,
         }
+
+        if self.run_batch_diag:
+            A2B = np.lexsort((1-np.array(target_list), B2A_list))
+            batch_dict['A2B'] = torch.from_numpy(A2B).long()
+            batch_dict['e1A'] = torch.LongTensor(e1A_list)
+            batch_dict['e2A'] = torch.LongTensor(e2A_list)
+            batch_dict['e1B_neg'] = torch.LongTensor(e1B_neg_list)
+            batch_dict['e2B_neg'] = torch.LongTensor(e2B_neg_list)
+
+        return batch_dict

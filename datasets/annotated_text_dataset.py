@@ -4,7 +4,7 @@ import numpy as np
 import numpy.random as rd
 
 from fairseq.data import data_utils, FairseqDataset
-
+from utils.diagnostic_utils import Diagnostic
 
 class AnnotatedTextDataset(FairseqDataset):
 
@@ -13,11 +13,12 @@ class AnnotatedTextDataset(FairseqDataset):
         text_data,
         annotation_data,
         dictionary,
+        entity_dictionary,
         shift_annotations,
         mask_type,
         assign_head_tail,
         seed,
-        alpha,
+        alpha=None,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
@@ -34,6 +35,8 @@ class AnnotatedTextDataset(FairseqDataset):
         self.alpha = alpha
         self.seed = seed
         self.epoch = 0
+
+        #self.diag = Diagnostic(dictionary, entity_dictionary)
 
     def set_epoch(self, epoch):
         self.epoch = epoch
@@ -62,6 +65,8 @@ class AnnotatedTextDataset(FairseqDataset):
                     'ntokens': len(text),
                     'nsentences': 1,
                 }
+
+        # self.diag.inspect_item(item['text'], head_entity, tail_entity)
 
         return item
 
@@ -154,6 +159,7 @@ class AnnotatedTextDataset(FairseqDataset):
             e2 = e1_temp
             e2_idx = e1_temp_idx
         '''
+        
         # For each entity, randomly decide whether to mask it with a [BLANK] token
         #   - NO, with probability alpha
         #   - YES, with probability 1-alpha

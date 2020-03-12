@@ -30,7 +30,7 @@ class EncoderMTBModel(BaseFairseqModel):
         self.task = task
         self._max_positions = args.max_positions
 
-        #self.diag = Diagnostic(task)
+        #self.diag = Diagnostic(task.dictionary, task.entity_dictionary, task)
 
     def max_positions(self):
         return self._max_positions
@@ -53,7 +53,7 @@ class EncoderMTBModel(BaseFairseqModel):
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
 
-        #self.diag.inspect_batch(batch)
+        #self.diag.inspect_batch(batch, scores=scores)
 
         return scores
 

@@ -27,10 +27,12 @@
     "attention_dropout": 0.1,
 
     "max_sentences": 350,
+    //"max_sentences": 32,
+    "max_tokens": 2e4,
+    //"max_tokens": 1e3,
     "update_freq": [1],
     "max_positions": 128,
-    "max_tokens": 2e4,
-    "required_batch_size_multiple": 3,
+    "required_batch_size_multiple": 1,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
@@ -41,7 +43,7 @@
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
-    "pretrain_encoder_path": "../data/roberta/roberta_small__checkpoint25.pt",
+    "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt",
     "ddp_backend": "no_c10d",
     "no_epoch_checkpoints": false,
 

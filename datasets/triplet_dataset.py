@@ -37,4 +37,5 @@ class TripletDataset(RelInfDataset):
             'target':  torch.LongTensor(targets),
             'ntokens': ntokens,
             'nsentences': nsentences,
+            'size': nsentences
         }

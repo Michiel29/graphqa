@@ -7,7 +7,7 @@ from fairseq import models
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
-
+from utils.diagnostic_utils import Diagnostic
 
 @register_model('encoder_fewrel')
 class EncoderFewRelModel(BaseFairseqModel):
@@ -21,6 +21,8 @@ class EncoderFewRelModel(BaseFairseqModel):
         self.n_shot = args.n_shot
 
         self.task = task
+
+        self.diag = Diagnostic(task.dictionary, task.entity_dictionary, task)
 
     def forward(self, batch):
 
@@ -36,6 +38,8 @@ class EncoderFewRelModel(BaseFairseqModel):
         class_encs = torch.mean(reshaped_exemplar_encs, dim=2) # [batch_size, n_way, enc_dim]
 
         scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
+
+        self.diag.inspect_batch(batch, scores=scores)
 
         return scores
 
