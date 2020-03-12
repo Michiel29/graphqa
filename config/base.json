@@ -1,5 +1,6 @@
 {
     "bpe": "gpt2",
+    "seed": 239,
 
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",
