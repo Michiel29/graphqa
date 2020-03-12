@@ -48,7 +48,7 @@ def compose_configs(path):
 
     base_path = os.path.split(path)[0]
     for config_path in add_config_paths:
-        is_relative = (config_path[:2] == '..')
+        is_relative = (config_path[0] != '/')
         if is_relative:
             config_path = os.path.join(base_path, config_path)
 
@@ -66,4 +66,3 @@ def save_config(config, save_dir):
     config_output_path = os.path.join(save_dir, 'config.json')
     with open(config_output_path, 'w') as f:
         json.dump(config, f, indent=4, sort_keys=True)
-

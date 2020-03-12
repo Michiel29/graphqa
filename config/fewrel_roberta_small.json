@@ -17,7 +17,7 @@
     "encoder_ffn_embed_dim": 1024,
     "encoder_attention_heads": 4,
     //"encoder_output_layer_type": "bag_of_words",
-    "encoder_output_layer_type": "head_tail_concat",
+    "encoder_output_layer_type": "entity_start",
 
     "max_sentences": 10,
     "max_tokens": 2000,

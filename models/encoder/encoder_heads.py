@@ -34,7 +34,7 @@ class BoWLinear(nn.Module):
         return linear_projection
 
 
-class HeadTailConcat(nn.Module):
+class EntityStart(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
@@ -45,7 +45,7 @@ class HeadTailConcat(nn.Module):
             self.head_idx = dictionary.e1_start()
             self.tail_idx = dictionary.e2_start()
         else:
-            raise Exception('HeadTailConcat is unsupported for the mask type %s' % str(args.mask_type))
+            raise Exception('EntityStart is unsupported for the mask type %s' % str(args.mask_type))
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
@@ -61,7 +61,7 @@ class HeadTailConcat(nn.Module):
         return head_tail_concat
 
 
-class HeadTailConcatLinear(nn.Module):
+class EntityStartLinear(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
@@ -72,7 +72,7 @@ class HeadTailConcatLinear(nn.Module):
             self.head_idx = dictionary.e1_start()
             self.tail_idx = dictionary.e2_start()
         else:
-            raise Exception('HeadTailConcatLinear is unsupported for the mask type %s' % str(args.mask_type))
+            raise Exception('EntityStartLinear is unsupported for the mask type %s' % str(args.mask_type))
 
         self.linear = nn.Linear(2*args.encoder_embed_dim, args.encoder_representation_dim)
 
@@ -90,52 +90,6 @@ class HeadTailConcatLinear(nn.Module):
         linear_projection = self.linear(head_tail_concat)
 
         return linear_projection
-
-
-class EntityStart(nn.Module):
-
-    def __init__(self, args, dictionary):
-        super().__init__()
-        self.e1_start_idx = dictionary.e1_start()
-        self.e2_start_idx = dictionary.e2_start()
-
-    def forward(self, x, src_tokens, **unused):
-        # x: [batch_size, length, enc_dim]
-
-        mask_e1 = (src_tokens == self.e1_start_idx).unsqueeze(-1) # [batch_size, length, 1]
-        mask_e2 = (src_tokens == self.e2_start_idx).unsqueeze(-1) # [batch_size, length, 1]
-
-        emb_e1 = torch.sum(x * mask_e1, dim=-2) # [batch_size, enc_dim]
-        emb_e2 = torch.sum(x * mask_e2, dim=-2) # [batch_size, enc_dim]
-
-        e1_e2_concat = torch.cat((emb_e1, emb_e2), dim=-1) # [batch_size, 2 * enc_dim]
-
-        return e1_e2_concat
-
-
-class EntityStartLinear(nn.Module):
-
-    def __init__(self, args, dictionary):
-        super().__init__()
-        self.e1_start_idx = dictionary.e1_start()
-        self.e2_start_idx = dictionary.e2_start()
-
-        self.linear = nn.Linear(2*args.encoder_embed_dim, args.encoder_representation_dim)
-
-    def forward(self, x, src_tokens, **unused):
-        # x: [batch_size, length, enc_dim]
-
-        mask_e1 = (src_tokens == self.e1_start_idx).unsqueeze(-1) # [batch_size, length, 1]
-        mask_e2 = (src_tokens == self.e2_start_idx).unsqueeze(-1) # [batch_size, length, 1]
-
-        emb_e1 = torch.sum(x * mask_e1, dim=-2) # [batch_size, enc_dim]
-        emb_e2 = torch.sum(x * mask_e2, dim=-2) # [batch_size, enc_dim]
-
-        e1_e2_concat = torch.cat((emb_e1, emb_e2), dim=-1) # [batch_size, 2 * enc_dim]
-
-        linear_projection = self.linear(e1_e2_concat)
-
-        return e1_e2_concat
 
 
 class CLSTokenLinear(nn.Module):
@@ -159,8 +113,6 @@ class CLSTokenLayerNorm(nn.Module):
 encoder_head_dict = {
     'bag_of_words': BoW,
     'bag_of_words_linear': BoWLinear,
-    'head_tail_concat': HeadTailConcat,
-    'head_tail_concat_linear': HeadTailConcatLinear,
     'entity_start': EntityStart,
     'entity_start_linear': EntityStartLinear,
     'cls_token_linear': CLSTokenLinear,

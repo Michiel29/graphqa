@@ -14,7 +14,7 @@
     "encoder_embed_dim": 256,
     "encoder_ffn_embed_dim": 1024,
     "encoder_attention_heads": 4,
-    "encoder_output_layer_type": "head_tail_concat",
+    "encoder_output_layer_type": "entity_start",
 
     "max_epoch": 4,
     "warmup_updates": 3600,
@@ -33,7 +33,7 @@
     "update_freq": [1],
     "max_positions": 128,
     "max_tokens": 2e4,
-    "required_batch_size_multiple": 3,
+    "required_batch_size_multiple": 1,
     "skip_invalid_size_inputs_valid_test": true,
 
     "n_train_examples": -1,
