@@ -74,7 +74,7 @@ class EntityStartLinear(nn.Module):
         else:
             raise Exception('EntityStartLinear is unsupported for the mask type %s' % str(args.mask_type))
 
-        self.linear = nn.Linear(2*args.encoder_embed_dim, args.encoder_representation_dim)
+        self.linear = nn.Linear(2*args.encoder_embed_dim, args.entity_dim)
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]

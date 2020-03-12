@@ -23,7 +23,7 @@
     "encoder_layers": 12,
     "encoder_embed_dim": 256,
     "encoder_output_layer_type": "bag_of_words_linear",
-    "encoder_representation_dim": 256,
+    "entity_dim": 256,
 
     "mask_prob": 0.15,
     "leave_unmasked_prob": 0.1,
