@@ -1,0 +1,31 @@
+{
+    "add_configs": ["roberta/small.json", "base.json"],
+
+    "task": "masked_lm_em",
+    "arch": "roberta_small",
+    "mask_type": "start_end",
+    "data_path": "../data/nki/bin-v3-threshold20",
+
+    "mask_prob": 0.15,
+    "leave_unmasked_prob": 0.1,
+    "random_token_prob": 0.1,
+    "freq_weighted_replacement": false,
+    "mask_whole_words": true,
+    "alpha": 0.7,
+
+    "encoder_output_layer_type": "lm_head",
+
+    "max_epoch": 4,
+    "warmup_updates": 2491, // = 10379 * 4 * 0.06
+    "total_num_updates": 41516, // = 10379 * 4
+    "lr": [1e-5],
+
+    "num_workers": 3,
+    "max_sentences": 1536,
+    "update_freq": [2],
+    "max_tokens": 14000,
+    // batch size ~ 2278.7
+    "required_batch_size_multiple": 3,
+
+    "criterion": "masked_lm_custom"
+}
