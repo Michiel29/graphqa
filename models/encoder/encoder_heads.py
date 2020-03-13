@@ -61,6 +61,35 @@ class EntityStart(nn.Module):
         return head_tail_concat
 
 
+class EntityFirstToken(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        if args.mask_type == 'head_tail':
+            self.head_idx = dictionary.head()
+            self.tail_idx = dictionary.tail()
+        elif args.mask_type == 'start_end':
+            self.head_idx = dictionary.e1_start()
+            self.tail_idx = dictionary.e2_start()
+        else:
+            raise Exception('EntityStart is unsupported for the mask type %s' % str(args.mask_type))
+
+    def forward(self, x, src_tokens, **unused):
+        # x: [batch_size, length, enc_dim]
+        head_first_tokens = torch.max(src_tokens == self.head_idx, dim=1)[1] + 1
+        tail_first_tokens = torch.max(src_tokens == self.tail_idx, dim=1)[1] + 1
+        arange = torch.arange(x.shape[0], device=x.device)
+
+        head_tail_concat = torch.cat(
+            (
+                x[arange, head_first_tokens],
+                x[arange, tail_first_tokens],
+            ),
+            dim=-1,
+        ) # [batch_size, 2 * enc_dim]
+        return head_tail_concat
+
+
 class EntityStartLinear(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -115,6 +144,7 @@ encoder_head_dict = {
     'bag_of_words_linear': BoWLinear,
     'entity_start': EntityStart,
     'entity_start_linear': EntityStartLinear,
+    'entity_first_token': EntityFirstToken,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,
 }
