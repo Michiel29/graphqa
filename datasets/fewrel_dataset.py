@@ -56,12 +56,17 @@ class FewRelDataset(FairseqDataset):
 
             relations = [target_relation.item()] + relations
 
-            exemplars = []
+            exemplars_annotations, exemplars = [], []
             for rel in relations:
                 rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                 exemplars += [
                     self.annotation_text_dataset[idx]['text']
                     for idx in rel_examplar_idxs
+                ]
+                exemplars_annotations += [
+                    self.annotation_text_dataset[idx]['annotation']
+                    for idx in rel_examplar_idxs
+                    if 'annotation' in self.annotation_text_dataset[idx]
                 ]
 
             ntokens, nsentences = len(target_item['text']), 1
@@ -69,12 +74,20 @@ class FewRelDataset(FairseqDataset):
                 nsentences += 1
                 ntokens += len(exemplars)
 
-        return {
+        item = {
             'text': target_item['text'],
             'exemplars': exemplars,
             'ntokens': ntokens,
             'nsentences': nsentences,
         }
+
+        if 'annotation' in target_item:
+            item['annotation'] = target_item.get('annotation')
+        if len(exemplars_annotations) > 0:
+            assert len(exemplars_annotations) == len(exemplars)
+            item['exemplars_annotations'] = exemplars_annotations
+
+        return item
 
     def __len__(self):
         return len(self.annotation_text_dataset)
@@ -102,21 +115,25 @@ class FewRelDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        text = []
-        exemplars = []
+        text, annotation = [], []
+        exemplars, exemplars_annotations = [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
+            if 'annotation' in instance:
+                annotation.append(instance['annotation'])
             exemplars += instance['exemplars']
+            if 'exemplars_annotations' in instance:
+                exemplars_annotations += instance['exemplars_annotations']
             ntokens += len(instance['text']) + sum([len(s) for s in instance['exemplars']])
             nsentences += 1 + len(instance['exemplars'])
 
-        padded_mention = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
+        padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
         padded_exemplars = pad_sequence(exemplars, batch_first=True, padding_value=self.dictionary.pad())
 
-        return {
-            'text': padded_mention,
+        item = {
+            'text': padded_text,
             'exemplars': padded_exemplars,
             'target': torch.zeros(len(instances), dtype=torch.long),
             'batch_size': len(instances),
@@ -124,6 +141,18 @@ class FewRelDataset(FairseqDataset):
             'nsentences': nsentences,
             'size': batch_size,
         }
+
+        if len(annotation) > 0:
+            import pdb; pdb.set_trace()
+            assert len(annotation) == len(text)
+            padded_annotation = pad_sequence(annotation, batch_first=True, padding_value=self.dictionary.pad())
+            item['annotation'] = padded_annotation
+        if len(exemplars_annotations) > 0:
+            assert len(exemplars_annotations) == len(exemplars)
+            padded_exemplars_annotations = pad_sequence(exemplars_annotations, batch_first=True, padding_value=self.dictionary.pad())
+            item['exemplars_annotations'] = padded_exemplars_annotations
+
+        return item
 
     @property
     def supports_prefetch(self):

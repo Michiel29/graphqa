@@ -61,8 +61,16 @@ class AnnotatedTextDataset(FairseqDataset):
             elif self.mask_type == 'start_end':
                 item = self.start_end_mask(text, annotations, head_entity, tail_entity)
             else:
+                annotations_list = annotations.split(3)
+                annotations_tensor = -1 * torch.ones_like(text)
+                for annotation in annotations_list:
+                    if annotation[2] == head_entity:
+                        annotations_tensor[annotation[0]:annotation[1]] = 0
+                    elif annotation[2] == tail_entity:
+                        annotations_tensor[annotation[0]:annotation[1]] = 1
                 item = {
                     'text': text,
+                    'annotation': annotations_tensor,
                     'ntokens': len(text),
                     'nsentences': 1,
                 }
