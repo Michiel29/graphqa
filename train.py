@@ -95,11 +95,7 @@ def main(args, init_distributed=False):
     valid_subsets = args.valid_subset.split(',')
     while (
         lr > args.min_lr
-        and (
-            epoch_itr.epoch < max_epoch
-            # allow resuming training from the final checkpoint
-            or epoch_itr._next_epoch_itr is not None
-        )
+        and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):
         # train for one epoch
@@ -124,7 +120,7 @@ def main(args, init_distributed=False):
 
         reload_dataset = getattr(args, 'reload', False)
         # sharded data: get train iterator for next epoch
-        epoch_itr = trainer.get_train_iterator(epoch_itr.epoch, load_dataset=reload_dataset)
+        epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
     train_meter.stop()
     logger.info('done training in {:.1f} seconds'.format(train_meter.sum))
 
@@ -151,7 +147,7 @@ def train(args, trainer, task, epoch_itr):
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
         fix_batches_to_gpus=args.fix_batches_to_gpus,
-        shuffle=(epoch_itr.epoch >= args.curriculum),
+        shuffle=(epoch_itr.next_epoch_idx > args.curriculum),
     )
     update_freq = (
         args.update_freq[epoch_itr.epoch - 1]
