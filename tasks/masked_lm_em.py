@@ -74,6 +74,7 @@ class MaskedLMEMTask(BaseTask):
             text_data=text_data,
             annotation_data=annotation_data,
             dictionary=self.dictionary,
+            entity_dictionary=self.entity_dictionary,
             shift_annotations=1,
             mask_type=self.args.mask_type,
             assign_head_tail='random',

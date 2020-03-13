@@ -43,7 +43,7 @@ class MTBDataset(FairseqDataset):
         self.seed = seed
         self.epoch = 0
 
-        #self.diag = Diagnostic(dictionary, entity_dictionary)
+        self.diag = Diagnostic(dictionary, entity_dictionary)
         self.run_batch_diag = False
 
     def set_epoch(self, epoch):
@@ -69,35 +69,40 @@ class MTBDataset(FairseqDataset):
     def sizes(self):
         return self.split_dataset.sizes
 
-    def sample_neighbor(self, e1B_neighbors, e1B_unique_neighbors, e1B_edges, e1B, e2A, e2B_candidates_idx, i):
+    def sample_neighbor(self, e1B_neighbors, e1B_unique_neighbors, e2B_candidates_idx, i):
         e2B_idx = e2B_candidates_idx[i].item()
         e2B = e1B_unique_neighbors[e2B_idx]
         e1B_e2B_idx = np.flatnonzero(e1B_neighbors == e2B)
 
+        return e2B, e1B_e2B_idx
+
+    def get_edge_candidates(self, e1B_edges, e1B_e2B_idx, e2A, i):
         all_e1B_e2B_edges = np.take(e1B_edges, e1B_e2B_idx, 0)
         e1B_e2B_edges = []
         for i, edge in enumerate(all_e1B_e2B_edges):
             edge_entity_ids = self.train_dataset.annotation_data[edge][2::3].numpy()
-            if e1B not in edge_entity_ids and e2A not in edge_entity_ids: 
+            if e2A not in edge_entity_ids: 
                 e1B_e2B_edges.append(edge)
         e1B_e2B_edges = np.array(e1B_e2B_edges)
 
-        return e2B, e1B_e2B_edges
+        return e1B_e2B_edges
 
-    def sample_text(self, edges, e1B, e2B):
+    def sample_text(self, edges, e1B, e2B, textA):
         n_textB_candidates = min(self.n_tries_text, len(edges))
         textB_candidates_idx = torch.randperm(len(edges))[:n_textB_candidates]
 
-        for i, m in enumerate(textB_candidates_idx):
+        for m in textB_candidates_idx:
             textB = self.train_dataset.__getitem__(edges[m], head_entity=e1B, tail_entity=e2B)['text']
-            if len(textB) <= self.max_positions:
-                return textB
+            if len(textB) > self.max_positions:
+                continue
+            if not torch.equal(textA, textB):
+                return textB                
 
         # Generally, there should always be candidates satisfying both case0 and case1. 
         # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
-    def sample_positive_pair(self, e1, e2, e1_neighbors, e1_edges):
+    def sample_positive_pair(self, e1, e2, e1_neighbors, e1_edges, textA):
         # Get all indices of e1_neighbors, for which the neighbor is e2
         e1_e2_idx = np.flatnonzero(e1_neighbors == e2)
         
@@ -113,11 +118,11 @@ class MTBDataset(FairseqDataset):
         e1_e2_edges = np.take(e1_edges, e1_e2_idx, 0)
 
         # Sample textB from e1_e2_edges
-        textB_pos = self.sample_text(e1_e2_edges, e1, e2)
+        textB_pos = self.sample_text(e1_e2_edges, e1, e2, textA)
 
         return textB_pos, e1, e2
 
-    def sample_negative_pair(self, e1A, e2A, e1A_neighbors, e1A_edges, neg_type): 
+    def sample_negative_pair(self, e1A, e2A, e1A_neighbors, e1A_edges, neg_type, textA): 
 
         found_neg_pair = False
         while not found_neg_pair:
@@ -127,20 +132,20 @@ class MTBDataset(FairseqDataset):
                 # Set e1B to be e1A
                 e1B = e1A
 
-                # Get all indices of e1A_neighbors, for which the neighbor is not e2A
-                e1B_neighbors_idx = np.flatnonzero(e1A_neighbors != e2A)
+                # Get all indices of e1A_neighbors, for which the neighbor is not e1B or e2A
+                e1B_neighbors_idx = np.flatnonzero(np.logical_and(e1A_neighbors != e1B, e1A_neighbors != e2A))
                  
                 # e1A has no neighbors besides e2A
                 if len(e1B_neighbors_idx) == 0:
-                    raise Exception("Case 1 -- e1A has no neighbors besides e2A")
+                    raise Exception("Case 1 -- e1A has no neighbors besides e1B and e2A")
                 
-                # Get all of e1B's neighbors, excluding e2A
+                # Get all of e1B's neighbors, excluding e1B and e2A
                 e1B_neighbors = np.take(e1A_neighbors, e1B_neighbors_idx, 0)
 
-                # Get all of e1B's neighbors, excluding both e2A and duplicates
+                # Get all of e1B's neighbors, excluding e1B, e2A, and duplicates
                 e1B_unique_neighbors = np.unique(e1B_neighbors)
                 
-                # Get all of e1B's edges, excluding those corresponding to e2A
+                # Get all of e1B's edges, excluding those corresponding to e1B and e2A
                 e1B_edges = np.take(e1A_edges, e1B_neighbors_idx, 0)
 
                 # Set number of e2B candidates
@@ -152,8 +157,11 @@ class MTBDataset(FairseqDataset):
                 # Iterate through all of the e2B candidates
                 for i in range(n_e2B_candidates):
 
-                    # Sample e2B, and return an array of edges between e1B and e2B
-                    e2B, e1B_e2B_edges = self.sample_neighbor(e1B_neighbors, e1B_unique_neighbors, e1B_edges, e1B, e2A, e2B_candidates_idx, i)
+                    # Sample e2B, and return indices of e1B_neighbors corresponding to e2B
+                    e2B, e1B_e2B_idx = self.sample_neighbor(e1B_neighbors, e1B_unique_neighbors, e2B_candidates_idx, i)
+
+                    # Get an array of edges between e1B and e2B
+                    e1B_e2B_edges = self.get_edge_candidates(e1B_edges, e1B_e2B_idx, e2A, i)
 
                     # No sentences mentioning e1B and e2B that do not also text e1A
                     if len(e1B_e2B_edges) == 0 and i == n_e2B_candidates-1:
@@ -164,7 +172,7 @@ class MTBDataset(FairseqDataset):
                         continue
 
                     # Sample textB from e1B_e2B_edges
-                    textB_neg = self.sample_text(e1B_e2B_edges, e1B, e2B)
+                    textB_neg = self.sample_text(e1B_e2B_edges, e1B, e2B, textA)
 
                     if textB_neg is not None:
                         found_neg_pair = True
@@ -221,13 +229,12 @@ class MTBDataset(FairseqDataset):
         e1A_edges = self.graph[e1A]['edges'].numpy()
 
         # Sample positive text pair: textA and textB share both e1 and e2
-        textB_pos, e1B_pos, e2B_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges)
+        textB_pos, e1B_pos, e2B_pos = self.sample_positive_pair(e1A, e2A, e1A_neighbors, e1A_edges, textA)
 
         # Check if positive text pair was successfully sampled
         if textB_pos is not None:
             # Sample negative text pair -- must be successful, at least for weak negatives
-            textB_neg, e1B_neg, e2B_neg, neg_type = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type)
-            target_pos, target_neg = 1, 0
+            textB_neg, e1B_neg, e2B_neg, neg_type = self.sample_negative_pair(e1A, e2A, e1A_neighbors, e1A_edges, neg_type, textA)
         else:
             return None
 
@@ -246,8 +253,8 @@ class MTBDataset(FairseqDataset):
             'textA': textA,
             'textB_pos': textB_pos,
             'textB_neg': textB_neg,
-            'target_pos': target_pos,
-            'target_neg': target_neg,
+            'target_pos': 1,
+            'target_neg': 0,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + len(textB_pos) + len(textB_neg),
@@ -260,6 +267,7 @@ class MTBDataset(FairseqDataset):
             item_dict['e2A'] = e2A
             item_dict['e1B_neg'] = e1B_neg
             item_dict['e2B_neg'] = e2B_neg
+            item_dict['neg_type'] = neg_type
         
         return item_dict
 
@@ -288,6 +296,7 @@ class MTBDataset(FairseqDataset):
             e2A_list = []
             e1B_neg_list = []
             e2B_neg_list = []
+            neg_type_list = []
 
         textB_pos_len_list = [instance['textB_pos_len'] for instance in instances]
         textB_neg_len_list = [instance['textB_neg_len'] for instance in instances]
@@ -340,6 +349,7 @@ class MTBDataset(FairseqDataset):
                 e2A_list.append(instance['e2A'])
                 e1B_neg_list.append(instance['e1B_neg'])
                 e2B_neg_list.append(instance['e2B_neg'])
+                neg_type_list.append(instance['neg_type'])
 
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
@@ -375,5 +385,6 @@ class MTBDataset(FairseqDataset):
             batch_dict['e2A'] = torch.LongTensor(e2A_list)
             batch_dict['e1B_neg'] = torch.LongTensor(e1B_neg_list)
             batch_dict['e2B_neg'] = torch.LongTensor(e2B_neg_list)
+            batch_dict['neg_type'] = torch.LongTensor(neg_type_list)
 
         return batch_dict
