@@ -1,6 +1,7 @@
 import logging
-import warnings
 import os
+import time
+import warnings
 
 from fairseq import metrics, utils
 from fairseq.data import (
@@ -101,12 +102,24 @@ class BaseTask(FairseqTask):
         """
         assert isinstance(dataset, FairseqDataset)
 
+        logger.info('getting dataset ready: seed=%d, epoch=%d, num_shards=%d' % (
+            seed,
+            epoch,
+            num_shards,
+        ))
+
         # initialize the dataset with the correct starting epoch
         dataset.set_epoch(epoch)
 
         # get indices ordered by example size
+        start_time = time.time()
         with data_utils.numpy_seed(seed, epoch):
             indices = dataset.ordered_indices()
+        logger.info('getting dataset ready: sorting (seed=%d, epoch=%d) is done in %d seconds' % (
+            seed,
+            epoch,
+            time.time() - start_time,
+        ))
 
         # create mini-batches with given size constraints
         batch_sampler = data_utils.batch_by_size(

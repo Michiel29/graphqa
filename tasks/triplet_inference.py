@@ -35,6 +35,7 @@ class TripletInferenceTask(RelationInferenceTask):
             shift_annotations=1,
             mask_type=self.args.mask_type,
             seed=self.args.seed,
+            alpha=self.args.alpha,
         )
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
         dataset = prune_dataset_size(

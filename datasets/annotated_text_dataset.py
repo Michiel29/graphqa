@@ -23,6 +23,7 @@ class AnnotatedTextDataset(FairseqDataset):
         self.text_data = text_data
         self.annotation_data = annotation_data
         assert len(self.text_data) == len(self.annotation_data)
+        self.entity_dictionary = entity_dictionary
         self.shift_annotations = shift_annotations
         self.dictionary = dictionary
         self.mask_type = mask_type
@@ -159,7 +160,7 @@ class AnnotatedTextDataset(FairseqDataset):
             e2 = e1_temp
             e2_idx = e1_temp_idx
         '''
-        
+
         # For each entity, randomly decide whether to mask it with a [BLANK] token
         #   - NO, with probability alpha
         #   - YES, with probability 1-alpha
