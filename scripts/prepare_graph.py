@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 from itertools import combinations
 import argparse
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -10,8 +11,6 @@ from fairseq.data import Dictionary, indexed_dataset
 from fairseq.data.data_utils import load_indexed_dataset
 
 def main(args):
-
-
     entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
     n_entities = len(Dictionary.load(entity_dict_path))
 
@@ -25,11 +24,11 @@ def main(args):
         dataset_impl='mmap',
     )
 
-    print('{} sentences'.format(len(annotation_data)))
+    print('{} sentences\n'.format(len(annotation_data)))
 
     print('starting graph construction')
     entity_neighbors, entity_edges = create_graph(annotation_data, n_entities)
-    print('finished graph construction')
+    print('finished graph construction\n')
 
     neighbor_path = os.path.join(args.data_path, 'neighbors')
     edge_path = os.path.join(args.data_path, 'edges')
@@ -47,7 +46,7 @@ def main(args):
     )
 
     print('creating indexed datasets')
-    for entity in range(n_entities):
+    for entity in tqdm(range(n_entities)):
 
         neighbors = np.array(entity_neighbors[entity])
         sorted_indices = np.argsort(neighbors)
@@ -69,8 +68,8 @@ def create_graph(annotation_data, n_entities):
     entity_neighbors = [list() for entity in range(n_entities)]
     entity_edges = [list() for entity in range(n_entities)]
 
-    for sentence_idx in range(len(annotation_data)):
-        entity_ids = annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy()
+    for sentence_idx in tqdm(range(len(annotation_data))):
+        entity_ids = set(annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy())
 
         for a, b in combinations(entity_ids, 2):
             entity_neighbors[a].append(b)

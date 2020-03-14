@@ -1,0 +1,38 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json"],
+
+    "task": "mtb",
+    "arch": "encoder_mtb__roberta_small",
+    //"arch": "encoder_mtb__roberta_base",
+    //"data_path": "../data/nki/bin_sample",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
+    //"data_path": "../data/nki/bin-v3-threshold20",
+
+    "mask_type": "start_end",
+    "strong_prob": 0.8,
+    "n_tries_neighbor": 100,
+    "n_tries_text": 100,
+    "alpha": 0.7,
+
+    "entity_dim": 256,
+    
+    "encoder_output_layer_type": "entity_start",
+
+    "max_epoch": 4,
+    "warmup_updates": 2590, // 0.06 * max_epoch * num_updates 
+    //"warmup_updates": 43413, // 0.06 * max_epoch * num_updates 
+    "lr": [1e-4],
+
+    // "max_sentences": 260, // max number of textA sentences per batch
+    // "max_tokens": 1.2e4, // max number of textA tokens per batch
+    "max_sentences": 32, // max number of textA sentences per batch
+    "max_tokens": 1e3, // max number of textA tokens per batch
+    "update_freq": [1],
+
+    "n_train_examples": 100000,
+
+    // "num_workers": 3, // set at least 1 worker
+    "num_workers": 0, // set at least 1 worker
+
+    "criterion": "binary_cross_entropy_custom"
+}

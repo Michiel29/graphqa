@@ -39,7 +39,7 @@
     "n_valid_examples": -1,
     "n_test_examples": -1,
 
-    "num_workers": 2,
+    "num_workers": 0,
     "save_dir": "../save/",
     "restore_file": false,
     //"pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",

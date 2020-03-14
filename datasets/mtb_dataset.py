@@ -43,7 +43,6 @@ class MTBDataset(FairseqDataset):
         self.seed = seed
         self.epoch = 0
 
-        self.diag = Diagnostic(dictionary, entity_dictionary)
         self.run_batch_diag = False
 
     def set_epoch(self, epoch):
@@ -245,6 +244,7 @@ class MTBDataset(FairseqDataset):
         else:
             assert e1A != e1B_neg and e2A != e2B_neg # check that entities are valid for weak negative pair
 
+        # diag = Diagnostic(self.dictionary, self.entity_dictionary)
         # texts_dict = {'textA': textA, 'textB_pos': textB_pos, 'textB_neg': textB_neg}
         # entities_dict = {'e1A': e1A, 'e2A': e2A, 'e1B_neg': e1B_neg, 'e2B_neg': e2B_neg}
         # self.diag.inspect_mtb_pairs(texts_dict, entities_dict)

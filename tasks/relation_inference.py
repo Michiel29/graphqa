@@ -36,6 +36,8 @@ class RelationInferenceTask(BaseTask):
                             help='method for masking entities in a sentence')
         parser.add_argument('--assign-head-tail', default='random', type=str,
                             help='method for assigning head and tail entities in a sentence')
+        parser.add_argument('--alpha', default=1.0, type=float,
+                            help='probability of not masking the entity with a [BLANK] token')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         raise NotImplementedError
