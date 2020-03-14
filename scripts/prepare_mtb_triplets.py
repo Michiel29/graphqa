@@ -85,45 +85,45 @@ def get_mtb_triplets(ent_pair_counts, n_texts, entities_split, entities_train, n
     mtb_triplets = []
     for text_id in tqdm(range(n_texts)):
         for p in permutations(entities_split[text_id], 2):
-            # Check for positives (i.e., are there at least two texts mentioning both e1 and e2?)
+            # Check for positives (i.e., are there at least two texts mentioning both head and tail?)
             pos = ent_pair_counts[p] > 1 
             if pos is False:
                 continue
             
             # Check for strong negatives: 
-            # - First, does e1 have at least one neighbor which is not also neighbors with e2?
-            # - If not, does e1 have at least one edge which does not contain e2? 
-            #   (We approximate this by checking a sample of 20 of e1's edges.)
-            e1, e2 = p[0], p[1]
-            e1_neighbors, e2_neighbors = neighbors[e1], neighbors[e2]
+            # - First, does head have at least one neighbor which is not also neighbors with tail?
+            # - If not, does head have at least one edge which does not contain tail? 
+            #   (We approximate this by checking a sample of 20 of head's edges.)
+            head, tail = p[0], p[1]
+            head_neighbors, tail_neighbors = neighbors[head], neighbors[tail]
             
-            # Temporarily remove e2 and e1 from e1_neighbors and e2_neighbors, respectively
-            e1_neighbors.discard(e2) 
-            e2_neighbors.discard(e1)
+            # Temporarily remove tail and head from head_neighbors and tail_neighbors, respectively
+            head_neighbors.discard(tail) 
+            tail_neighbors.discard(head)
 
-            # Check if all neighbors of e1 are also neighbors of e2
-            if not e1_neighbors.issubset(e2_neighbors):
+            # Check if all neighbors of head are also neighbors of tail
+            if not head_neighbors.issubset(tail_neighbors):
                 strong_neg = True
             else:
                 strong_neg = False
 
-            # If e1_neighbors is not a subset of e2_neighbors, check if e1 has at least one edge which does not contain e2
+            # If head_neighbors is not a subset of tail_neighbors, check if head has at least one edge which does not contain tail
             if not strong_neg:
-                e1_edges = edges[e1]
-                e1_edges_sample = np.random.choice(len(e1_edges), size=min(20, len(e1_edges)), replace=False)
-                for idx in e1_edges_sample:
-                    cur_entities = entities_train[e1_edges[idx]]
-                    if e2 not in cur_entities:
+                head_edges = edges[head]
+                head_edges_sample = np.random.choice(len(head_edges), size=min(20, len(head_edges)), replace=False)
+                for idx in head_edges_sample:
+                    cur_entities = entities_train[head_edges[idx]]
+                    if tail not in cur_entities:
                         strong_neg = True
                         break
             
-            # Add e2 and e1 back to e1_neighbors and e2_neighbors, respectively
-            e1_neighbors.add(e2)
-            e2_neighbors.add(e1)
+            # Add tail and head back to head_neighbors and tail_neighbors, respectively
+            head_neighbors.add(tail)
+            tail_neighbors.add(head)
                     
             # If pos and strong_neg are both true, then add the current triplet to mtb_triplets
             if pos and strong_neg:
-                mtb_triplets.append((text_id, e1, e2))
+                mtb_triplets.append((text_id, head, tail))
 
     return mtb_triplets
 
