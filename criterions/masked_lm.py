@@ -2,7 +2,6 @@ import math
 
 import torch
 import torch.nn.functional as F
-from torch.nn.modules.loss import _Loss
 
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
@@ -14,7 +13,7 @@ class MaskedLmCustomLoss(FairseqCriterion):
     Implementation for the loss used in masked language model (MLM) training.
     """
     def __init__(self, args, task):
-        _Loss.__init__(self)
+        super().__init__(task)
         self.head_idx = task.target_dictionary.head() if task.target_dictionary is not None else -100
         self.tail_idx = task.target_dictionary.tail() if task.target_dictionary is not None else -100
         self.padding_idx = task.target_dictionary.pad() if task.target_dictionary is not None else -100

@@ -12,7 +12,7 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 class MultiCriterion(FairseqCriterion):
 
     def __init__(self, criterion_dict, weight_dict, task):
-        super().__init__(None, task)
+        super().__init__(task)
         self.criterion_dict = nn.ModuleDict(criterion_dict)
         self.weight_dict = weight_dict
 
@@ -21,14 +21,15 @@ class MultiCriterion(FairseqCriterion):
         raise Exception()
 
     def forward(self, model, sample, reduce=True):
-        total_loss = 0
+        total_loss = 0.0
         total_logging_output = {}
         for task_name, criterion in self.criterion_dict.items():
-            total_sample_size = sample[task_name]['sample_size']
-            loss, _, logging_output = criterion(model, sample[task_name], reduce=reduce)
-            total_loss += self.weight_dict[task_name] * loss / total_sample_size
-            for k, v in logging_output.items():
-                total_logging_output[task_name + '_' + k] = v
+            if sample[task_name] is not None:
+                total_sample_size = sample[task_name]['sample_size']
+                loss, _, logging_output = criterion(model, sample[task_name], reduce=reduce)
+                total_loss += self.weight_dict[task_name] * loss / total_sample_size
+                for k, v in logging_output.items():
+                    total_logging_output[task_name + '_' + k] = v
         total_logging_output['loss'] = total_loss
         return total_loss, 1, total_logging_output
 

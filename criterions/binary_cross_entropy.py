@@ -3,7 +3,6 @@ import math
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.nn.modules.loss import _Loss
 
 from fairseq import utils, metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
@@ -12,7 +11,7 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 class BinaryCrossEntropy(FairseqCriterion):
 
     def __init__(self, args, task):
-        _Loss.__init__(self)
+        super().__init__(task)
         self.args = args
         self.task = task
 

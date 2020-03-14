@@ -1,3 +1,4 @@
+import copy
 import logging
 import numpy as np
 import os
@@ -13,6 +14,13 @@ from utils.data_utils import CustomDictionary, EntityDictionary
 
 
 logger = logging.getLogger(__name__)
+
+
+def merge_args(args, args_override):
+    args_new = copy.deepcopy(args)
+    for key, value in args_override.items():
+        setattr(args_new, key, value)
+    return args_new
 
 
 class ListTaskIterator(object):
@@ -35,7 +43,10 @@ class ListTaskIterator(object):
             with data_utils.numpy_seed(self.seed, self.epoch):
                 np.random.shuffle(l)
                 epoch_iterator.frozen_batches = tuple(l)
-        new_sample_sizes = np.array([len(x) for x in l]).reshape([-1, self.num_shards]).sum(axis=-1)
+        batch_sizes = [len(x) for x in l]
+        while len(batch_sizes) % self.num_shards != 0:
+            batch_sizes.append(0)
+        new_sample_sizes = np.array(batch_sizes).reshape([-1, self.num_shards]).sum(axis=-1)
         if task_name not in self.sample_sizes:
             self.sample_sizes[task_name] = new_sample_sizes
         else:
@@ -84,13 +95,21 @@ class ListTaskIterator(object):
     def __iter__(self):
         while self.count < self.length:
             result = {}
+            at_least_one_task_non_empty = False
             for task_name in self.iterators.keys():
                 if not self.iterators[task_name].has_next():
                     self.iterators[task_name] = self._start_task_iterator(task_name)
                 result[task_name] = next(self.iterators[task_name])
-                result[task_name]['sample_size'] = self.sample_sizes[task_name][self.count]
+                if result[task_name] is not None and len(result[task_name]) > 0:
+                    result[task_name]['sample_size'] = self.sample_sizes[task_name][self.count]
+                    at_least_one_task_non_empty = True
+                else:
+                    result[task_name] = None
             self.count += 1
-            yield result
+            if at_least_one_task_non_empty:
+                yield result
+            else:
+                yield None
 
     def __next__(self):
         return next(self.itr)
@@ -117,6 +136,9 @@ class ListTaskIteratorFactory(object):
         self._next_epoch_itr = None
         return self._cur_epoch_itr
 
+    @property
+    def next_epoch_idx(self):
+        return self.epoch + 1
 
     def state_dict(self):
         return {
@@ -150,8 +172,12 @@ class MultiTask(BaseTask):
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
         tasks = {
-            task_name: TASK_REGISTRY[task_name](args, dictionary, entity_dictionary)
-            for task_name in args.tasks
+            task_name: TASK_REGISTRY[task_name](
+                merge_args(args, task_args_override),
+                dictionary,
+                entity_dictionary,
+            )
+            for task_name, task_args_override in args.tasks.items()
         }
         task = cls(args, dictionary, entity_dictionary, tasks)
         return task
@@ -197,12 +223,12 @@ class MultiTask(BaseTask):
     def reduce_metrics(self, logging_outputs, criterion):
         assert len(logging_outputs) == 1
         for k, v in logging_outputs[0].items():
-            if 'ntokens' in k:
+            if k.endswith('ntokens'):
                 metrics.log_scalar(k[:-len('ntokens')] + 'wpb', v, priority=180, round=1)
                 # TODO(urikz): Latest version of fairseq also has additional argument "ignore_first"
                 metrics.log_speed(k[:-len('ntokens')] + 'wps', v, priority=90, round=1)
-            elif 'nsentences' in k:
+            elif k.endswith('nsentences'):
                 metrics.log_scalar(k[:-len('nsentences')] + 'ns', v, priority=190, round=1)
-            elif 'sample_size' in k:
+            elif k.endswith('sample_size'):
                 metrics.log_scalar(k[:-len('sample_size')] + 'bsz', v, priority=190, round=1)
         criterion.reduce_metrics(logging_outputs)
