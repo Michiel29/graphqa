@@ -1,0 +1,48 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json"],
+
+    "tasks": {
+        "triplet_inference": {
+            "max_sentences": 750,
+            "max_tokens": 10000,
+            "criterion": "cross_entropy_custom",
+            "k_negative": 1,
+            "alpha": 0.2,
+            "weight": 0
+        },
+        "masked_lm_em": {
+            "max_sentences": 750,
+            "max_tokens": 10000,
+            "criterion": "masked_lm_custom",
+            "mask_prob": 0.15,
+            "leave_unmasked_prob": 0.1,
+            "random_token_prob": 0.1,
+            "freq_weighted_replacement": false,
+            "mask_whole_words": true,
+            "alpha": 0.7,
+            "weight": 1
+        }
+    },
+
+    "task": "multi_task",
+    "arch": "encoder_triplet__roberta_small",
+
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_start_linear",
+    "data_path": "../data/nki/bin-v3-threshold20",
+
+    "mask_type": "start_end",
+    "alpha": null,
+
+    "max_epoch": 4,
+    "warmup_updates": 2088, // = 8699 * 4 * 0.06
+    "total_num_updates": 34796, // = 8699 * 4
+    "lr": [1e-5],
+
+    "num_workers": 0,
+    "max_sentences": 1536,
+    "update_freq": [1],
+    "max_tokens": 14000,
+    // batch size ~ 2278.7
+    "required_batch_size_multiple": 1
+}
