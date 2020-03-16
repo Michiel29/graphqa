@@ -103,16 +103,6 @@ class MTBTask(RelationInferenceTask):
 
         split_dataset = self.filter_by_max_positions(split_dataset)
 
-        # train_annotated_text_dataset, sentences_to_keep = filter_by_max_length(
-        #     train_annotated_text_dataset,
-        #     self.args.max_positions,
-        # )
-        # self.graph = self.create_graph(
-        #     train_annotation_data,
-        #     len(self.entity_dictionary),
-        #     sentences_to_keep,
-        # )
-
         dataset = MTBDataset(
             split_dataset=split_dataset,
             train_dataset=train_annotated_text_dataset,

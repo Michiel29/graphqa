@@ -7,7 +7,10 @@ from .filtered_dataset import (
 )
 from .graph import GraphDataset
 from .mtb_dataset import MTBDataset
-from .mtb_triplets_dataset import MTBTripletsDataset
+from .mtb_triplets_dataset import (
+    MTBTripletsDataset,
+    subsample_graph_by_entity_pairs,
+)
 from .rel_inf_dataset import RelInfDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
 from .shuffled_dataset import ShuffledDataset

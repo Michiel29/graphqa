@@ -2,18 +2,11 @@ import logging
 import os
 
 import numpy as np
-import torch
 
-from fairseq.data import (
-    data_utils,
-    iterators,
-    FairseqDataset,
-    Dictionary
-)
-
-from utils.data_utils import CustomDictionary, EntityDictionary
+from utils.data_utils import safe_load_indexed_dataset
 from datasets import GraphDataset
 from tasks import BaseTask
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +23,8 @@ class RelationInferenceTask(BaseTask):
 
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
+        parser.add_argument('--subsampling-strategy', type=str, default=None)
+        parser.add_argument('--subsampling-cap', type=int, default=None)
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
         parser.add_argument('--mask-type', default='head_tail', type=str,
@@ -43,25 +38,28 @@ class RelationInferenceTask(BaseTask):
         raise NotImplementedError
 
     def load_graph(self):
-        neighbor_path = os.path.join(self.args.data_path, 'neighbors')
-        edge_path = os.path.join(self.args.data_path, 'edges')
+        graph_path = os.path.join(self.args.data_path, 'graph')
+        neighbor_path = os.path.join(graph_path, 'neighbors')
+        edge_path = os.path.join(graph_path, 'edges')
 
-        neighbor_data = data_utils.load_indexed_dataset(
-            neighbor_path,
-            None,
-            dataset_impl='mmap'
+        neighbor_data = safe_load_indexed_dataset(neighbor_path)
+        edge_data = safe_load_indexed_dataset(edge_path)
+
+        index_to_sentences = safe_load_indexed_dataset(
+            os.path.join(graph_path, 'index_to_sentences'),
         )
-
-        if neighbor_data is None:
-            raise FileNotFoundError('Dataset (graph) not found: {}'.format(neighbor_path))
-
-        edge_data = data_utils.load_indexed_dataset(
-            edge_path,
-            None,
-            dataset_impl='mmap'
+        index_to_entity_pair = np.load(
+            os.path.join(graph_path, 'index_to_entity_pair.npy'),
+            mmap_mode='r',
         )
-
-        if edge_data is None:
-            raise FileNotFoundError('Dataset (graph) not found: {}'.format(edge_path))
-
-        self.graph = GraphDataset(neighbor_data, edge_data)
+        index_text_count = np.load(
+            os.path.join(graph_path, 'index_text_count.npy'),
+            mmap_mode='r',
+        )
+        self.graph = GraphDataset(
+            neighbor_data,
+            edge_data,
+            index_to_entity_pair,
+            index_text_count,
+            index_to_sentences,
+        )

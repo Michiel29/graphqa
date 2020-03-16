@@ -6,42 +6,55 @@ import numpy.random as rd
 from fairseq.data import FairseqDataset
 from fairseq.data import data_utils
 
-from datasets import AnnotatedTextDataset
+from datasets import (
+    AnnotatedTextDataset,
+    subsample_graph_by_entity_pairs,
+)
 
 
-class RelInfDataset(AnnotatedTextDataset):
+class RelInfDataset(FairseqDataset):
 
     def __init__(
         self,
-        text_data,
-        annotation_data,
+        annotated_text_dataset,
+        dictionary,
         graph,
         k_negative,
         n_entities,
-        dictionary,
-        entity_dictionary,
-        shift_annotations,
-        mask_type,
+        subsampling_strategy,
+        subsampling_cap,
+        max_positions,
         seed,
-        alpha,
     ):
-        super().__init__(
-            text_data=text_data,
-            annotation_data=annotation_data,
-            dictionary=dictionary,
-            entity_dictionary=entity_dictionary,
-            shift_annotations=shift_annotations,
-            mask_type=mask_type,
-            assign_head_tail='random',
-            seed=seed,
-            alpha=alpha,
-        )
+        self.annotated_text_dataset = annotated_text_dataset
         self.k_negative = k_negative
         self.n_entities = n_entities
         self.graph = graph
+        self.seed = seed
+        self.dataset = annotated_text_dataset
+        self.dictionary = dictionary
+        self.subsampling_strategy = subsampling_strategy
+        self.subsampling_cap = subsampling_cap
+        self.max_positions = max_positions
+        self.epoch = None
+
+    def set_epoch(self, epoch):
+        if self.epoch != epoch:
+            self.epoch = epoch
+            if self.subsampling_strategy == 'by_entity_pair':
+                assert self.subsampling_cap is not None
+                with data_utils.numpy_seed(17011990, self.seed, self.epoch):
+                    self.dataset = subsample_graph_by_entity_pairs(
+                        self.annotated_text_dataset,
+                        self.graph,
+                        self.subsampling_cap,
+                        self.max_positions,
+                    )
+            else:
+                assert self.subsampling_strategy is None
 
     def __getitem__(self, index):
-        item = super().__getitem__(index)
+        item = self.dataset[index]
         head = item['head']
         tail = item['tail']
 
@@ -72,3 +85,23 @@ class RelInfDataset(AnnotatedTextDataset):
             item['target'] = 0
 
         return item
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def num_tokens(self, index):
+        return self.dataset.sizes[index]
+
+    def size(self, index):
+        return self.dataset.sizes[index]
+
+    @property
+    def sizes(self):
+        return self.dataset.sizes
+
+    def ordered_indices(self):
+        """Sorts by sentence length, randomly shuffled within sentences of same length"""
+        return np.lexsort([
+            np.random.permutation(len(self)),
+            self.dataset.sizes,
+        ])

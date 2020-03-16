@@ -24,23 +24,30 @@ class TripletInferenceTask(RelationInferenceTask):
             split,
             self.dictionary.bos(),
         )
-        dataset = TripletDataset(
+        annotated_text_dataset = AnnotatedTextDataset(
             text_data=text_data,
             annotation_data=annotation_data,
-            graph=self.graph,
-            k_negative=self.args.k_negative,
-            n_entities=len(self.entity_dictionary),
             dictionary=self.dictionary,
             entity_dictionary=self.entity_dictionary,
             shift_annotations=1,
             mask_type=self.args.mask_type,
+            assign_head_tail='random',
             seed=self.args.seed,
             alpha=self.args.alpha,
         )
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-        dataset = prune_dataset_size(
-            self.filter_by_max_positions(dataset),
-            n_examples,
-            self.seed,
+        dataset = TripletDataset(
+            annotated_text_dataset=annotated_text_dataset,
+            dictionary=self.dictionary,
+            graph=self.graph,
+            k_negative=self.args.k_negative,
+            n_entities=len(self.entity_dictionary),
+            subsampling_strategy=self.args.subsampling_strategy,
+            subsampling_cap=self.args.subsampling_cap,
+            max_positions=self.args.max_positions - 4,
+            seed=self.args.seed,
         )
+        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
+        if self.args.subsampling_strategy is None:
+            dataset = self.filter_by_max_positions(dataset)
+        dataset = prune_dataset_size(dataset, n_examples, self.seed)
         self.datasets[split] = dataset
