@@ -9,10 +9,11 @@
     //"data_path": "../data/nki/bin-v3-threshold20",
 
     "mask_type": "start_end",
-    "strong_prob": 0.8,
-    "n_tries_neighbor": 100,
+    "k_weak_neg": 3,
+    "n_tries_entity": 100,
     "n_tries_text": 100,
     "alpha": 0.7,
+    "run_batch_diag": false,
 
     "entity_dim": 256,
     

@@ -47,14 +47,16 @@ class MTBTask(RelationInferenceTask):
 
         """Required either in config or cl"""
         parser.add_argument('--data-path', help='path to data')
-        parser.add_argument('--strong_prob', default=0.8, type=float,
-                            help='probability of sampling a strong negative')
-        parser.add_argument('--n_tries_neighbor', default=100, type=int,
-                            help='number of attempts to sample neighbors for a given case')
-        parser.add_argument('--n_tries_text', default=100, type=int,
-                            help='number of attempts to sample texts for a given case')
-        parser.add_argument('--alpha', default=0.7, type=float,
+        parser.add_argument('--k_weak_neg', type=float,
+                            help='number of weak negatives per positive')
+        parser.add_argument('--n_tries_entity', type=int,
+                            help='number of attempts to sample entity candidates')
+        parser.add_argument('--n_tries_text', type=int,
+                            help='number of attempts to sample text candidates')
+        parser.add_argument('--alpha', type=float,
                             help='probability of not masking the entity with a [BLANK] token')
+        parser.add_argument('--run_batch_diag', type=bool,
+                            help='whether to run the diagnostic tool on MTB batches')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         train_text_data, train_annotation_data = load_annotated_text(
@@ -110,11 +112,12 @@ class MTBTask(RelationInferenceTask):
             n_entities=len(self.entity_dictionary),
             dictionary=self.dictionary,
             entity_dictionary=self.entity_dictionary,
-            strong_prob=self.args.strong_prob,
-            n_tries_neighbor=self.args.n_tries_neighbor,
+            k_weak_neg=self.args.k_weak_neg,
+            n_tries_entity=self.args.n_tries_entity,
             n_tries_text=self.args.n_tries_text,
             max_positions=self.args.max_positions,
             seed=self.seed,
+            run_batch_diag=self.args.run_batch_diag,
         )
 
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))

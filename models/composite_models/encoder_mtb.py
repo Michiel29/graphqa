@@ -30,8 +30,6 @@ class EncoderMTBModel(BaseFairseqModel):
         self.task = task
         self._max_positions = args.max_positions
 
-        self.diag = Diagnostic(task.dictionary, task.entity_dictionary, task)
-
     def max_positions(self):
         return self._max_positions
 
@@ -39,21 +37,20 @@ class EncoderMTBModel(BaseFairseqModel):
 
         textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
         textA_enc = self.text_linear(textA_enc) # [batch_size, ent_dim]
+        textA_enc = torch.repeat_interleave(textA_enc, int(batch['A2B'].numel()/batch['size']), dim=0)
 
         textB_enc = []
-        B2A = []
         for cluster_id, cluster_texts in batch['textB'].items():
             cur_textB_enc, _ = self.encoder(cluster_texts)
             textB_enc.append(cur_textB_enc)
-            B2A += batch['B2A'][cluster_id]
         textB_enc = torch.cat(textB_enc, dim=0) 
         textB_enc = self.text_linear(textB_enc) # [batch_size, ent_dim]
-                
-        textA_enc = torch.index_select(textA_enc, 0, torch.cuda.LongTensor(B2A))
+        textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
 
-        # self.diag.inspect_batch(batch, scores=scores)
+        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+        # diag.inspect_batch(batch, scores=scores)
 
         return scores
 

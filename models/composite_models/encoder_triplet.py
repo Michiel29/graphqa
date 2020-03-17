@@ -30,8 +30,6 @@ class EncoderTripletModel(BaseFairseqModel):
         self.task = task
         self._max_positions = args.max_positions
 
-        #self.diag = Diagnostic(task.dictionary, task.entity_dictionary, task)
-
     def max_positions(self):
         return self._max_positions
 
@@ -47,8 +45,9 @@ class EncoderTripletModel(BaseFairseqModel):
         text_enc = text_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
         scores = self.triplet_model(text_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
-
-        #self.diag.inspect_batch(batch, scores=scores)
+       
+        #diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+        #diag.inspect_batch(batch, scores=scores)
 
         return scores
 

@@ -22,8 +22,6 @@ class EncoderFewRelModel(BaseFairseqModel):
 
         self.task = task
 
-        self.diag = Diagnostic(task.dictionary, task.entity_dictionary, task)
-
     def forward(self, batch):
 
         goal_text = batch['text'] # [batch_size, n_tokens]
@@ -39,7 +37,8 @@ class EncoderFewRelModel(BaseFairseqModel):
 
         scores = torch.matmul(class_encs, goal_enc).squeeze(-1) # [batch_size, n_way]
 
-        # self.diag.inspect_batch(batch, scores=scores)
+        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+        # diag.inspect_batch(batch, scores=scores)
 
         return scores
 

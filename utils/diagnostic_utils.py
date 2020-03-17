@@ -59,20 +59,34 @@ class Diagnostic():
             print('<tail> ENTITY:\n {} (ID={})\n'.format(tail_ent, tail_id))
         print('\n')
 
-    def inspect_mtb_pairs(self, texts_id=None, entities_id=None):
+    def inspect_mtb_pairs(self, A_dict=None, B_dict=None):
 
-        if texts_id is not None:
-            for key, val in texts_id.items():
-                decoded_text = self.decode_sentence(val)    
-                print('\n\n{} ID LIST:\n {}\n'.format(key.upper(), self.dictionary.string(val).split()))    
-                print('{} DECODED TEXT:\n {}\n'.format(key.upper(), decoded_text))
-        print('\n')
+        if A_dict is not None:
+            print('\n')
+            for key, val in A_dict.items():
+                if key == 'textA':
+                    decoded_text = self.decode_sentence(val)    
+                    print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))    
+                    print('{} DECODED TEXT:\n {}\n'.format(key, decoded_text))
+                else:
+                    ent = self.entity_dictionary[val]
+                    print('<{}> ENTITY:\n {} (ID={})\n'.format(key, ent, val))  
+            print('\n')
+            
+        if B_dict is not None:
+            for i in range(len(B_dict)):
+                pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i) 
+                decoded_text = self.decode_sentence(B_dict['textB'][i])    
+                print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))    
+                print('{} DECODED TEXT ({}):\n {}\n'.format('textB', pair_type, decoded_text))
 
-        if entities_id is not None:
-            for key, val in entities_id.items():
-                ent = self.entity_dictionary[val]
-                print('<{}> ENTITY:\n {} (ID={})\n'.format(key.upper(), ent, val))
-        print('\n')
+                head_ent = self.entity_dictionary[B_dict['headB'][i]]
+                print('<{}> ENTITY ({}):\n {} (ID={})\n'.format('headB', pair_type, head_ent, B_dict['headB'][i]))
+
+                tail_ent = self.entity_dictionary[B_dict['tailB'][i]]
+                print('<{}> ENTITY ({}):\n {} (ID={})\n\n'.format('tailB', pair_type, tail_ent, B_dict['tailB'][i]))
+
+        print('------------------------------------------------------------')
 
     def inspect_batch(self, batch, ent_filter=None, scores=None):
 
@@ -94,11 +108,11 @@ class Diagnostic():
             for cluster_id, cluster_texts in batch['textB'].items():
                 textB_chunks = list(torch.chunk(cluster_texts, cluster_texts.shape[0], dim=0))
                 textB_id += textB_chunks
-            A2B = batch['A2B']
-            e1A_id = batch['e1A']
-            e2A_id = batch['e2A']
-            e1B_neg_id = batch['e1B_neg']
-            e2B_neg_id = batch['e2B_neg']
+            headA_id = batch['headA']
+            tailA_id = batch['tailA']
+            headB_id = batch['headB']
+            tailB_id = batch['tailB']
+            n_pairs = int(batch['A2B'].numel() / batch['size'])
 
         for i in range(batch_size):
             if self.task.args.task == 'triplet_inference':
@@ -149,43 +163,40 @@ class Diagnostic():
             elif self.task.args.task == 'mtb':
                 if ent_filter is None:
                     pass
-                elif e1A_id[i] not in ent_filter or e2A_id[i] not in ent_filter or e1B_neg_id[i] not in ent_filter or e2B_neg_id[i] not in ent_filter:
+                elif headA_id[i] not in ent_filter or tailA_id[i] not in ent_filter or headB_neg_id[i] not in ent_filter or tailB_neg_id[i] not in ent_filter:
                     continue
 
+                # Print textA, headA, and tailA
                 cur_textA = textA_id[i]
                 decoded_textA = self.decode_sentence(cur_textA) 
-                print('\n\nTEXTA ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textA).split()))
+                print('\nTEXTA ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textA).split()))
                 print('DECODED TEXTA:\n {}\n'.format(decoded_textA))
 
-                cur_textB_pos = textB_id[A2B[2*i].item()]
-                decoded_textB_pos = self.decode_sentence(cur_textB_pos) 
-                print('\n\nTEXTB_POS ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textB_pos).split()))
-                print('DECODED TEXTB_POS:\n {}\n'.format(decoded_textB_pos))
-                
-                cur_textB_neg = textB_id[A2B[2*i+1].item()]
-                decoded_textB_neg = self.decode_sentence(cur_textB_neg) 
-                print('\n\nTEXTB_NEG ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textB_neg).split()))
-                print('DECODED TEXTB_NEG:\n {}\n'.format(decoded_textB_neg))
+                headA_ent = self.task.entity_dictionary[headA_id[i]]
+                print('<headA> ENTITY:\n {} (ID={})\n'.format(headA_ent, headA_id[i].item()))
 
-                e1A_ent = self.task.entity_dictionary[e1A_id[i]]
-                print('\n\n<E1A>/<E1B_POS> ENTITY:\n {} (ID={})\n'.format(e1A_ent, e1A_id[i].item()))
+                tailA_ent = self.task.entity_dictionary[tailA_id[i]]
+                print('<tailA> ENTITY:\n {} (ID={})\n'.format(tailA_ent, tailA_id[i].item()))
+        
+                # Print textB, headB, and tailB
+                for j in range(n_pairs):
+                    cur_textB = textB_id[batch['A2B'][i * n_pairs + j]]
+                    decoded_textB = self.decode_sentence(cur_textB)
+                    pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)  
+                    print('\nTEXTB ID LIST ({}):\n {}\n'.format(pair_type, self.task.dictionary.string(cur_textB).split()))
+                    print('DECODED TEXTB ({}):\n {}\n'.format(pair_type, decoded_textB))
 
-                e2A_ent = self.task.entity_dictionary[e2A_id[i]]
-                print('<E2A>/<E2B_POS> ENTITY:\n {} (ID={})\n'.format(e2A_ent, e2A_id[i].item()))
+                    headB_ent = self.task.entity_dictionary[headB_id[i, j]]
+                    print('<headB> ENTITY ({}):\n {} (ID={})\n'.format(pair_type, headB_ent, headB_id[i, j].item()))
 
-                print('POS TARGET: \n {}\n'.format(1))
+                    tailB_ent = self.task.entity_dictionary[tailB_id[i, j]]
+                    print('<tailB> ENTITY ({}):\n {} (ID={})\n'.format(pair_type, tailB_ent, tailB_id[i, j].item()))             
+
+                # Print targets and scores
+                print('TARGETS: \n {}\n'.format(np.array([1] + (n_pairs-1) * [0])))
                 if scores is not None:
-                    print('POS SCORE: \n {}\n'.format(round(torch.sigmoid(scores[A2B[2*i].item()]).detach().item(), 5)))
-
-                e1B_neg_ent = self.task.entity_dictionary[e1B_neg_id[i]]
-                print('\n\n<E1B_NEG> ENTITY:\n {} (ID={})\n'.format(e1B_neg_ent, e1B_neg_id[i].item()))
-
-                e2B_neg_ent = self.task.entity_dictionary[e2B_neg_id[i]]
-                print('<E2B_NEG> ENTITY:\n {} (ID={})\n'.format(e2B_neg_ent, e2B_neg_id[i].item()))
-
-                print('NEG TARGET: \n {}\n'.format(0))
-                if scores is not None:
-                    print('NEG SCORE: \n {}\n'.format(round(torch.sigmoid(scores[A2B[2*i+1].item()]).detach().item(), 5)))
+                    print('SCORES: \n {}\n\n'.format(np.round(torch.sigmoid(scores.reshape(batch_size, n_pairs)[i]).detach().cpu().numpy(), decimals=5)))
                 else:
-                    print('\n')
+                    print('\n') 
+                print('------------------------------------------------------------\n')
             
