@@ -19,6 +19,7 @@ from fairseq.data import Dictionary
 from fairseq.data import indexed_dataset
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
+
 TRAINING_TQDM_BAD_FORMAT = (
     '{l_bar}{bar}| '
     '{n_fmt}/{total_fmt} [{elapsed}<{remaining} {postfix}]'
@@ -273,6 +274,8 @@ class WikiProcessor(object):
     def apply_gt2_bpe(self, sentence, annotations):
         global bpe
         ids = list(map(str, bpe.encode(sentence)))
+        if len(annotations) == 0:
+            return ids, annotations
         word_index = 0
         current_annotation_index, next_annotation_index = None, 0
         for token_id, token in enumerate(ids):
@@ -310,6 +313,9 @@ class WikiProcessor(object):
         num_filtered_by_candidate_set, num_filtered_by_human_annotations, num_filtered_by_self_overlaps = 0, 0, 0
         num_filtered_by_crossing_sentence_boundaries, num_filtered_solo_annotion_in_sentence = 0, 0
         num_filtered_by_entity_vocab = 0
+
+        empty_line_tensor = vocab.encode_line(line='', append_eos=self.append_eos)
+        assert len(empty_line_tensor) == 1
 
         if self.entity_vocab is None:
             annotation_entities = Counter()
@@ -387,6 +393,9 @@ class WikiProcessor(object):
                         annotations_builder.add_item(torch.IntTensor(
                             [[x['start_word'], x['end_word'], int(entities[x['uri']])] for x in annotations_per_sentence]
                         ))
+                if self.entity_vocab is not None:
+                    dataset_builder.add_item(empty_line_tensor)
+                    annotations_builder.add_item(torch.IntTensor([]))
 
         if self.entity_vocab is not None:
             dataset_builder.finalize(output_prefix + '.text.idx')
