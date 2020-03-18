@@ -5,13 +5,14 @@
     "mask_type": "start_end",
     "alpha": 1,
 
-    "encoder_output_layer_type": "bag_of_words",
-    // "encoder_output_layer_type": "entity_start",
+    "entity_dim": 256,
+    // "encoder_output_layer_type": "bag_of_words",
+    "encoder_output_layer_type": "entity_start",
 
     "max_sentences": 10,
     "max_tokens": 2000,
 
-    //"load_checkpoint": "../save/triplet_inference/encoder_triplet__roberta_small/lr_0.001/02m_14d_14h_41m/checkpoints/checkpoint_best.pt",
+    "load_checkpoint": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_14d_02h_04m/checkpoints/checkpoint3.pt",
 
     "load_component_prefix": "encoder"
 }
