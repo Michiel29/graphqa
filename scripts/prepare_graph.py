@@ -1,8 +1,7 @@
 import os
-from collections import defaultdict
-from itertools import combinations
+from collections import deque
 import argparse
-from tqdm import tqdm
+from tqdm import trange
 
 import numpy as np
 import torch
@@ -12,147 +11,113 @@ from fairseq.data.data_utils import load_indexed_dataset
 
 
 def main(args):
-    graph_path = os.path.join(args.data_path, 'graph')
-    entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-    n_entities = len(Dictionary.load(entity_dict_path))
-
+    text_data, annotation_data = load_text_annotations(args.data_path, args.prefix)
+    n_entities = len(Dictionary.load(os.path.join(args.data_path, 'entity.dict.txt')))
     print('{} entities'.format(n_entities))
 
-    annotation_path = os.path.join(args.data_path, 'train.annotations')
+    edges = create_graph(
+        text_data,
+        annotation_data,
+        n_entities,
+        args.document_sep_len,
+        args.max_entity_pair_distance,
+    )
 
-    annotation_data =  load_indexed_dataset(
-        annotation_path,
+    graph_path = os.path.join(args.data_path, args.prefix + '.graph')
+    graph_builder = indexed_dataset.make_builder(
+        graph_path + '.bin',
+        impl='mmap',
+        vocab_size=n_entities,
+    )
+    with trange(n_entities, desc='Building graph dataset') as progress_bar:
+        for entity in progress_bar:
+            edges[entity].sort()
+            graph_builder.add_item(torch.IntTensor(edges[entity]))
+    graph_builder.finalize(graph_path + '.idx')
+
+
+def load_text_annotations(path, prefix):
+    text_data =  load_indexed_dataset(
+        os.path.join(path, prefix + '.text'),
         None,
         dataset_impl='mmap',
     )
+    assert text_data is not None
 
-    print('{} sentences\n'.format(len(annotation_data)))
-
-    print('starting graph construction')
-    entity_neighbors, entity_edges = create_graph(annotation_data, n_entities)
-    (
-        index_to_entity_pair,
-        index_text_count,
-        index_to_sentences,
-        max_sentence_id,
-     ) = count_edges(entity_neighbors, entity_edges)
-    print('finished graph construction\n')
-
-    os.makedirs(graph_path, exist_ok=True)
-    neighbor_path = os.path.join(graph_path, 'neighbors')
-    edge_path = os.path.join(graph_path, 'edges')
-    index_to_entity_pair_path = os.path.join(graph_path, 'index_to_entity_pair')
-    index_text_count_path = os.path.join(graph_path, 'index_text_count')
-    index_to_sentences_path = os.path.join(graph_path, 'index_to_sentences')
-
-    neighbor_builder = indexed_dataset.make_builder(
-        neighbor_path + '.bin',
-        impl='mmap',
-        vocab_size=n_entities
+    annotation_data =  load_indexed_dataset(
+        os.path.join(path, prefix + '.annotations'),
+        None,
+        dataset_impl='mmap',
     )
+    assert annotation_data is not None
+    return text_data, annotation_data
 
-    edge_builder = indexed_dataset.make_builder(
-        edge_path + '.bin',
-        impl='mmap',
-        vocab_size=len(annotation_data)
-    )
 
-    print('creating indexed datasets for neighbors/edges')
-    for entity in tqdm(range(n_entities)):
+def create_graph(
+    text_data,
+    annotation_data,
+    n_entities,
+    document_sep_len,
+    max_entity_pair_distance,
+):
+    edges = [list() for entity in range(n_entities)]
+    # mentions ordered by starting position
+    current_entities = deque()
+    num_documents, num_undirected_edges, global_text_index = 0, 0, 0
 
-        neighbors = np.array(entity_neighbors[entity])
-        sorted_indices = np.argsort(neighbors)
+    assert len(text_data) == len(annotation_data)
+    with trange(len(annotation_data), desc='Collecting entity pairs') as progress_bar:
+        for sentence_idx in progress_bar:
+            assert len(text_data[sentence_idx]) >= document_sep_len
+            if len(text_data[sentence_idx]) > document_sep_len:
+                for annotation_index in range(0, len(annotation_data[sentence_idx]), 3):
+                    # annotation = (starting position in the sentence, ending position, entity ID)
+                    start_pos = annotation_data[sentence_idx][annotation_index].item() + global_text_index
+                    end_pos = annotation_data[sentence_idx][annotation_index + 1].item() + global_text_index
+                    entity = annotation_data[sentence_idx][annotation_index + 2].item()
+                    while (
+                        len(current_entities) > 0
+                        and current_entities[0][0] + max_entity_pair_distance < start_pos
+                    ):
+                        current_entities.popleft()
+                    for current_entity in current_entities:
+                        assert abs(start_pos - current_entity[0]) <= max_entity_pair_distance
+                        if current_entity[2] != entity:
+                            edges[current_entity[2]].append(
+                                (entity, current_entity[0], current_entity[1], start_pos, end_pos)
+                            )
+                            edges[entity].append(
+                                (current_entity[2], start_pos, end_pos, current_entity[0], current_entity[1])
+                            )
+                            num_undirected_edges += 1
+                    current_entities.append((start_pos, end_pos, entity))
+            else:
+                # empty sentence means we hit the end of the document
+                current_entities.clear()
+                num_documents += 1
+            global_text_index += len(text_data[sentence_idx])
+            if sentence_idx % 1000 == 0:
+                progress_bar.set_postfix(
+                    num_documents=num_documents,
+                    num_undir_edges=num_undirected_edges,
+                    entities_queue_sz=len(current_entities),
+                )
 
-        sorted_neighbors = neighbors[sorted_indices]
-        sorted_edges = np.array(entity_edges[entity])[sorted_indices]
-
-        neighbor_builder.add_item(torch.IntTensor(sorted_neighbors))
-        edge_builder.add_item(torch.IntTensor(sorted_edges))
-
-    neighbor_builder.finalize(neighbor_path + '.idx')
-    edge_builder.finalize(edge_path + '.idx')
-
-    print('creating indexed datasets for index_to_entity_pair/index_text_count')
-    np.save(index_to_entity_pair_path, index_to_entity_pair)
-    np.save(index_text_count_path, index_text_count)
-
-    print('creating indexed datasets for index_to_sentences')
-    index_to_sentences_builder = indexed_dataset.make_builder(
-        index_to_sentences_path + '.bin',
-        impl='mmap',
-        vocab_size=max_sentence_id,
-    )
-    for edge_index in tqdm(range(len(index_to_sentences))):
-        index_to_sentences_builder.add_item(
-            torch.IntTensor(index_to_sentences[edge_index])
+        progress_bar.set_postfix(
+            num_documents=num_documents,
+            num_undir_edges=num_undirected_edges,
+            entities_queue_sz=len(current_entities),
         )
-    index_to_sentences_builder.finalize(index_to_sentences_path + '.idx')
 
-    print('finished creating indexed datasets')
-
-
-def create_graph(annotation_data, n_entities):
-
-    entity_neighbors = [list() for entity in range(n_entities)]
-    entity_edges = [list() for entity in range(n_entities)]
-
-    for sentence_idx in tqdm(range(len(annotation_data))):
-        entity_ids = set(annotation_data[sentence_idx].reshape(-1, 3)[:, -1].numpy())
-
-        for a, b in combinations(entity_ids, 2):
-            entity_neighbors[a].append(b)
-            entity_neighbors[b].append(a)
-
-            entity_edges[a].append(sentence_idx)
-            entity_edges[b].append(sentence_idx)
-
-    return entity_neighbors, entity_edges
-
-def count_edges(entity_neighbors, entity_edges):
-    entity_pair_to_index = {}
-
-    print('count_edges: indexing entity pairs')
-    for v, neighbors in tqdm(enumerate(entity_neighbors), total=len(entity_neighbors)):
-        unique_neighbors = np.unique(neighbors)
-        for u in unique_neighbors:
-            edge = frozenset((v, u))
-            if edge not in entity_pair_to_index:
-                entity_pair_to_index[edge] = len(entity_pair_to_index)
-    print('count_edges: collected %d undirected edges' % len(entity_pair_to_index))
-
-    print('count_edges: building index -> entity pair')
-    index_to_entity_pair = np.zeros((len(entity_pair_to_index), 2), dtype=np.int32)
-    for edge, index in tqdm(entity_pair_to_index.items()):
-        v = min(edge)
-        u = max(edge)
-        index_to_entity_pair[index][0] = v
-        index_to_entity_pair[index][1] = u
-
-    print('count_edges: building index -> sentence')
-    max_sentence_id = -1
-    index_to_sentences = [list() for edge in range(len(entity_pair_to_index))]
-    for v, (neighbors, sentences) in tqdm(
-        enumerate(zip(entity_neighbors, entity_edges)),
-        total=len(entity_neighbors),
-    ):
-        for u, s in zip(neighbors, sentences):
-            if v <= u:
-                index_to_sentences[entity_pair_to_index[frozenset((v, u))]].append(s)
-                max_sentence_id = max(max_sentence_id, s)
-    print('count_edges: built index -> sentence: max sentence idx = %d' % max_sentence_id)
-
-    print('count_edges: counting edges')
-    index_text_count = np.zeros(len(entity_pair_to_index), dtype=np.int32)
-    for v, edge in tqdm(enumerate(entity_neighbors), total=len(entity_neighbors)):
-        for u in edge:
-            if v <= u:
-                index_text_count[entity_pair_to_index[frozenset((v, u))]] += 1
-    return index_to_entity_pair, index_text_count, index_to_sentences, max_sentence_id
+    return edges
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Construction of IndexedDatasets for graph neighbors and edges')
     parser.add_argument('--data-path', type=str, help='Data directory', default='../data/bin_sample')
+    parser.add_argument('--prefix', type=str)
+    parser.add_argument('--document-sep-len', type=int)
+    parser.add_argument('--max-entity-pair-distance', type=int)
 
     args = parser.parse_args()
     main(args)
