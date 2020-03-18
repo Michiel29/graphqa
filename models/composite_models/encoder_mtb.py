@@ -22,10 +22,6 @@ class EncoderMTBModel(BaseFairseqModel):
 
         self.encoder_embed_dim = args.encoder_embed_dim
         self.encoder = encoder
-        if args.encoder_output_layer_type == 'bag_of_words':
-            self.text_linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
-        elif args.encoder_output_layer_type in ['head_tail_concat', 'entity_start']:
-            self.text_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
 
         self.task = task
         self._max_positions = args.max_positions
@@ -36,7 +32,6 @@ class EncoderMTBModel(BaseFairseqModel):
     def forward(self, batch):
 
         textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
-        textA_enc = self.text_linear(textA_enc) # [batch_size, ent_dim]
         textA_enc = torch.repeat_interleave(textA_enc, int(batch['A2B'].numel()/batch['size']), dim=0)
 
         textB_enc = []
@@ -44,7 +39,6 @@ class EncoderMTBModel(BaseFairseqModel):
             cur_textB_enc, _ = self.encoder(cluster_texts)
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0) 
-        textB_enc = self.text_linear(textB_enc) # [batch_size, ent_dim]
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
