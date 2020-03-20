@@ -43,9 +43,9 @@ class EncoderFewRelModel(BaseFairseqModel):
         return scores
 
     @classmethod
-    def build_model(cls, args, task):
-
-        encoder = RobertaWrapper.build_model(args, task)
+    def build_model(cls, args, task, encoder=None):
+        if encoder is None:
+            encoder = RobertaWrapper.build_model(args, task)
         return cls(args, encoder, task)
 
 @register_model_architecture('encoder_fewrel', 'encoder_fewrel__roberta_small')

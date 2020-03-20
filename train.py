@@ -13,6 +13,7 @@ import random
 import os
 import sys
 import argparse
+import copy
 
 import numpy as np
 import torch
@@ -23,6 +24,7 @@ from fairseq import (
 from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
+from fairseq.models import ARCH_MODEL_REGISTRY
 
 import models, criterions
 import tasks as custom_tasks
@@ -55,17 +57,19 @@ def main(args, init_distributed=False):
     # Print args
     logger.info(args)
 
-    # Setup task, e.g., translation, language modeling, etc.
+    # Setup tasks, e.g., translation, language modeling, etc.
     task = tasks.setup_task(args)
 
-    # Load valid dataset (we load training data below, based on the latest checkpoint)
+    # Load valid datasets (we load training data below, based on the latest checkpoint)
     for valid_sub_split in args.valid_subset.split(','):
         task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
-    # Build model and criterion
+    # Build models
     model = task.build_model(args)
 
+    # Build criterions
     criterion = task.build_criterion(args)
+
     logger.info(model)
     logger.info('model {}, criterion {}'.format(args.arch, criterion.__class__.__name__))
     logger.info('num. model params: {} (num. trained: {})'.format(
@@ -81,10 +85,27 @@ def main(args, init_distributed=False):
         args.max_sentences,
     ))
 
+    if args.eval_downstream:
+        # Create eval_args, by overwriting a copy of args with args.eval_kwargs
+        eval_args = copy.deepcopy(args)
+        update_namespace(eval_args, args.eval_kwargs, override=True)
+
+        # Set up eval_task
+        eval_task = tasks.setup_task(eval_args)
+
+        # Load eval dataset
+        for valid_sub_split in args.valid_subset.split(','):
+            eval_task.load_dataset(valid_sub_split, combine=False, epoch=0)
+
+        # Set up eval model, criterion, and trainer
+        eval_model = ARCH_MODEL_REGISTRY[eval_args.arch].build_model(eval_args, eval_task, model.encoder)
+        eval_criterion = eval_task.build_criterion(eval_args)
+        eval_trainer = Trainer(eval_args, eval_task, eval_model, eval_criterion)
+
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
-
+    
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
     max_update = args.max_update or math.inf
@@ -102,9 +123,18 @@ def main(args, init_distributed=False):
         train(args, trainer, task, epoch_itr)
 
         if not args.disable_validation and epoch_itr.epoch % args.validate_interval == 0:
+
+            # validate on task validation set
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
+
+            if args.eval_downstream:
+                # set num_updates for eval_trainer
+                eval_trainer.set_num_updates(trainer.get_num_updates())
+
+                # validate on eval_task validation set
+                validate(args, eval_trainer, eval_task, epoch_itr, valid_subsets, eval_args.task)
         else:
-            valid_losses = [None]
+            valid_losses = [None]       
 
         # only use first validation loss to update the learning rate
         lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
@@ -140,7 +170,6 @@ def should_stop_early(args, valid_loss):
     else:
         should_stop_early.num_runs += 1
         return should_stop_early.num_runs > args.patience
-
 
 def train(args, trainer, task, epoch_itr):
     """Train the model for one epoch."""
@@ -202,8 +231,10 @@ def get_training_stats(stats):
     return stats
 
 
-def validate(args, trainer, task, epoch_itr, subsets):
+def validate(args, trainer, task, epoch_itr, subsets, valid_name=None):
     """Evaluate the model on the validation set(s) and return the losses."""
+
+    valid_name_ = valid_name if valid_name is not None else 'valid'
 
     if args.fixed_validation_seed is not None:
         # set fixed seed for every validation
@@ -229,20 +260,20 @@ def validate(args, trainer, task, epoch_itr, subsets):
         ).next_epoch_itr(shuffle=False)
         progress = progress_bar.build_progress_bar(
             args, itr, epoch_itr.epoch,
-            prefix='valid on \'{}\' subset'.format(subset),
+            prefix='valid on \'{}\' subset'.format(valid_name_),
             no_progress_bar='simple'
         )
 
         # reset validation meters
-        metrics.reset_meters('valid')
+        metrics.reset_meters(valid_name_)
 
-        with metrics.aggregate() as agg:
+        with metrics.aggregate(valid_name) as agg:
             for sample in progress:
                 trainer.valid_step(sample)
 
         # log validation stats
         stats = get_valid_stats(args, trainer, agg.get_smoothed_values())
-        progress.print(stats, tag=subset, step=trainer.get_num_updates())
+        progress.print(stats, tag=valid_name_, step=trainer.get_num_updates())
 
         valid_losses.append(stats[args.best_checkpoint_metric])
     return valid_losses
@@ -260,7 +291,6 @@ def get_valid_stats(args, trainer, stats):
             stats[args.best_checkpoint_metric],
         )
     return stats
-
 
 def distributed_main(i, args, start_rank=0):
     args.device_id = i

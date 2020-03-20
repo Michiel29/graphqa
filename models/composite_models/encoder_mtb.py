@@ -55,10 +55,7 @@ class EncoderMTBModel(BaseFairseqModel):
 
     @classmethod
     def build_model(cls, args, task):
-
         encoder = RobertaWrapper.build_model(args, task)
-        n_entities = len(task.entity_dictionary)
-
         return cls(args, encoder, task)
 
 @register_model_architecture('encoder_mtb', 'encoder_mtb__roberta_base')

@@ -62,7 +62,6 @@ class EncoderTripletModel(BaseFairseqModel):
 
     @classmethod
     def build_model(cls, args, task):
-
         encoder = RobertaWrapper.build_model(args, task)
         triplet_model = triplet_dict[args.triplet_type](args)
         n_entities = len(task.entity_dictionary)

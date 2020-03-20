@@ -5,7 +5,18 @@
     "arch": "encoder_triplet__roberta_small",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
-    "data_path": "../data/nki/bin-v3-threshold20",
+    // "data_path": "../data/nki/bin-v3-threshold20",
+    "data_path": "../data/nki/bin-v3-threshold20-small",
+
+    "eval_downstream": true,
+    "eval_kwargs": {
+        "task": "fewrel",
+        "arch": "encoder_fewrel__roberta_small",
+        "data_path": "../data/fewrel/bin",
+        "n_way": 5,
+        "n_shot": 1,
+        "criterion": "cross_entropy_custom"
+    },
 
     "mask_type": "start_end",
     "alpha": 0.7,

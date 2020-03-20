@@ -8,6 +8,16 @@
     "data_path": "../data/nki/bin-v3-threshold20-small",
     //"data_path": "../data/nki/bin-v3-threshold20",
 
+    "eval_downstream": true,
+    "eval_kwargs": {
+        "task": "fewrel",
+        "arch": "encoder_fewrel__roberta_small",
+        "data_path": "../data/fewrel/bin",
+        "n_way": 5,
+        "n_shot": 1,
+        "criterion": "cross_entropy_custom"
+    },
+
     "mask_type": "start_end",
     "k_weak_neg": 3,
     "n_tries_entity": 100,
@@ -24,16 +34,19 @@
     //"warmup_updates": 43413, // 0.06 * max_epoch * num_updates 
     "lr": [1e-4],
 
-    // "max_sentences": 260, // max number of textA sentences per batch
-    // "max_tokens": 1.2e4, // max number of textA tokens per batch
-    "max_sentences": 32, // max number of textA sentences per batch
-    "max_tokens": 1e3, // max number of textA tokens per batch
+    "max_sentences": 128, // max number of textA sentences per batch
+    "max_tokens": 1e4, // max number of textA tokens per batch
+    // "max_sentences": 32, // max number of textA sentences per batch
+    // "max_tokens": 1e3, // max number of textA tokens per batch
     "update_freq": [1],
 
-    "n_train_examples": 100000,
+    "num_workers": 3, // set at least 1 worker
+    // "num_workers": 0, 
 
-    // "num_workers": 3, // set at least 1 worker
-    "num_workers": 0, // set at least 1 worker
+    // "restore_file": "../save/task_mtb/arch_encoder_mtb__roberta_small/lr_0.0001/03m_17d_23h_44m/checkpoints/checkpoint_last.pt",
+    // "restore_file": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_14d_02h_04m/checkpoints/checkpoint3.pt",
 
     "criterion": "binary_cross_entropy_custom"
+
+
 }
