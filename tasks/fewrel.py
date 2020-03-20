@@ -19,10 +19,10 @@ from datasets import (
     prune_dataset_size,
 )
 from utils.data_utils import (
-    CustomDictionary,
     load_annotated_text,
     safe_load_indexed_dataset,
 )
+from utils.dictionary import CustomDictionary
 
 logger = logging.getLogger(__name__)
 

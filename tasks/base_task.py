@@ -12,10 +12,7 @@ from fairseq.data import (
 from fairseq.tasks import FairseqTask
 
 from datasets import filter_by_max_length
-from utils.data_utils import (
-    CustomDictionary,
-    EntityDictionary,
-)
+from utils.dictionary import CustomDictionary, EntityDictionary
 
 logger = logging.getLogger(__name__)
 

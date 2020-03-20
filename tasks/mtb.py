@@ -26,13 +26,12 @@ from datasets import (
     prune_dataset_size,
     ShuffledDataset,
 )
-
 from utils.data_utils import (
-    CustomDictionary,
-    EntityDictionary,
     load_annotated_text,
     safe_load_indexed_dataset,
 )
+from utils.dictionary import CustomDictionary, EntityDictionary
+
 
 logger = logging.getLogger(__name__)
 

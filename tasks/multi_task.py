@@ -10,7 +10,7 @@ from fairseq.data import data_utils
 from fairseq.tasks import register_task, TASK_REGISTRY
 
 from tasks import BaseTask
-from utils.data_utils import CustomDictionary, EntityDictionary
+from utils.dictionary import CustomDictionary, EntityDictionary
 
 
 logger = logging.getLogger(__name__)
