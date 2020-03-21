@@ -327,11 +327,6 @@ class WikiProcessor(object):
                 vocab_size=len(vocab),
             )
             annotations_list = list()
-            annotations_builder = indexed_dataset.make_builder(
-                output_prefix + '.annotations.bin',
-                impl=self.dataset_impl,
-                vocab_size=len(entities),
-            )
 
         with codecs.open(path, 'r', 'utf8') as f:
             total_length = 0
@@ -375,7 +370,6 @@ class WikiProcessor(object):
                         num_filtered_solo_annotion_in_sentence += 1
                         continue
                     num_annotations += len(annotations_per_sentence)
-                    num_sentences += 1
 
                     num_total_pairs += num_unique_entities * (num_unique_entities - 1)
 
@@ -392,18 +386,17 @@ class WikiProcessor(object):
                         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
                         assert len(ids_tensor) == len(ids) + int(self.append_eos)
                         dataset_builder.add_item(ids_tensor)
-                        annotations_builder.add_item(torch.IntTensor(
-                            [[x['start_word'], x['end_word'], int(entities[x['uri']])] for x in annotations_per_sentence]
-                        ))
                         annotations_list.extend([
-                            [x['start_word'] + total_length, x['end_word'] + total_length, int(entities[x['uri']])]
+                            [x['start_word'] + total_length, x['end_word'] + total_length, num_sentences, int(entities[x['uri']])]
                             for x in annotations_per_sentence
                         ])
                         total_length += len(ids_tensor)
+                    num_sentences += 1
 
                 if self.entity_vocab is not None:
                     dataset_builder.add_item(empty_line_tensor)
                     total_length += len(empty_line_tensor)
+                    num_sentences += 1
 
         if self.entity_vocab is not None:
             dataset_builder.finalize(output_prefix + '.text.idx')
@@ -492,6 +485,7 @@ def main(args):
                 dataset_builder.merge_file_(output + '.text')
                 _annotations_list[:, 0] += total_length
                 _annotations_list[:, 1] += total_length
+                _annotations_list[:, 2] += num_sentences
                 annotations_list.append(_annotations_list)
             total_length += _total_length
             num_sentences += s
@@ -526,6 +520,7 @@ def main(args):
                     dataset_builder.merge_file_(output + '.text')
                     _annotations_list[:, 0] += total_length
                     _annotations_list[:, 1] += total_length
+                    _annotations_list[:, 2] += num_sentences
                     annotations_list.append(_annotations_list)
                 total_length += _total_length
                 num_sentences += s
