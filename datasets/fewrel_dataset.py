@@ -6,7 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import data_utils, FairseqDataset
 
-from datasets import AnnotatedTextDataset
+from datasets import AnnotatedText
 
 
 class FewRelDataset(FairseqDataset):

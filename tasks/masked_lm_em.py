@@ -16,7 +16,7 @@ from fairseq.data.encoders.utils import get_whole_word_mask
 from fairseq.tasks import register_task
 
 from datasets import (
-    AnnotatedTextDataset,
+    AnnotatedText,
     SelectDictionaryDataset,
     filter_by_max_length,
     prune_dataset_size,

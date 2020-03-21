@@ -52,11 +52,7 @@ def load_text_annotations(path, prefix):
     )
     assert text_data is not None
 
-    annotation_data =  load_indexed_dataset(
-        os.path.join(path, prefix + '.annotations'),
-        None,
-        dataset_impl='mmap',
-    )
+    annotation_data = np.load(os.path.join(path, prefix + '.annotations.npy'))
     assert annotation_data is not None
     return text_data, annotation_data
 
@@ -71,63 +67,69 @@ def create_graph(
 ):
     edges = [list() for entity in range(n_entities)]
     # mentions ordered by starting position
-    current_entities = deque()
-    num_documents, num_undirected_edges, global_text_index = 0, 0, 0
+    left_annotations = deque()
+    num_undirected_edges = 0
+    current_document = None
 
-    assert len(text_data) == len(annotation_data)
+    # annotation = (global starting position, global ending position, sentence idx, document idx, entity idx)
     with trange(len(annotation_data), desc='Collecting entity pairs') as progress_bar:
-        for sentence_idx in progress_bar:
-            assert text_data.sizes[sentence_idx] >= document_sep_len
-            if text_data.sizes[sentence_idx] > document_sep_len:
-                for annotation_index in range(0, len(annotation_data[sentence_idx]), 3):
-                    # annotation = (starting position in the sentence, ending position, entity ID)
-                    start_pos = annotation_data[sentence_idx][annotation_index].item() + global_text_index
-                    end_pos = annotation_data[sentence_idx][annotation_index + 1].item() + global_text_index
-                    entity = annotation_data[sentence_idx][annotation_index + 2].item()
-                    while (
-                        len(current_entities) > 0
-                        and current_entities[0][0] + max_entity_pair_distance < start_pos
-                    ):
-                        current_entities.popleft()
-                    for current_entity in current_entities:
-                        assert abs(start_pos - current_entity[0]) <= max_entity_pair_distance
-                        if current_entity[2] != entity:
-                            start_block, end_block = expand_mention(
-                                text_data=text_data,
-                                left_sentence_idx=current_entity[3],
-                                left_start_pos=current_entity[0],
-                                left_end_pos=current_entity[1],
-                                right_sentence_idx=sentence_idx,
-                                right_start_pos=start_pos,
-                                right_end_pos=end_pos,
-                                document_sep_len=document_sep_len,
-                                max_positions=max_positions,
-                            )
-                            edges[current_entity[2]].append(
-                                (entity, current_entity[0], current_entity[1], start_pos, end_pos, start_block, end_block)
-                            )
-                            edges[entity].append(
-                                (current_entity[2], start_pos, end_pos, current_entity[0], current_entity[1], start_block, end_block)
-                            )
-                            num_undirected_edges += 1
-                    current_entities.append((start_pos, end_pos, entity, sentence_idx))
+        for index in progress_bar:
+            annotation = annotation_data[index]
+            if annotation[3] == current_document:
+                right_start_pos = annotation[0]
+                right_end_pos = annotation[1]
+                right_sentence_idx = annotation[2]
+                right_entity = annotation[4]
+
+                while (
+                    len(left_annotations) > 0
+                    and left_annotations[0][1] + max_entity_pair_distance <= right_start_pos
+                ):
+                    left_annotations.popleft()
+
+                for left_annotation in left_annotations:
+                    left_start_pos = left_annotation[0]
+                    left_end_pos = left_annotation[1]
+                    left_sentence_idx = left_annotation[2]
+                    left_entity = left_annotation[4]
+
+                    if left_entity != right_entity:
+                        start_block, end_block = expand_mention(
+                            text_data=text_data,
+                            left_sentence_idx=left_sentence_idx,
+                            left_start_pos=left_start_pos,
+                            left_end_pos=left_end_pos,
+                            right_sentence_idx=right_sentence_idx,
+                            right_start_pos=right_start_pos,
+                            right_end_pos=right_end_pos,
+                            document_sep_len=document_sep_len,
+                            max_positions=max_positions,
+                        )
+                        edges[left_entity].append(
+                            (right_entity, left_entity, left_start_pos, left_end_pos, right_start_pos, right_end_pos, start_block, end_block)
+                        )
+                        edges[right_entity].append(
+                            (left_entity, right_entity, right_start_pos, right_end_pos, left_start_pos, left_end_pos, start_block, end_block)
+                        )
+                        num_undirected_edges += 1
+                left_annotations.append(annotation)
             else:
-                # empty sentence means we hit the end of the document
-                current_entities.clear()
-                num_documents += 1
-            global_text_index += len(text_data[sentence_idx])
-            if sentence_idx % 1000 == 0:
+                left_annotations.clear()
+                current_document = annotation[3]
+
+            if index % 5000 == 0:
                 progress_bar.set_postfix(
-                    num_documents=num_documents,
+                    num_documents=current_document,
                     num_undir_edges=num_undirected_edges,
-                    entities_queue_sz=len(current_entities),
+                    entities_queue_sz=len(left_annotations),
                 )
 
         progress_bar.set_postfix(
-            num_documents=num_documents,
+            num_documents=current_document,
             num_undir_edges=num_undirected_edges,
-            entities_queue_sz=len(current_entities),
+            entities_queue_sz=len(left_annotations),
         )
+        print('-- num documents %d, num undirected edges %d' % (current_document, num_undirected_edges))
 
     return edges
 

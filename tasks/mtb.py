@@ -20,7 +20,7 @@ from datasets import (
     GraphDataset,
     MTBDataset,
     MTBTripletsDataset,
-    AnnotatedTextDataset,
+    AnnotatedText,
     SelectDictionaryDataset,
     filter_by_max_length,
     prune_dataset_size,

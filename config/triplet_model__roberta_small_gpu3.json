@@ -5,9 +5,9 @@
     "arch": "encoder_triplet__roberta_small",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
-    "data_path": "../data/nki/bin-v3-threshold20",
+    "data_path": "../data/nki/bin-v5-threshold20-small",
 
-    "mask_type": "start_end",
+    "mask_type": "head_tail",
     "alpha": 0.7,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 1000,
@@ -17,7 +17,7 @@
     "total_num_updates": 41516, // = 10379 * 4
     "lr": [1e-5],
 
-    "num_workers": 3,
+    "num_workers": 0,
     "max_sentences": 1536,
     "update_freq": [2],
     "max_tokens": 14000,

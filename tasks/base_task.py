@@ -99,7 +99,7 @@ class BaseTask(FairseqTask):
         """
         assert isinstance(dataset, FairseqDataset)
 
-        logger.info('getting dataset ready: seed=%d, epoch=%d, num_shards=%d' % (
+        logger.info('get batch iterator: seed=%d, epoch=%d, num_shards=%d' % (
             seed,
             epoch,
             num_shards,
@@ -112,7 +112,7 @@ class BaseTask(FairseqTask):
         start_time = time.time()
         with data_utils.numpy_seed(seed, epoch):
             indices = dataset.ordered_indices()
-        logger.info('getting dataset ready: sorting (seed=%d, epoch=%d) is done in %d seconds' % (
+        logger.info('get batch iterator: sorting (seed=%d, epoch=%d) is done in %d seconds' % (
             seed,
             epoch,
             time.time() - start_time,

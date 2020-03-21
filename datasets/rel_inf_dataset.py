@@ -1,68 +1,48 @@
-import torch
-
-import numpy as np
 import numpy.random as rd
+import torch
 
 from fairseq.data import FairseqDataset
 from fairseq.data import data_utils
 
-from datasets import (
-    AnnotatedTextDataset,
-    subsample_graph_by_entity_pairs,
-)
+from datasets import AnnotatedText, GraphDataset
 
 
 class RelInfDataset(FairseqDataset):
 
     def __init__(
         self,
-        annotated_text_dataset,
-        dictionary,
+        annotated_text,
         graph,
         k_negative,
         n_entities,
-        subsampling_strategy,
-        subsampling_cap,
-        max_positions,
         seed,
     ):
-        self.annotated_text_dataset = annotated_text_dataset
+        self.annotated_text = annotated_text
         self.k_negative = k_negative
         self.n_entities = n_entities
         self.graph = graph
         self.seed = seed
-        self.dataset = annotated_text_dataset
-        self.dictionary = dictionary
-        self.subsampling_strategy = subsampling_strategy
-        self.subsampling_cap = subsampling_cap
-        self.max_positions = max_positions
         self.epoch = None
 
     def set_epoch(self, epoch):
-        if self.epoch != epoch:
-            self.epoch = epoch
-            if self.subsampling_strategy == 'by_entity_pair':
-                assert self.subsampling_cap is not None
-                with data_utils.numpy_seed(17011990, self.seed, self.epoch):
-                    self.dataset = subsample_graph_by_entity_pairs(
-                        self.annotated_text_dataset,
-                        self.graph,
-                        self.subsampling_cap,
-                        self.max_positions,
-                    )
-            else:
-                assert self.subsampling_strategy is None
+        self.graph.set_epoch(epoch)
+        self.epoch = epoch
 
     def __getitem__(self, index):
-        item = self.dataset[index]
-        head = item['head']
-        tail = item['tail']
+        edge = self.graph[index]
+        head = edge[GraphDataset.HEAD_ENTITY]
+        tail = edge[GraphDataset.TAIL_ENTITY]
+        item = {}
 
         with data_utils.numpy_seed(17101990, self.seed, self.epoch, index):
+            item['text'] = self.annotated_text.annotate(*(edge.numpy()))
+            item['nsentences'] = 1
+            item['ntokens'] = len(item['text'])
+
             replace_heads = rd.randint(2, size=self.k_negative)
 
-            head_neighbors = self.graph[head]['neighbors']
-            tail_neighbors = self.graph[tail]['neighbors']
+            head_neighbors = self.graph.get_neighbors(head)
+            tail_neighbors = self.graph.get_neighbors(tail)
 
             tail_head_neighbors = [tail_neighbors, head_neighbors]
 
@@ -87,21 +67,17 @@ class RelInfDataset(FairseqDataset):
         return item
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.graph)
 
     def num_tokens(self, index):
-        return self.dataset.sizes[index]
+        return self.graph.sizes[index]
 
     def size(self, index):
-        return self.dataset.sizes[index]
+        return self.graph.sizes[index]
 
     @property
     def sizes(self):
-        return self.dataset.sizes
+        return self.graph.sizes
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.dataset.sizes,
-        ])
+        return self.graph.ordered_indices()

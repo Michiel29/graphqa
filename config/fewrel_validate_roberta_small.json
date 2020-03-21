@@ -12,7 +12,7 @@
     "max_sentences": 10,
     "max_tokens": 2000,
 
-    "load_checkpoint": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_14d_02h_04m/checkpoints/checkpoint3.pt",
+    "load_checkpoint": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_15d_03h_25m/checkpoints/checkpoint4.pt",
 
     "load_component_prefix": "encoder"
 }

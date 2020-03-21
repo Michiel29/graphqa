@@ -7,8 +7,9 @@ from datasets import RelInfDataset
 
 class TripletDataset(RelInfDataset):
 
-    def __init__(self, **kwargs):
+    def __init__(self, dictionary, **kwargs):
         super().__init__(**kwargs)
+        self.dictionary = dictionary
 
     def collater(self, instances):
         if len(instances) == 0:

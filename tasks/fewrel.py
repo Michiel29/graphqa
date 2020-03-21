@@ -13,7 +13,7 @@ from fairseq.tasks import register_task
 
 from tasks import BaseTask
 from datasets import (
-    AnnotatedTextDataset,
+    AnnotatedText,
     FewRelDataset,
     FilteredDataset,
     prune_dataset_size,
