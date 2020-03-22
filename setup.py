@@ -4,7 +4,13 @@ from distutils.core import setup
 from Cython.Build import cythonize
 
 ext_modules = [
-    Extension("datasets.graph_dataset_util_fast", ["datasets/graph_dataset_util_fast.pyx"])
+    Extension(
+        "datasets.graph_dataset_util_fast",
+        ["datasets/graph_dataset_util_fast.pyx"],
+        extra_compile_args=["-O3", "-ffast-math", "-march=native", "-fopenmp"],
+        extra_link_args = ["-fopenmp"],
+        language="c++",
+    )
 ]
 
 setup(

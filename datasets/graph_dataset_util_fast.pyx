@@ -1,54 +1,120 @@
 import numpy as np
 import cython
 from cython.parallel import prange
+from libcpp.queue cimport priority_queue
+from libcpp.pair cimport pair
 
 cimport numpy as np
 cimport cython
 
 
-cdef inline int int_min(int a, int b): return a if a <= b else b
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+cpdef void _count_num_edges_per_head_entity(
+    int num_entities,
+    const int[:] pos,
+    const int[:] sizes,
+    const int[:] edges_buffer,
+    int[:] output,
+    int subsampling_cap,
+    int nthreads
+):
+    cdef int head_entity, tail_entity
+    cdef int head_entity_start, head_entity_end
+
+    cdef int edge_idx
+    cdef int num_edges_per_entity_pair
+    cdef int previous_tail_entity
+
+    for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):
+        if sizes[head_entity] == 0:
+            continue
+
+        head_entity_start = pos[head_entity]
+        head_entity_end = head_entity_start + sizes[head_entity]
+        previous_tail_entity = -1
+        num_edges_per_entity_pair = 0
+
+        for edge_idx in range(head_entity_start, head_entity_end, 8):
+            tail_entity = edges_buffer[edge_idx]
+            if tail_entity != previous_tail_entity:
+                if num_edges_per_entity_pair > subsampling_cap:
+                    output[head_entity] = output[head_entity] + subsampling_cap
+                else:
+                    output[head_entity] = output[head_entity] + num_edges_per_entity_pair
+                num_edges_per_entity_pair = 1
+                previous_tail_entity = tail_entity
+            else:
+                num_edges_per_entity_pair = num_edges_per_entity_pair + 1
+
+        if num_edges_per_entity_pair > subsampling_cap:
+            output[head_entity] = output[head_entity] + subsampling_cap
+        else:
+            output[head_entity] = output[head_entity] + num_edges_per_entity_pair
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cpdef np.ndarray[np.int32_t, ndim=1] _count_num_edges_per_head_entity(
+cpdef void _sample_edges_per_entity_pair(
     int num_entities,
-    const int[:] edges_head_entity_starts,
-    const int[:] edges_head_entity_lens,
+    const int[:] pos,
+    const int[:] sizes,
     const int[:] edges_buffer,
+    int[:, :] output,
+    const int[:] output_offsets,
+    const double[:] scores,
     int subsampling_cap,
     int nthreads
 ):
-    cdef int buffer_len = edges_buffer.shape[0]
-    cdef np.ndarray[np.int32_t, ndim=1] num_edges_per_head_entity = np.zeros(num_entities, np.int32)
-
-    cdef int start_entity = edges_buffer[1]
     cdef int head_entity, tail_entity
-    cdef int edge_idx
-    cdef int num_edges_per_entity_pair = 0
-    cdef int previous_tail_entity = -1
     cdef int head_entity_start, head_entity_end
 
-    assert buffer_len % 8 == 0
+    cdef int edge_idx
+    cdef int edges_per_entity_counter, counter
+    cdef int previous_tail_entity, tail_entity_edges_start
+    cdef pair[double, int] sampled_entity_pair
+    cdef int actual_edge_idx
+    cdef priority_queue[pair[double, int]] entity_pair_scores
 
+    #for head_entity in prange(num_entities, nogil=False, num_threads=nthreads):
     for head_entity in range(num_entities):
-        head_entity_start = edges_head_entity_starts[head_entity]
-        head_entity_end = head_entity_start + edges_head_entity_lens[head_entity]
+        if sizes[head_entity] == 0:
+            continue
+
+        head_entity_start = pos[head_entity]
+        head_entity_end = head_entity_start + sizes[head_entity]
         previous_tail_entity = -1
+        entity_pair_scores = priority_queue[pair[double, int]]()
+        output_index = 0
+
         for edge_idx in range(head_entity_start, head_entity_end, 8):
-            assert edges_buffer[edge_idx + 1] == start_entity + head_entity
             tail_entity = edges_buffer[edge_idx]
             if tail_entity != previous_tail_entity:
-                if num_edges_per_entity_pair > subsampling_cap:
-                    num_edges_per_head_entity[head_entity] += subsampling_cap
-                else:
-                    num_edges_per_head_entity[head_entity] += num_edges_per_entity_pair
-                num_edges_per_entity_pair = 1
+                counter = 0
+                while counter < subsampling_cap and entity_pair_scores.size() > 0:
+                    sampled_entity_pair = entity_pair_scores.top()
+                    entity_pair_scores.pop()
+                    output[output_offsets[head_entity] + output_index][0] = head_entity
+                    output[output_offsets[head_entity] + output_index][1] = sampled_entity_pair.second
+                    counter += 1
+                    output_index += 1
                 previous_tail_entity = tail_entity
+
+                entity_pair_scores = priority_queue[pair[double, int]]()
             else:
-                num_edges_per_entity_pair += 1
-        if num_edges_per_entity_pair > subsampling_cap:
-            num_edges_per_head_entity[head_entity] += subsampling_cap
-        else:
-            num_edges_per_head_entity[head_entity] += num_edges_per_entity_pair
-    return num_edges_per_head_entity
+                assert edge_idx % 8 == 0
+                actual_edge_idx = int(edge_idx / 8)
+                entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], actual_edge_idx))
+
+        while counter < subsampling_cap and entity_pair_scores.size() > 0:
+            sampled_entity_pair = entity_pair_scores.top()
+            entity_pair_scores.pop()
+            output[output_offsets[head_entity] + output_index][0] = head_entity
+            output[output_offsets[head_entity] + output_index][1] = sampled_entity_pair.second
+            counter += 1
+            output_index += 1
+
+        if head_entity < len(num_entities) - 1:
+            assert output_index == output_offsets[head_entity + 1], head_entity

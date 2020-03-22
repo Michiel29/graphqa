@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import time
 
-from fairseq.data import FairseqDataset
+from fairseq.data import FairseqDataset, plasma_utils
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,8 @@ class GraphDataset(FairseqDataset):
     END_BLOCK = 7
 
     EDGE_SIZE = 8
+
+    EDGE_CHUNK_SIZE = 3276800
 
     def __init__(self, edges, subsampling_strategy, subsampling_cap, seed):
         self.edges = edges
@@ -73,83 +75,64 @@ class GraphDataset(FairseqDataset):
         return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
 
     def subsample_graph_by_entity_pairs(self):
-        if not hasattr(self, "num_edges_per_head_entity"):
-            from datasets.graph_dataset_util_fast import (
-                _count_num_edges_per_head_entity,
+        from datasets.graph_dataset_util_fast import (
+            _count_num_edges_per_head_entity,
+            _sample_edges_per_entity_pair,
+        )
+        start_time = time.time()
+        start_entity, start_edge = 0, 0
+        chunk_size = None
+        indices = list()
+
+        while start_entity < len(self.edges):
+            approx_edges_per_entity = int(self.edges._index._sizes[start_entity:start_entity + 5].mean())
+            if approx_edges_per_entity > 0:
+                chunk_size = self.EDGE_CHUNK_SIZE // approx_edges_per_entity
+            end_entity = min(len(self.edges), start_entity + chunk_size)
+            head_entities = list(range(start_entity, end_entity))
+            num_edges_per_head_entity = np.zeros(end_entity - start_entity, dtype=np.int32)
+
+            head_entities_lens = self.edges._index._sizes[start_entity:end_entity]
+            head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int32), 1)
+            head_entities_pos[0] = 0
+            end_edge = start_edge + head_entities_lens.sum()
+
+            edges_buffer = np.frombuffer(
+                self.edges._bin_buffer,
+                dtype=self.edges._index.dtype,
+                count=end_edge - start_edge,
+                offset=start_edge * self.edges._index.dtype().itemsize,
             )
-            start_time = time.time()
-
-            chunk_size = 1000
-            self.num_edges_per_head_entity = np.zeros(len(self.edges), dtype=np.int32)
-            start_block = 0
-            for start_chunk in range(0, len(self.edges), chunk_size):
-                head_entities = list(range(start_chunk, min(len(self.edges), start_chunk + chunk_size)))
-                head_entities_lens = np.array([len(self.edges[head_entity]) for head_entity in head_entities], dtype=np.int32)
-                head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int32), 1)
-                head_entities_pos[0] = 0
-                end_block = start_block + head_entities_lens.sum()
-                edges_buffer = np.frombuffer(
-                    self.edges._bin_buffer,
-                    dtype=self.edges._index.dtype,
-                    count=end_block - start_block,
-                    offset=start_block * self.edges._index.dtype().itemsize,
-                )
-                print(len(edges_buffer))
-                assert len(edges_buffer) == head_entities_lens.sum()
-                chunk_num_edges_per_head_entity = _count_num_edges_per_head_entity(
-                    len(head_entities),
-                    head_entities_pos,
-                    head_entities_lens,
-                    edges_buffer,
-                    self.subsampling_cap,
-                    10,
-                )
-                self.num_edges_per_head_entity[head_entities] = chunk_num_edges_per_head_entity
-                start_block = end_block
-
-            #     _, num_entity_pairs = np.unique(self.edges[head_entity].reshape(-1, self.EDGE_SIZE)[:, 0], return_counts=True)
-            #     self.num_edges_per_head_entity[head_entity] = np.minimum(self.subsampling_cap,  num_entity_pairs).sum()
-            # logger.info(
-            #     'subsample graph by entity pairs: constructed num_edges_per_head_entity array in %d seconds. Total number of edges: %d' % (
-            #         time.time() - start_time,
-            #         self.num_edges_per_head_entity.sum(),
-            #     ))
-
-            print(time.time() - start_time)
-
-        # loop over source entity
-            # look over edges[source_entity]
-            # collect all edges for a particular [target_entity]
-            # sample subsample_cap of these edges
-
-
-        index, dropped_sentences = 0, 0
-        for edge_index in range(len(graph.index_to_sentences)):
-            if graph.index_to_sentences.sizes[edge_index] == 1:
-                sentence_id = graph.index_to_sentences[edge_index]
-                if annotated_text_dataset.sizes[sentence_id[0]] < max_positions:
-                    sentence_ids = sentence_id.numpy()
-                else:
-                    dropped_sentences += 1
-                    continue
-            else:
-                sentence_lens = annotated_text_dataset.sizes[graph.index_to_sentences[edge_index]]
-                sentence_ids = graph.index_to_sentences[edge_index][sentence_lens < max_positions].numpy()
-                if len(sentence_ids) > subsample_cap:
-                    sentence_ids = np.random.choice(sentence_ids, subsample_cap, replace=False)
-                dropped_sentences += graph.index_to_sentences.sizes[edge_index] - len(sentence_ids)
-
-            mtb_triplets[index:index + len(sentence_ids), 0] = sentence_ids
-            mtb_triplets[index:index + len(sentence_ids), 1] = graph.index_to_entity_pair[edge_index][0]
-            mtb_triplets[index:index + len(sentence_ids), 2] = graph.index_to_entity_pair[edge_index][1]
-            index += len(sentence_ids)
-
-        mtb_triplets = mtb_triplets[:index]
-
-        dataset = MTBTripletsDataset(annotated_text_dataset, mtb_triplets)
-        logger.info('subsample_graph_by_entity_pairs: generated %d examples (dropped %d edge-sentence pairs) in %d seconds' % (
-            total_size,
-            dropped_sentences,
+            _count_num_edges_per_head_entity(
+                len(head_entities),
+                head_entities_pos,
+                head_entities_lens,
+                edges_buffer,
+                num_edges_per_head_entity,
+                self.subsampling_cap,
+                10,
+            )
+            chunk_indices = np.zeros((num_edges_per_head_entity.sum(), 2), dtype=np.int32)
+            output_offsets = np.roll(np.cumsum(num_edges_per_head_entity, dtype=np.int32), 1)
+            output_offsets[0] = 0
+            random_scores = np.random.random(num_edges_per_head_entity.sum())
+            _sample_edges_per_entity_pair(
+                len(head_entities),
+                head_entities_pos,
+                head_entities_lens,
+                edges_buffer,
+                chunk_indices,
+                output_offsets,
+                random_scores,
+                self.subsampling_cap,
+                10,
+            )
+            chunk_indices[:, 0] += head_entities[0]
+            indices.append(chunk_indices)
+            start_edge, start_entity = end_edge, end_entity
+        # plasma_utils.PlasmaArray(slice_indices)
+        logger.info(
+            'subsample graph by entity pairs: graph subsampled in %.3f seconds.' % (
             time.time() - start_time,
         ))
-        return dataset
+        x = 1
