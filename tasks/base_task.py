@@ -99,14 +99,20 @@ class BaseTask(FairseqTask):
         """
         assert isinstance(dataset, FairseqDataset)
 
-        logger.info('get batch iterator: seed=%d, epoch=%d, num_shards=%d' % (
+        logger.info('get batch iterator: START : seed=%d, epoch=%d, num_shards=%d' % (
             seed,
             epoch,
             num_shards,
         ))
 
         # initialize the dataset with the correct starting epoch
+        start_time = time.time()
         dataset.set_epoch(epoch)
+        logger.info('get batch iterator: set epoch (seed=%d, epoch=%d) is done in %d seconds' % (
+            seed,
+            epoch,
+            time.time() - start_time,
+        ))
 
         # get indices ordered by example size
         start_time = time.time()
@@ -119,10 +125,14 @@ class BaseTask(FairseqTask):
         ))
 
         # create mini-batches with given size constraints
+        start_time = time.time()
         batch_sampler = data_utils.batch_by_size(
             indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
+        logger.info('get batch iterator: batch by size is done in %d seconds' % (
+            time.time() - start_time,
+        ))
 
         # return a reusable, sharded iterator
         epoch_iter = iterators.EpochBatchIterator(
