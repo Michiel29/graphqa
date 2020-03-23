@@ -10,7 +10,7 @@
     "mask_type": "head_tail",
     "alpha": 0.7,
     "subsampling_strategy": "by_entity_pair",
-    "subsampling_cap": 1000,
+    "subsampling_cap": 1,
 
     "max_epoch": 4,
     "warmup_updates": 2491, // = 10379 * 4 * 0.06
@@ -18,7 +18,8 @@
     "lr": [1e-5],
 
     "num_workers": 0,
-    "max_sentences": 1536,
+    // "max_sentences": 1536,
+    "max_sentences": 16,
     "update_freq": [2],
     "max_tokens": 14000,
     // batch size ~ 2278.7

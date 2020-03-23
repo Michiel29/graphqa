@@ -128,7 +128,8 @@ class GraphDataset(FairseqDataset):
 
         self._indices = plasma_utils.PlasmaArray(np.concatenate(indices))
         self._sizes = plasma_utils.PlasmaArray(np.concatenate(sizes))
-        logger.info(
-            'subsample graph by entity pairs: graph subsampled in %.3f seconds.' % (
+        logger.info('subsampled %d edges by entity pairs (cap = %d) in %.3f seconds.' % (
+            len(self._sizes.array),
+            self.subsampling_cap,
             time.time() - start_time,
         ))

@@ -2211,7 +2211,7 @@ static PyObject *indirect_contiguous = 0;
 static int __pyx_memoryview_thread_locks_used;
 static PyThread_type_lock __pyx_memoryview_thread_locks[8];
 static void __pyx_f_8datasets_23graph_dataset_util_fast__count_num_edges_per_head_entity(int, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, int, int, int __pyx_skip_dispatch); /*proto*/
-static void __pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(int, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, int, int, int __pyx_skip_dispatch); /*proto*/
+static void __pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(int, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, __Pyx_memviewslice, int, int, int __pyx_skip_dispatch); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static void *__pyx_align_pointer(void *, size_t); /*proto*/
 static PyObject *__pyx_memoryview_new(PyObject *, int, int, __Pyx_TypeInfo *); /*proto*/
@@ -2320,6 +2320,7 @@ static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static const char __pyx_k_ImportError[] = "ImportError";
 static const char __pyx_k_MemoryError[] = "MemoryError";
 static const char __pyx_k_PickleError[] = "PickleError";
+static const char __pyx_k_output_lens[] = "output_lens";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
 static const char __pyx_k_edges_buffer[] = "edges_buffer";
 static const char __pyx_k_num_entities[] = "num_entities";
@@ -2438,6 +2439,7 @@ static PyObject *__pyx_kp_u_numpy_core_multiarray_failed_to;
 static PyObject *__pyx_kp_u_numpy_core_umath_failed_to_impor;
 static PyObject *__pyx_n_s_obj;
 static PyObject *__pyx_n_s_output;
+static PyObject *__pyx_n_s_output_lens;
 static PyObject *__pyx_n_s_output_offsets;
 static PyObject *__pyx_n_s_pack;
 static PyObject *__pyx_n_s_pickle;
@@ -2476,7 +2478,7 @@ static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_update;
 static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast__count_num_edges_per_head_entity(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output, int __pyx_v_subsampling_cap, int __pyx_v_nthreads); /* proto */
-static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, int __pyx_v_nthreads); /* proto */
+static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output_lens, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, int __pyx_v_nthreads); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -3079,17 +3081,17 @@ static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast__count_num_edges_p
  */
 
 static PyObject *__pyx_pw_8datasets_23graph_dataset_util_fast_3_sample_edges_per_entity_pair(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static void __pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, CYTHON_UNUSED int __pyx_v_nthreads, CYTHON_UNUSED int __pyx_skip_dispatch) {
+static void __pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(CYTHON_UNUSED int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output_lens, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, CYTHON_UNUSED int __pyx_v_nthreads, CYTHON_UNUSED int __pyx_skip_dispatch) {
   int __pyx_v_head_entity;
   int __pyx_v_tail_entity;
   int __pyx_v_head_entity_start;
   int __pyx_v_head_entity_end;
   int __pyx_v_edge_idx;
-  int __pyx_v_edges_per_entity_counter;
   int __pyx_v_counter;
   int __pyx_v_previous_tail_entity;
   std::pair<double,int>  __pyx_v_sampled_entity_pair;
   int __pyx_v_actual_edge_idx;
+  int __pyx_v_output_index;
   std::priority_queue<std::pair<double,int> >  __pyx_v_entity_pair_scores;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
@@ -3108,377 +3110,663 @@ static void __pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity
   Py_ssize_t __pyx_t_14;
   Py_ssize_t __pyx_t_15;
   Py_ssize_t __pyx_t_16;
-  int __pyx_t_17;
+  Py_ssize_t __pyx_t_17;
   Py_ssize_t __pyx_t_18;
   Py_ssize_t __pyx_t_19;
   Py_ssize_t __pyx_t_20;
   Py_ssize_t __pyx_t_21;
-  std::pair<double,int>  __pyx_t_22;
+  Py_ssize_t __pyx_t_22;
   Py_ssize_t __pyx_t_23;
   Py_ssize_t __pyx_t_24;
-  Py_ssize_t __pyx_t_25;
+  std::pair<double,int>  __pyx_t_25;
   Py_ssize_t __pyx_t_26;
   Py_ssize_t __pyx_t_27;
   Py_ssize_t __pyx_t_28;
+  Py_ssize_t __pyx_t_29;
+  Py_ssize_t __pyx_t_30;
+  Py_ssize_t __pyx_t_31;
+  Py_ssize_t __pyx_t_32;
+  Py_ssize_t __pyx_t_33;
+  Py_ssize_t __pyx_t_34;
+  Py_ssize_t __pyx_t_35;
   __Pyx_RefNannySetupContext("_sample_edges_per_entity_pair", 0);
 
   /* "datasets/graph_dataset_util_fast.pyx":82
+ *     cdef priority_queue[pair[double, int]] entity_pair_scores
  * 
- *     #for head_entity in prange(num_entities, nogil=False, num_threads=nthreads):
- *     for head_entity in range(num_entities):             # <<<<<<<<<<<<<<
+ *     for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):             # <<<<<<<<<<<<<<
  *         if sizes[head_entity] == 0:
  *             continue
  */
-  __pyx_t_1 = __pyx_v_num_entities;
-  __pyx_t_2 = __pyx_t_1;
-  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
-    __pyx_v_head_entity = __pyx_t_3;
+  {
+      #ifdef WITH_THREAD
+      PyThreadState *_save;
+      Py_UNBLOCK_THREADS
+      __Pyx_FastGIL_Remember();
+      #endif
+      /*try:*/ {
+        __pyx_t_1 = __pyx_v_num_entities;
+        if (1 == 0) abort();
+        {
+            int __pyx_parallel_temp0 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp1 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp2 = ((int)0xbad0bad0);
+            std::priority_queue<std::pair<double,int> >  __pyx_parallel_temp3;
+            int __pyx_parallel_temp4 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp5 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp6 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp7 = ((int)0xbad0bad0);
+            int __pyx_parallel_temp8 = ((int)0xbad0bad0);
+            std::pair<double,int>  __pyx_parallel_temp9;
+            int __pyx_parallel_temp10 = ((int)0xbad0bad0);
+            const char *__pyx_parallel_filename = NULL; int __pyx_parallel_lineno = 0, __pyx_parallel_clineno = 0;
+            PyObject *__pyx_parallel_exc_type = NULL, *__pyx_parallel_exc_value = NULL, *__pyx_parallel_exc_tb = NULL;
+            int __pyx_parallel_why;
+            __pyx_parallel_why = 0;
+            #if ((defined(__APPLE__) || defined(__OSX__)) && (defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && (__GNUC_MINOR__ > 95)))))
+                #undef likely
+                #undef unlikely
+                #define likely(x)   (x)
+                #define unlikely(x) (x)
+            #endif
+            __pyx_t_3 = (__pyx_t_1 - 0 + 1 - 1/abs(1)) / 1;
+            if (__pyx_t_3 > 0)
+            {
+                #ifdef _OPENMP
+                #pragma omp parallel num_threads(__pyx_v_nthreads) private(__pyx_t_10, __pyx_t_11, __pyx_t_12, __pyx_t_13, __pyx_t_14, __pyx_t_15, __pyx_t_16, __pyx_t_17, __pyx_t_18, __pyx_t_19, __pyx_t_20, __pyx_t_21, __pyx_t_22, __pyx_t_23, __pyx_t_24, __pyx_t_25, __pyx_t_26, __pyx_t_27, __pyx_t_28, __pyx_t_29, __pyx_t_30, __pyx_t_31, __pyx_t_32, __pyx_t_33, __pyx_t_34, __pyx_t_35, __pyx_t_4, __pyx_t_5, __pyx_t_6, __pyx_t_7, __pyx_t_8, __pyx_t_9) private(__pyx_filename, __pyx_lineno, __pyx_clineno) shared(__pyx_parallel_why, __pyx_parallel_exc_type, __pyx_parallel_exc_value, __pyx_parallel_exc_tb)
+                #endif /* _OPENMP */
+                {
+                    #ifdef _OPENMP
+                    #ifdef WITH_THREAD
+                    PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                    #endif
+                    Py_BEGIN_ALLOW_THREADS
+                    #endif /* _OPENMP */
+                    #ifdef _OPENMP
+                    #pragma omp for lastprivate(__pyx_v_actual_edge_idx) lastprivate(__pyx_v_counter) lastprivate(__pyx_v_edge_idx) lastprivate(__pyx_v_entity_pair_scores) firstprivate(__pyx_v_head_entity) lastprivate(__pyx_v_head_entity) lastprivate(__pyx_v_head_entity_end) lastprivate(__pyx_v_head_entity_start) lastprivate(__pyx_v_output_index) lastprivate(__pyx_v_previous_tail_entity) lastprivate(__pyx_v_sampled_entity_pair) lastprivate(__pyx_v_tail_entity)
+                    #endif /* _OPENMP */
+                    for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_3; __pyx_t_2++){
+                        if (__pyx_parallel_why < 2)
+                        {
+                            __pyx_v_head_entity = (int)(0 + 1 * __pyx_t_2);
+                            /* Initialize private variables to invalid values */
+                            __pyx_v_actual_edge_idx = ((int)0xbad0bad0);
+                            __pyx_v_counter = ((int)0xbad0bad0);
+                            __pyx_v_edge_idx = ((int)0xbad0bad0);
+                            __pyx_v_head_entity_end = ((int)0xbad0bad0);
+                            __pyx_v_head_entity_start = ((int)0xbad0bad0);
+                            __pyx_v_output_index = ((int)0xbad0bad0);
+                            __pyx_v_previous_tail_entity = ((int)0xbad0bad0);
+                            __pyx_v_tail_entity = ((int)0xbad0bad0);
 
-    /* "datasets/graph_dataset_util_fast.pyx":83
- *     #for head_entity in prange(num_entities, nogil=False, num_threads=nthreads):
- *     for head_entity in range(num_entities):
+                            /* "datasets/graph_dataset_util_fast.pyx":83
+ * 
+ *     for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):
  *         if sizes[head_entity] == 0:             # <<<<<<<<<<<<<<
  *             continue
  * 
  */
-    __pyx_t_4 = __pyx_v_head_entity;
-    __pyx_t_5 = (((*((int const  *) ( /* dim=0 */ (__pyx_v_sizes.data + __pyx_t_4 * __pyx_v_sizes.strides[0]) ))) == 0) != 0);
-    if (__pyx_t_5) {
+                            __pyx_t_4 = __pyx_v_head_entity;
+                            __pyx_t_5 = (((*((int const  *) ( /* dim=0 */ (__pyx_v_sizes.data + __pyx_t_4 * __pyx_v_sizes.strides[0]) ))) == 0) != 0);
+                            if (__pyx_t_5) {
 
-      /* "datasets/graph_dataset_util_fast.pyx":84
- *     for head_entity in range(num_entities):
+                              /* "datasets/graph_dataset_util_fast.pyx":84
+ *     for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):
  *         if sizes[head_entity] == 0:
  *             continue             # <<<<<<<<<<<<<<
  * 
  *         head_entity_start = pos[head_entity]
  */
-      goto __pyx_L3_continue;
+                              goto __pyx_L6_continue;
 
-      /* "datasets/graph_dataset_util_fast.pyx":83
- *     #for head_entity in prange(num_entities, nogil=False, num_threads=nthreads):
- *     for head_entity in range(num_entities):
+                              /* "datasets/graph_dataset_util_fast.pyx":83
+ * 
+ *     for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):
  *         if sizes[head_entity] == 0:             # <<<<<<<<<<<<<<
  *             continue
  * 
  */
-    }
+                            }
 
-    /* "datasets/graph_dataset_util_fast.pyx":86
+                            /* "datasets/graph_dataset_util_fast.pyx":86
  *             continue
  * 
  *         head_entity_start = pos[head_entity]             # <<<<<<<<<<<<<<
  *         head_entity_end = head_entity_start + sizes[head_entity]
  *         previous_tail_entity = -1
  */
-    __pyx_t_6 = __pyx_v_head_entity;
-    __pyx_v_head_entity_start = (*((int const  *) ( /* dim=0 */ (__pyx_v_pos.data + __pyx_t_6 * __pyx_v_pos.strides[0]) )));
+                            __pyx_t_6 = __pyx_v_head_entity;
+                            __pyx_v_head_entity_start = (*((int const  *) ( /* dim=0 */ (__pyx_v_pos.data + __pyx_t_6 * __pyx_v_pos.strides[0]) )));
 
-    /* "datasets/graph_dataset_util_fast.pyx":87
+                            /* "datasets/graph_dataset_util_fast.pyx":87
  * 
  *         head_entity_start = pos[head_entity]
  *         head_entity_end = head_entity_start + sizes[head_entity]             # <<<<<<<<<<<<<<
  *         previous_tail_entity = -1
  *         entity_pair_scores = priority_queue[pair[double, int]]()
  */
-    __pyx_t_7 = __pyx_v_head_entity;
-    __pyx_v_head_entity_end = (__pyx_v_head_entity_start + (*((int const  *) ( /* dim=0 */ (__pyx_v_sizes.data + __pyx_t_7 * __pyx_v_sizes.strides[0]) ))));
+                            __pyx_t_7 = __pyx_v_head_entity;
+                            __pyx_v_head_entity_end = (__pyx_v_head_entity_start + (*((int const  *) ( /* dim=0 */ (__pyx_v_sizes.data + __pyx_t_7 * __pyx_v_sizes.strides[0]) ))));
 
-    /* "datasets/graph_dataset_util_fast.pyx":88
+                            /* "datasets/graph_dataset_util_fast.pyx":88
  *         head_entity_start = pos[head_entity]
  *         head_entity_end = head_entity_start + sizes[head_entity]
  *         previous_tail_entity = -1             # <<<<<<<<<<<<<<
  *         entity_pair_scores = priority_queue[pair[double, int]]()
- *         edges_per_entity_counter = 0
+ *         output_index = 0
  */
-    __pyx_v_previous_tail_entity = -1;
+                            __pyx_v_previous_tail_entity = -1;
 
-    /* "datasets/graph_dataset_util_fast.pyx":89
+                            /* "datasets/graph_dataset_util_fast.pyx":89
  *         head_entity_end = head_entity_start + sizes[head_entity]
  *         previous_tail_entity = -1
  *         entity_pair_scores = priority_queue[pair[double, int]]()             # <<<<<<<<<<<<<<
- *         edges_per_entity_counter = 0
+ *         output_index = 0
  * 
  */
-    try {
-      __pyx_t_8 = std::priority_queue<std::pair<double,int> > ();
-    } catch(...) {
-      __Pyx_CppExn2PyErr();
-      __PYX_ERR(0, 89, __pyx_L1_error)
-    }
-    __pyx_v_entity_pair_scores = __pyx_t_8;
+                            try {
+                              __pyx_t_8 = std::priority_queue<std::pair<double,int> > ();
+                            } catch(...) {
+                              #ifdef WITH_THREAD
+                              PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                              #endif
+                              __Pyx_CppExn2PyErr();
+                              #ifdef WITH_THREAD
+                              __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                              #endif
+                              __PYX_ERR(0, 89, __pyx_L8_error)
+                            }
+                            __pyx_v_entity_pair_scores = __pyx_t_8;
 
-    /* "datasets/graph_dataset_util_fast.pyx":90
+                            /* "datasets/graph_dataset_util_fast.pyx":90
  *         previous_tail_entity = -1
  *         entity_pair_scores = priority_queue[pair[double, int]]()
- *         edges_per_entity_counter = 0             # <<<<<<<<<<<<<<
+ *         output_index = 0             # <<<<<<<<<<<<<<
  * 
  *         for edge_idx in range(head_entity_start, head_entity_end, 8):
  */
-    __pyx_v_edges_per_entity_counter = 0;
+                            __pyx_v_output_index = 0;
 
-    /* "datasets/graph_dataset_util_fast.pyx":92
- *         edges_per_entity_counter = 0
+                            /* "datasets/graph_dataset_util_fast.pyx":92
+ *         output_index = 0
  * 
  *         for edge_idx in range(head_entity_start, head_entity_end, 8):             # <<<<<<<<<<<<<<
  *             tail_entity = edges_buffer[edge_idx]
  *             if tail_entity != previous_tail_entity:
  */
-    __pyx_t_9 = __pyx_v_head_entity_end;
-    __pyx_t_10 = __pyx_t_9;
-    for (__pyx_t_11 = __pyx_v_head_entity_start; __pyx_t_11 < __pyx_t_10; __pyx_t_11+=8) {
-      __pyx_v_edge_idx = __pyx_t_11;
+                            __pyx_t_9 = __pyx_v_head_entity_end;
+                            __pyx_t_10 = __pyx_t_9;
+                            for (__pyx_t_11 = __pyx_v_head_entity_start; __pyx_t_11 < __pyx_t_10; __pyx_t_11+=8) {
+                              __pyx_v_edge_idx = __pyx_t_11;
 
-      /* "datasets/graph_dataset_util_fast.pyx":93
+                              /* "datasets/graph_dataset_util_fast.pyx":93
  * 
  *         for edge_idx in range(head_entity_start, head_entity_end, 8):
  *             tail_entity = edges_buffer[edge_idx]             # <<<<<<<<<<<<<<
  *             if tail_entity != previous_tail_entity:
  *                 counter = 0
  */
-      __pyx_t_12 = __pyx_v_edge_idx;
-      __pyx_v_tail_entity = (*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_12 * __pyx_v_edges_buffer.strides[0]) )));
+                              __pyx_t_12 = __pyx_v_edge_idx;
+                              __pyx_v_tail_entity = (*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_12 * __pyx_v_edges_buffer.strides[0]) )));
 
-      /* "datasets/graph_dataset_util_fast.pyx":94
+                              /* "datasets/graph_dataset_util_fast.pyx":94
  *         for edge_idx in range(head_entity_start, head_entity_end, 8):
  *             tail_entity = edges_buffer[edge_idx]
  *             if tail_entity != previous_tail_entity:             # <<<<<<<<<<<<<<
  *                 counter = 0
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:
  */
-      __pyx_t_5 = ((__pyx_v_tail_entity != __pyx_v_previous_tail_entity) != 0);
-      if (__pyx_t_5) {
+                              __pyx_t_5 = ((__pyx_v_tail_entity != __pyx_v_previous_tail_entity) != 0);
+                              if (__pyx_t_5) {
 
-        /* "datasets/graph_dataset_util_fast.pyx":95
+                                /* "datasets/graph_dataset_util_fast.pyx":95
  *             tail_entity = edges_buffer[edge_idx]
  *             if tail_entity != previous_tail_entity:
  *                 counter = 0             # <<<<<<<<<<<<<<
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:
  *                     sampled_entity_pair = entity_pair_scores.top()
  */
-        __pyx_v_counter = 0;
+                                __pyx_v_counter = 0;
 
-        /* "datasets/graph_dataset_util_fast.pyx":96
+                                /* "datasets/graph_dataset_util_fast.pyx":96
  *             if tail_entity != previous_tail_entity:
  *                 counter = 0
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:             # <<<<<<<<<<<<<<
  *                     sampled_entity_pair = entity_pair_scores.top()
  *                     entity_pair_scores.pop()
  */
-        while (1) {
-          __pyx_t_13 = ((__pyx_v_counter < __pyx_v_subsampling_cap) != 0);
-          if (__pyx_t_13) {
-          } else {
-            __pyx_t_5 = __pyx_t_13;
-            goto __pyx_L11_bool_binop_done;
-          }
-          __pyx_t_13 = ((__pyx_v_entity_pair_scores.size() > 0) != 0);
-          __pyx_t_5 = __pyx_t_13;
-          __pyx_L11_bool_binop_done:;
-          if (!__pyx_t_5) break;
+                                while (1) {
+                                  __pyx_t_13 = ((__pyx_v_counter < __pyx_v_subsampling_cap) != 0);
+                                  if (__pyx_t_13) {
+                                  } else {
+                                    __pyx_t_5 = __pyx_t_13;
+                                    goto __pyx_L16_bool_binop_done;
+                                  }
+                                  __pyx_t_13 = ((__pyx_v_entity_pair_scores.size() > 0) != 0);
+                                  __pyx_t_5 = __pyx_t_13;
+                                  __pyx_L16_bool_binop_done:;
+                                  if (!__pyx_t_5) break;
 
-          /* "datasets/graph_dataset_util_fast.pyx":97
+                                  /* "datasets/graph_dataset_util_fast.pyx":97
  *                 counter = 0
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:
  *                     sampled_entity_pair = entity_pair_scores.top()             # <<<<<<<<<<<<<<
  *                     entity_pair_scores.pop()
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
+ *                     actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
  */
-          __pyx_v_sampled_entity_pair = __pyx_v_entity_pair_scores.top();
+                                  __pyx_v_sampled_entity_pair = __pyx_v_entity_pair_scores.top();
 
-          /* "datasets/graph_dataset_util_fast.pyx":98
+                                  /* "datasets/graph_dataset_util_fast.pyx":98
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:
  *                     sampled_entity_pair = entity_pair_scores.top()
  *                     entity_pair_scores.pop()             # <<<<<<<<<<<<<<
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
+ *                     actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *                     output[output_offsets[head_entity] + output_index][0] = head_entity
  */
-          __pyx_v_entity_pair_scores.pop();
+                                  __pyx_v_entity_pair_scores.pop();
 
-          /* "datasets/graph_dataset_util_fast.pyx":99
+                                  /* "datasets/graph_dataset_util_fast.pyx":99
  *                     sampled_entity_pair = entity_pair_scores.top()
  *                     entity_pair_scores.pop()
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity             # <<<<<<<<<<<<<<
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *                     counter += 1
+ *                     actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)             # <<<<<<<<<<<<<<
+ *                     output[output_offsets[head_entity] + output_index][0] = head_entity
+ *                     output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
  */
-          __pyx_t_14 = __pyx_v_head_entity;
-          __pyx_t_15 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_14 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_edges_per_entity_counter);
-          __pyx_t_16 = 0;
-          *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_15 * __pyx_v_output.strides[0]) ) + __pyx_t_16 * __pyx_v_output.strides[1]) )) = __pyx_v_head_entity;
+                                  __pyx_v_actual_edge_idx = ((int)(((double)(__pyx_v_sampled_entity_pair.second - __pyx_v_head_entity_start)) / 8.0));
 
-          /* "datasets/graph_dataset_util_fast.pyx":100
+                                  /* "datasets/graph_dataset_util_fast.pyx":100
  *                     entity_pair_scores.pop()
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second             # <<<<<<<<<<<<<<
- *                     counter += 1
- *                     edges_per_entity_counter += 1
+ *                     actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *                     output[output_offsets[head_entity] + output_index][0] = head_entity             # <<<<<<<<<<<<<<
+ *                     output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *                     output_lens[output_offsets[head_entity] + output_index] = (
  */
-          __pyx_t_17 = __pyx_v_sampled_entity_pair.second;
-          __pyx_t_18 = __pyx_v_head_entity;
-          __pyx_t_19 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_18 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_edges_per_entity_counter);
-          __pyx_t_20 = 1;
-          *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_19 * __pyx_v_output.strides[0]) ) + __pyx_t_20 * __pyx_v_output.strides[1]) )) = __pyx_t_17;
+                                  __pyx_t_14 = __pyx_v_head_entity;
+                                  __pyx_t_15 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_14 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                                  __pyx_t_16 = 0;
+                                  *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_15 * __pyx_v_output.strides[0]) ) + __pyx_t_16 * __pyx_v_output.strides[1]) )) = __pyx_v_head_entity;
 
-          /* "datasets/graph_dataset_util_fast.pyx":101
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *                     counter += 1             # <<<<<<<<<<<<<<
- *                     edges_per_entity_counter += 1
+                                  /* "datasets/graph_dataset_util_fast.pyx":101
+ *                     actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *                     output[output_offsets[head_entity] + output_index][0] = head_entity
+ *                     output[output_offsets[head_entity] + output_index][1] = actual_edge_idx             # <<<<<<<<<<<<<<
+ *                     output_lens[output_offsets[head_entity] + output_index] = (
+ *                         edges_buffer[sampled_entity_pair.second + 7]
+ */
+                                  __pyx_t_17 = __pyx_v_head_entity;
+                                  __pyx_t_18 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_17 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                                  __pyx_t_19 = 1;
+                                  *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_18 * __pyx_v_output.strides[0]) ) + __pyx_t_19 * __pyx_v_output.strides[1]) )) = __pyx_v_actual_edge_idx;
+
+                                  /* "datasets/graph_dataset_util_fast.pyx":103
+ *                     output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *                     output_lens[output_offsets[head_entity] + output_index] = (
+ *                         edges_buffer[sampled_entity_pair.second + 7]             # <<<<<<<<<<<<<<
+ *                         - edges_buffer[sampled_entity_pair.second + 6]
+ *                     )
+ */
+                                  __pyx_t_20 = (__pyx_v_sampled_entity_pair.second + 7);
+
+                                  /* "datasets/graph_dataset_util_fast.pyx":104
+ *                     output_lens[output_offsets[head_entity] + output_index] = (
+ *                         edges_buffer[sampled_entity_pair.second + 7]
+ *                         - edges_buffer[sampled_entity_pair.second + 6]             # <<<<<<<<<<<<<<
+ *                     )
+ *                     counter = counter + 1
+ */
+                                  __pyx_t_21 = (__pyx_v_sampled_entity_pair.second + 6);
+
+                                  /* "datasets/graph_dataset_util_fast.pyx":102
+ *                     output[output_offsets[head_entity] + output_index][0] = head_entity
+ *                     output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *                     output_lens[output_offsets[head_entity] + output_index] = (             # <<<<<<<<<<<<<<
+ *                         edges_buffer[sampled_entity_pair.second + 7]
+ *                         - edges_buffer[sampled_entity_pair.second + 6]
+ */
+                                  __pyx_t_22 = __pyx_v_head_entity;
+                                  __pyx_t_23 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_22 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                                  *((int *) ( /* dim=0 */ (__pyx_v_output_lens.data + __pyx_t_23 * __pyx_v_output_lens.strides[0]) )) = ((*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_20 * __pyx_v_edges_buffer.strides[0]) ))) - (*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_21 * __pyx_v_edges_buffer.strides[0]) ))));
+
+                                  /* "datasets/graph_dataset_util_fast.pyx":106
+ *                         - edges_buffer[sampled_entity_pair.second + 6]
+ *                     )
+ *                     counter = counter + 1             # <<<<<<<<<<<<<<
+ *                     output_index = output_index + 1
  *                 previous_tail_entity = tail_entity
  */
-          __pyx_v_counter = (__pyx_v_counter + 1);
+                                  __pyx_v_counter = (__pyx_v_counter + 1);
 
-          /* "datasets/graph_dataset_util_fast.pyx":102
- *                     output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *                     counter += 1
- *                     edges_per_entity_counter += 1             # <<<<<<<<<<<<<<
+                                  /* "datasets/graph_dataset_util_fast.pyx":107
+ *                     )
+ *                     counter = counter + 1
+ *                     output_index = output_index + 1             # <<<<<<<<<<<<<<
  *                 previous_tail_entity = tail_entity
- * 
- */
-          __pyx_v_edges_per_entity_counter = (__pyx_v_edges_per_entity_counter + 1);
-        }
-
-        /* "datasets/graph_dataset_util_fast.pyx":103
- *                     counter += 1
- *                     edges_per_entity_counter += 1
- *                 previous_tail_entity = tail_entity             # <<<<<<<<<<<<<<
- * 
  *                 entity_pair_scores = priority_queue[pair[double, int]]()
  */
-        __pyx_v_previous_tail_entity = __pyx_v_tail_entity;
+                                  __pyx_v_output_index = (__pyx_v_output_index + 1);
+                                }
 
-        /* "datasets/graph_dataset_util_fast.pyx":105
- *                 previous_tail_entity = tail_entity
+                                /* "datasets/graph_dataset_util_fast.pyx":108
+ *                     counter = counter + 1
+ *                     output_index = output_index + 1
+ *                 previous_tail_entity = tail_entity             # <<<<<<<<<<<<<<
+ *                 entity_pair_scores = priority_queue[pair[double, int]]()
  * 
- *                 entity_pair_scores = priority_queue[pair[double, int]]()             # <<<<<<<<<<<<<<
- *             else:
- *                 actual_edge_idx = int(edge_idx / 8)
  */
-        try {
-          __pyx_t_8 = std::priority_queue<std::pair<double,int> > ();
-        } catch(...) {
-          __Pyx_CppExn2PyErr();
-          __PYX_ERR(0, 105, __pyx_L1_error)
-        }
-        __pyx_v_entity_pair_scores = __pyx_t_8;
+                                __pyx_v_previous_tail_entity = __pyx_v_tail_entity;
 
-        /* "datasets/graph_dataset_util_fast.pyx":94
+                                /* "datasets/graph_dataset_util_fast.pyx":109
+ *                     output_index = output_index + 1
+ *                 previous_tail_entity = tail_entity
+ *                 entity_pair_scores = priority_queue[pair[double, int]]()             # <<<<<<<<<<<<<<
+ * 
+ *             actual_edge_idx = int(edge_idx / 8)
+ */
+                                try {
+                                  __pyx_t_8 = std::priority_queue<std::pair<double,int> > ();
+                                } catch(...) {
+                                  #ifdef WITH_THREAD
+                                  PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                                  #endif
+                                  __Pyx_CppExn2PyErr();
+                                  #ifdef WITH_THREAD
+                                  __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                                  #endif
+                                  __PYX_ERR(0, 109, __pyx_L8_error)
+                                }
+                                __pyx_v_entity_pair_scores = __pyx_t_8;
+
+                                /* "datasets/graph_dataset_util_fast.pyx":94
  *         for edge_idx in range(head_entity_start, head_entity_end, 8):
  *             tail_entity = edges_buffer[edge_idx]
  *             if tail_entity != previous_tail_entity:             # <<<<<<<<<<<<<<
  *                 counter = 0
  *                 while counter < subsampling_cap and entity_pair_scores.size() > 0:
  */
-        goto __pyx_L8;
-      }
+                              }
 
-      /* "datasets/graph_dataset_util_fast.pyx":107
+                              /* "datasets/graph_dataset_util_fast.pyx":111
  *                 entity_pair_scores = priority_queue[pair[double, int]]()
- *             else:
- *                 actual_edge_idx = int(edge_idx / 8)             # <<<<<<<<<<<<<<
- *                 entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], actual_edge_idx))
+ * 
+ *             actual_edge_idx = int(edge_idx / 8)             # <<<<<<<<<<<<<<
+ *             entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], edge_idx))
  * 
  */
-      /*else*/ {
-        __pyx_v_actual_edge_idx = ((int)(((double)__pyx_v_edge_idx) / 8.0));
+                              __pyx_v_actual_edge_idx = ((int)(((double)__pyx_v_edge_idx) / 8.0));
 
-        /* "datasets/graph_dataset_util_fast.pyx":108
- *             else:
- *                 actual_edge_idx = int(edge_idx / 8)
- *                 entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], actual_edge_idx))             # <<<<<<<<<<<<<<
+                              /* "datasets/graph_dataset_util_fast.pyx":112
  * 
+ *             actual_edge_idx = int(edge_idx / 8)
+ *             entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], edge_idx))             # <<<<<<<<<<<<<<
+ * 
+ *         counter = 0
+ */
+                              __pyx_t_24 = __pyx_v_actual_edge_idx;
+                              try {
+                                __pyx_t_25 = std::pair<double,int> ((*((double const  *) ( /* dim=0 */ (__pyx_v_scores.data + __pyx_t_24 * __pyx_v_scores.strides[0]) ))), __pyx_v_edge_idx);
+                              } catch(...) {
+                                #ifdef WITH_THREAD
+                                PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                                #endif
+                                __Pyx_CppExn2PyErr();
+                                #ifdef WITH_THREAD
+                                __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                                #endif
+                                __PYX_ERR(0, 112, __pyx_L8_error)
+                              }
+                              __pyx_v_entity_pair_scores.push(__pyx_t_25);
+                            }
+
+                            /* "datasets/graph_dataset_util_fast.pyx":114
+ *             entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], edge_idx))
+ * 
+ *         counter = 0             # <<<<<<<<<<<<<<
  *         while counter < subsampling_cap and entity_pair_scores.size() > 0:
+ *             sampled_entity_pair = entity_pair_scores.top()
  */
-        __pyx_t_21 = __pyx_v_actual_edge_idx;
-        try {
-          __pyx_t_22 = std::pair<double,int> ((*((double const  *) ( /* dim=0 */ (__pyx_v_scores.data + __pyx_t_21 * __pyx_v_scores.strides[0]) ))), __pyx_v_actual_edge_idx);
-        } catch(...) {
-          __Pyx_CppExn2PyErr();
-          __PYX_ERR(0, 108, __pyx_L1_error)
-        }
-        __pyx_v_entity_pair_scores.push(__pyx_t_22);
-      }
-      __pyx_L8:;
-    }
+                            __pyx_v_counter = 0;
 
-    /* "datasets/graph_dataset_util_fast.pyx":110
- *                 entity_pair_scores.push(pair[double, int](scores[actual_edge_idx], actual_edge_idx))
+                            /* "datasets/graph_dataset_util_fast.pyx":115
  * 
+ *         counter = 0
  *         while counter < subsampling_cap and entity_pair_scores.size() > 0:             # <<<<<<<<<<<<<<
  *             sampled_entity_pair = entity_pair_scores.top()
  *             entity_pair_scores.pop()
  */
-    while (1) {
-      __pyx_t_13 = ((__pyx_v_counter < __pyx_v_subsampling_cap) != 0);
-      if (__pyx_t_13) {
-      } else {
-        __pyx_t_5 = __pyx_t_13;
-        goto __pyx_L15_bool_binop_done;
-      }
-      __pyx_t_13 = ((__pyx_v_entity_pair_scores.size() > 0) != 0);
-      __pyx_t_5 = __pyx_t_13;
-      __pyx_L15_bool_binop_done:;
-      if (!__pyx_t_5) break;
+                            while (1) {
+                              __pyx_t_13 = ((__pyx_v_counter < __pyx_v_subsampling_cap) != 0);
+                              if (__pyx_t_13) {
+                              } else {
+                                __pyx_t_5 = __pyx_t_13;
+                                goto __pyx_L20_bool_binop_done;
+                              }
+                              __pyx_t_13 = ((__pyx_v_entity_pair_scores.size() > 0) != 0);
+                              __pyx_t_5 = __pyx_t_13;
+                              __pyx_L20_bool_binop_done:;
+                              if (!__pyx_t_5) break;
 
-      /* "datasets/graph_dataset_util_fast.pyx":111
- * 
+                              /* "datasets/graph_dataset_util_fast.pyx":116
+ *         counter = 0
  *         while counter < subsampling_cap and entity_pair_scores.size() > 0:
  *             sampled_entity_pair = entity_pair_scores.top()             # <<<<<<<<<<<<<<
  *             entity_pair_scores.pop()
- *             output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
+ *             actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
  */
-      __pyx_v_sampled_entity_pair = __pyx_v_entity_pair_scores.top();
+                              __pyx_v_sampled_entity_pair = __pyx_v_entity_pair_scores.top();
 
-      /* "datasets/graph_dataset_util_fast.pyx":112
+                              /* "datasets/graph_dataset_util_fast.pyx":117
  *         while counter < subsampling_cap and entity_pair_scores.size() > 0:
  *             sampled_entity_pair = entity_pair_scores.top()
  *             entity_pair_scores.pop()             # <<<<<<<<<<<<<<
- *             output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *             output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
+ *             actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *             output[output_offsets[head_entity] + output_index][0] = head_entity
  */
-      __pyx_v_entity_pair_scores.pop();
+                              __pyx_v_entity_pair_scores.pop();
 
-      /* "datasets/graph_dataset_util_fast.pyx":113
+                              /* "datasets/graph_dataset_util_fast.pyx":118
  *             sampled_entity_pair = entity_pair_scores.top()
  *             entity_pair_scores.pop()
- *             output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity             # <<<<<<<<<<<<<<
- *             output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *             counter += 1
+ *             actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)             # <<<<<<<<<<<<<<
+ *             output[output_offsets[head_entity] + output_index][0] = head_entity
+ *             output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
  */
-      __pyx_t_23 = __pyx_v_head_entity;
-      __pyx_t_24 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_23 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_edges_per_entity_counter);
-      __pyx_t_25 = 0;
-      *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_24 * __pyx_v_output.strides[0]) ) + __pyx_t_25 * __pyx_v_output.strides[1]) )) = __pyx_v_head_entity;
+                              __pyx_v_actual_edge_idx = ((int)(((double)(__pyx_v_sampled_entity_pair.second - __pyx_v_head_entity_start)) / 8.0));
 
-      /* "datasets/graph_dataset_util_fast.pyx":114
+                              /* "datasets/graph_dataset_util_fast.pyx":119
  *             entity_pair_scores.pop()
- *             output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *             output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second             # <<<<<<<<<<<<<<
- *             counter += 1
- *             edges_per_entity_counter += 1
+ *             actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *             output[output_offsets[head_entity] + output_index][0] = head_entity             # <<<<<<<<<<<<<<
+ *             output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *             output_lens[output_offsets[head_entity] + output_index] = (
  */
-      __pyx_t_9 = __pyx_v_sampled_entity_pair.second;
-      __pyx_t_26 = __pyx_v_head_entity;
-      __pyx_t_27 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_26 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_edges_per_entity_counter);
-      __pyx_t_28 = 1;
-      *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_27 * __pyx_v_output.strides[0]) ) + __pyx_t_28 * __pyx_v_output.strides[1]) )) = __pyx_t_9;
+                              __pyx_t_26 = __pyx_v_head_entity;
+                              __pyx_t_27 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_26 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                              __pyx_t_28 = 0;
+                              *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_27 * __pyx_v_output.strides[0]) ) + __pyx_t_28 * __pyx_v_output.strides[1]) )) = __pyx_v_head_entity;
 
-      /* "datasets/graph_dataset_util_fast.pyx":115
- *             output[output_offsets[head_entity] + edges_per_entity_counter][0] = head_entity
- *             output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *             counter += 1             # <<<<<<<<<<<<<<
- *             edges_per_entity_counter += 1
+                              /* "datasets/graph_dataset_util_fast.pyx":120
+ *             actual_edge_idx = int((sampled_entity_pair.second - head_entity_start) / 8)
+ *             output[output_offsets[head_entity] + output_index][0] = head_entity
+ *             output[output_offsets[head_entity] + output_index][1] = actual_edge_idx             # <<<<<<<<<<<<<<
+ *             output_lens[output_offsets[head_entity] + output_index] = (
+ *                 edges_buffer[sampled_entity_pair.second + 7]
  */
-      __pyx_v_counter = (__pyx_v_counter + 1);
+                              __pyx_t_29 = __pyx_v_head_entity;
+                              __pyx_t_30 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_29 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                              __pyx_t_31 = 1;
+                              *((int *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_output.data + __pyx_t_30 * __pyx_v_output.strides[0]) ) + __pyx_t_31 * __pyx_v_output.strides[1]) )) = __pyx_v_actual_edge_idx;
 
-      /* "datasets/graph_dataset_util_fast.pyx":116
- *             output[output_offsets[head_entity] + edges_per_entity_counter][1] = sampled_entity_pair.second
- *             counter += 1
- *             edges_per_entity_counter += 1             # <<<<<<<<<<<<<<
+                              /* "datasets/graph_dataset_util_fast.pyx":122
+ *             output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *             output_lens[output_offsets[head_entity] + output_index] = (
+ *                 edges_buffer[sampled_entity_pair.second + 7]             # <<<<<<<<<<<<<<
+ *                 - edges_buffer[sampled_entity_pair.second + 6]
+ *             )
  */
-      __pyx_v_edges_per_entity_counter = (__pyx_v_edges_per_entity_counter + 1);
-    }
-    __pyx_L3_continue:;
+                              __pyx_t_32 = (__pyx_v_sampled_entity_pair.second + 7);
+
+                              /* "datasets/graph_dataset_util_fast.pyx":123
+ *             output_lens[output_offsets[head_entity] + output_index] = (
+ *                 edges_buffer[sampled_entity_pair.second + 7]
+ *                 - edges_buffer[sampled_entity_pair.second + 6]             # <<<<<<<<<<<<<<
+ *             )
+ *             counter = counter + 1
+ */
+                              __pyx_t_33 = (__pyx_v_sampled_entity_pair.second + 6);
+
+                              /* "datasets/graph_dataset_util_fast.pyx":121
+ *             output[output_offsets[head_entity] + output_index][0] = head_entity
+ *             output[output_offsets[head_entity] + output_index][1] = actual_edge_idx
+ *             output_lens[output_offsets[head_entity] + output_index] = (             # <<<<<<<<<<<<<<
+ *                 edges_buffer[sampled_entity_pair.second + 7]
+ *                 - edges_buffer[sampled_entity_pair.second + 6]
+ */
+                              __pyx_t_34 = __pyx_v_head_entity;
+                              __pyx_t_35 = ((*((int const  *) ( /* dim=0 */ (__pyx_v_output_offsets.data + __pyx_t_34 * __pyx_v_output_offsets.strides[0]) ))) + __pyx_v_output_index);
+                              *((int *) ( /* dim=0 */ (__pyx_v_output_lens.data + __pyx_t_35 * __pyx_v_output_lens.strides[0]) )) = ((*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_32 * __pyx_v_edges_buffer.strides[0]) ))) - (*((int const  *) ( /* dim=0 */ (__pyx_v_edges_buffer.data + __pyx_t_33 * __pyx_v_edges_buffer.strides[0]) ))));
+
+                              /* "datasets/graph_dataset_util_fast.pyx":125
+ *                 - edges_buffer[sampled_entity_pair.second + 6]
+ *             )
+ *             counter = counter + 1             # <<<<<<<<<<<<<<
+ *             output_index = output_index + 1
+ */
+                              __pyx_v_counter = (__pyx_v_counter + 1);
+
+                              /* "datasets/graph_dataset_util_fast.pyx":126
+ *             )
+ *             counter = counter + 1
+ *             output_index = output_index + 1             # <<<<<<<<<<<<<<
+ */
+                              __pyx_v_output_index = (__pyx_v_output_index + 1);
+                            }
+                            goto __pyx_L23;
+                            __pyx_L6_continue:;
+                            goto __pyx_L23;
+                            __pyx_L8_error:;
+                            {
+                                #ifdef WITH_THREAD
+                                PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                                #endif
+                                #ifdef _OPENMP
+                                #pragma omp flush(__pyx_parallel_exc_type)
+                                #endif /* _OPENMP */
+                                if (!__pyx_parallel_exc_type) {
+                                  __Pyx_ErrFetchWithState(&__pyx_parallel_exc_type, &__pyx_parallel_exc_value, &__pyx_parallel_exc_tb);
+                                  __pyx_parallel_filename = __pyx_filename; __pyx_parallel_lineno = __pyx_lineno; __pyx_parallel_clineno = __pyx_clineno;
+                                  __Pyx_GOTREF(__pyx_parallel_exc_type);
+                                }
+                                #ifdef WITH_THREAD
+                                __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                                #endif
+                            }
+                            __pyx_parallel_why = 4;
+                            goto __pyx_L22;
+                            __pyx_L22:;
+                            #ifdef _OPENMP
+                            #pragma omp critical(__pyx_parallel_lastprivates0)
+                            #endif /* _OPENMP */
+                            {
+                                __pyx_parallel_temp0 = __pyx_v_actual_edge_idx;
+                                __pyx_parallel_temp1 = __pyx_v_counter;
+                                __pyx_parallel_temp2 = __pyx_v_edge_idx;
+                                __pyx_parallel_temp3 = __pyx_v_entity_pair_scores;
+                                __pyx_parallel_temp4 = __pyx_v_head_entity;
+                                __pyx_parallel_temp5 = __pyx_v_head_entity_end;
+                                __pyx_parallel_temp6 = __pyx_v_head_entity_start;
+                                __pyx_parallel_temp7 = __pyx_v_output_index;
+                                __pyx_parallel_temp8 = __pyx_v_previous_tail_entity;
+                                __pyx_parallel_temp9 = __pyx_v_sampled_entity_pair;
+                                __pyx_parallel_temp10 = __pyx_v_tail_entity;
+                            }
+                            __pyx_L23:;
+                            #ifdef _OPENMP
+                            #pragma omp flush(__pyx_parallel_why)
+                            #endif /* _OPENMP */
+                        }
+                    }
+                    #ifdef _OPENMP
+                    Py_END_ALLOW_THREADS
+                    #else
+{
+#ifdef WITH_THREAD
+                    PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                    #endif
+                    #endif /* _OPENMP */
+                    /* Clean up any temporaries */
+                    #ifdef WITH_THREAD
+                    __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                    #endif
+                    #ifndef _OPENMP
+}
+#endif /* _OPENMP */
+                }
+            }
+            if (__pyx_parallel_exc_type) {
+              /* This may have been overridden by a continue, break or return in another thread. Prefer the error. */
+              __pyx_parallel_why = 4;
+            }
+            if (__pyx_parallel_why) {
+              __pyx_v_actual_edge_idx = __pyx_parallel_temp0;
+              __pyx_v_counter = __pyx_parallel_temp1;
+              __pyx_v_edge_idx = __pyx_parallel_temp2;
+              __pyx_v_entity_pair_scores = __pyx_parallel_temp3;
+              __pyx_v_head_entity = __pyx_parallel_temp4;
+              __pyx_v_head_entity_end = __pyx_parallel_temp5;
+              __pyx_v_head_entity_start = __pyx_parallel_temp6;
+              __pyx_v_output_index = __pyx_parallel_temp7;
+              __pyx_v_previous_tail_entity = __pyx_parallel_temp8;
+              __pyx_v_sampled_entity_pair = __pyx_parallel_temp9;
+              __pyx_v_tail_entity = __pyx_parallel_temp10;
+              switch (__pyx_parallel_why) {
+                    case 4:
+                {
+                    #ifdef WITH_THREAD
+                    PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+                    #endif
+                    __Pyx_GIVEREF(__pyx_parallel_exc_type);
+                    __Pyx_ErrRestoreWithState(__pyx_parallel_exc_type, __pyx_parallel_exc_value, __pyx_parallel_exc_tb);
+                    __pyx_filename = __pyx_parallel_filename; __pyx_lineno = __pyx_parallel_lineno; __pyx_clineno = __pyx_parallel_clineno;
+                    #ifdef WITH_THREAD
+                    __Pyx_PyGILState_Release(__pyx_gilstate_save);
+                    #endif
+                }
+                goto __pyx_L4_error;
+              }
+            }
+        }
+        #if ((defined(__APPLE__) || defined(__OSX__)) && (defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && (__GNUC_MINOR__ > 95)))))
+            #undef likely
+            #undef unlikely
+            #define likely(x)   __builtin_expect(!!(x), 1)
+            #define unlikely(x) __builtin_expect(!!(x), 0)
+        #endif
+      }
+
+      /* "datasets/graph_dataset_util_fast.pyx":82
+ *     cdef priority_queue[pair[double, int]] entity_pair_scores
+ * 
+ *     for head_entity in prange(num_entities, nogil=True, num_threads=nthreads):             # <<<<<<<<<<<<<<
+ *         if sizes[head_entity] == 0:
+ *             continue
+ */
+      /*finally:*/ {
+        /*normal exit:*/{
+          #ifdef WITH_THREAD
+          __Pyx_FastGIL_Forget();
+          Py_BLOCK_THREADS
+          #endif
+          goto __pyx_L5;
+        }
+        __pyx_L4_error: {
+          #ifdef WITH_THREAD
+          __Pyx_FastGIL_Forget();
+          Py_BLOCK_THREADS
+          #endif
+          goto __pyx_L1_error;
+        }
+        __pyx_L5:;
+      }
   }
 
   /* "datasets/graph_dataset_util_fast.pyx":60
@@ -3504,6 +3792,7 @@ static PyObject *__pyx_pw_8datasets_23graph_dataset_util_fast_3_sample_edges_per
   __Pyx_memviewslice __pyx_v_pos = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_sizes = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_edges_buffer = { 0, 0, { 0 }, { 0 }, { 0 } };
+  __Pyx_memviewslice __pyx_v_output_lens = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_output = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_output_offsets = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_scores = { 0, 0, { 0 }, { 0 }, { 0 } };
@@ -3513,12 +3802,14 @@ static PyObject *__pyx_pw_8datasets_23graph_dataset_util_fast_3_sample_edges_per
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_sample_edges_per_entity_pair (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_num_entities,&__pyx_n_s_pos,&__pyx_n_s_sizes,&__pyx_n_s_edges_buffer,&__pyx_n_s_output,&__pyx_n_s_output_offsets,&__pyx_n_s_scores,&__pyx_n_s_subsampling_cap,&__pyx_n_s_nthreads,0};
-    PyObject* values[9] = {0,0,0,0,0,0,0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_num_entities,&__pyx_n_s_pos,&__pyx_n_s_sizes,&__pyx_n_s_edges_buffer,&__pyx_n_s_output_lens,&__pyx_n_s_output,&__pyx_n_s_output_offsets,&__pyx_n_s_scores,&__pyx_n_s_subsampling_cap,&__pyx_n_s_nthreads,0};
+    PyObject* values[10] = {0,0,0,0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case 10: values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
+        CYTHON_FALLTHROUGH;
         case  9: values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
         CYTHON_FALLTHROUGH;
         case  8: values[7] = PyTuple_GET_ITEM(__pyx_args, 7);
@@ -3549,55 +3840,61 @@ static PyObject *__pyx_pw_8datasets_23graph_dataset_util_fast_3_sample_edges_per
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_pos)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 1); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 1); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_sizes)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 2); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 2); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_edges_buffer)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 3); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 3); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
-        if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_output)) != 0)) kw_args--;
+        if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_output_lens)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 4); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 4); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
-        if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_output_offsets)) != 0)) kw_args--;
+        if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_output)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 5); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 5); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  6:
-        if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_scores)) != 0)) kw_args--;
+        if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_output_offsets)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 6); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 6); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  7:
-        if (likely((values[7] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_subsampling_cap)) != 0)) kw_args--;
+        if (likely((values[7] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_scores)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 7); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 7); __PYX_ERR(0, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  8:
-        if (likely((values[8] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_nthreads)) != 0)) kw_args--;
+        if (likely((values[8] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_subsampling_cap)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, 8); __PYX_ERR(0, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 8); __PYX_ERR(0, 60, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  9:
+        if (likely((values[9] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_nthreads)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, 9); __PYX_ERR(0, 60, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_sample_edges_per_entity_pair") < 0)) __PYX_ERR(0, 60, __pyx_L3_error)
       }
-    } else if (PyTuple_GET_SIZE(__pyx_args) != 9) {
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 10) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
@@ -3609,33 +3906,35 @@ static PyObject *__pyx_pw_8datasets_23graph_dataset_util_fast_3_sample_edges_per
       values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
       values[7] = PyTuple_GET_ITEM(__pyx_args, 7);
       values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
+      values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
     }
     __pyx_v_num_entities = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_num_entities == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 61, __pyx_L3_error)
     __pyx_v_pos = __Pyx_PyObject_to_MemoryviewSlice_ds_int__const__(values[1], 0); if (unlikely(!__pyx_v_pos.memview)) __PYX_ERR(0, 62, __pyx_L3_error)
     __pyx_v_sizes = __Pyx_PyObject_to_MemoryviewSlice_ds_int__const__(values[2], 0); if (unlikely(!__pyx_v_sizes.memview)) __PYX_ERR(0, 63, __pyx_L3_error)
     __pyx_v_edges_buffer = __Pyx_PyObject_to_MemoryviewSlice_ds_int__const__(values[3], 0); if (unlikely(!__pyx_v_edges_buffer.memview)) __PYX_ERR(0, 64, __pyx_L3_error)
-    __pyx_v_output = __Pyx_PyObject_to_MemoryviewSlice_dsds_int(values[4], PyBUF_WRITABLE); if (unlikely(!__pyx_v_output.memview)) __PYX_ERR(0, 65, __pyx_L3_error)
-    __pyx_v_output_offsets = __Pyx_PyObject_to_MemoryviewSlice_ds_int__const__(values[5], 0); if (unlikely(!__pyx_v_output_offsets.memview)) __PYX_ERR(0, 66, __pyx_L3_error)
-    __pyx_v_scores = __Pyx_PyObject_to_MemoryviewSlice_ds_double__const__(values[6], 0); if (unlikely(!__pyx_v_scores.memview)) __PYX_ERR(0, 67, __pyx_L3_error)
-    __pyx_v_subsampling_cap = __Pyx_PyInt_As_int(values[7]); if (unlikely((__pyx_v_subsampling_cap == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 68, __pyx_L3_error)
-    __pyx_v_nthreads = __Pyx_PyInt_As_int(values[8]); if (unlikely((__pyx_v_nthreads == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 69, __pyx_L3_error)
+    __pyx_v_output_lens = __Pyx_PyObject_to_MemoryviewSlice_ds_int(values[4], PyBUF_WRITABLE); if (unlikely(!__pyx_v_output_lens.memview)) __PYX_ERR(0, 65, __pyx_L3_error)
+    __pyx_v_output = __Pyx_PyObject_to_MemoryviewSlice_dsds_int(values[5], PyBUF_WRITABLE); if (unlikely(!__pyx_v_output.memview)) __PYX_ERR(0, 66, __pyx_L3_error)
+    __pyx_v_output_offsets = __Pyx_PyObject_to_MemoryviewSlice_ds_int__const__(values[6], 0); if (unlikely(!__pyx_v_output_offsets.memview)) __PYX_ERR(0, 67, __pyx_L3_error)
+    __pyx_v_scores = __Pyx_PyObject_to_MemoryviewSlice_ds_double__const__(values[7], 0); if (unlikely(!__pyx_v_scores.memview)) __PYX_ERR(0, 68, __pyx_L3_error)
+    __pyx_v_subsampling_cap = __Pyx_PyInt_As_int(values[8]); if (unlikely((__pyx_v_subsampling_cap == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 69, __pyx_L3_error)
+    __pyx_v_nthreads = __Pyx_PyInt_As_int(values[9]); if (unlikely((__pyx_v_nthreads == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 70, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 9, 9, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 60, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_sample_edges_per_entity_pair", 1, 10, 10, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 60, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("datasets.graph_dataset_util_fast._sample_edges_per_entity_pair", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(__pyx_self, __pyx_v_num_entities, __pyx_v_pos, __pyx_v_sizes, __pyx_v_edges_buffer, __pyx_v_output, __pyx_v_output_offsets, __pyx_v_scores, __pyx_v_subsampling_cap, __pyx_v_nthreads);
+  __pyx_r = __pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(__pyx_self, __pyx_v_num_entities, __pyx_v_pos, __pyx_v_sizes, __pyx_v_edges_buffer, __pyx_v_output_lens, __pyx_v_output, __pyx_v_output_offsets, __pyx_v_scores, __pyx_v_subsampling_cap, __pyx_v_nthreads);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, int __pyx_v_nthreads) {
+static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per_entity_pair(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_num_entities, __Pyx_memviewslice __pyx_v_pos, __Pyx_memviewslice __pyx_v_sizes, __Pyx_memviewslice __pyx_v_edges_buffer, __Pyx_memviewslice __pyx_v_output_lens, __Pyx_memviewslice __pyx_v_output, __Pyx_memviewslice __pyx_v_output_offsets, __Pyx_memviewslice __pyx_v_scores, int __pyx_v_subsampling_cap, int __pyx_v_nthreads) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3644,10 +3943,11 @@ static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per
   if (unlikely(!__pyx_v_pos.memview)) { __Pyx_RaiseUnboundLocalError("pos"); __PYX_ERR(0, 60, __pyx_L1_error) }
   if (unlikely(!__pyx_v_sizes.memview)) { __Pyx_RaiseUnboundLocalError("sizes"); __PYX_ERR(0, 60, __pyx_L1_error) }
   if (unlikely(!__pyx_v_edges_buffer.memview)) { __Pyx_RaiseUnboundLocalError("edges_buffer"); __PYX_ERR(0, 60, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_output_lens.memview)) { __Pyx_RaiseUnboundLocalError("output_lens"); __PYX_ERR(0, 60, __pyx_L1_error) }
   if (unlikely(!__pyx_v_output.memview)) { __Pyx_RaiseUnboundLocalError("output"); __PYX_ERR(0, 60, __pyx_L1_error) }
   if (unlikely(!__pyx_v_output_offsets.memview)) { __Pyx_RaiseUnboundLocalError("output_offsets"); __PYX_ERR(0, 60, __pyx_L1_error) }
   if (unlikely(!__pyx_v_scores.memview)) { __Pyx_RaiseUnboundLocalError("scores"); __PYX_ERR(0, 60, __pyx_L1_error) }
-  __pyx_t_1 = __Pyx_void_to_None(__pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(__pyx_v_num_entities, __pyx_v_pos, __pyx_v_sizes, __pyx_v_edges_buffer, __pyx_v_output, __pyx_v_output_offsets, __pyx_v_scores, __pyx_v_subsampling_cap, __pyx_v_nthreads, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 60, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_void_to_None(__pyx_f_8datasets_23graph_dataset_util_fast__sample_edges_per_entity_pair(__pyx_v_num_entities, __pyx_v_pos, __pyx_v_sizes, __pyx_v_edges_buffer, __pyx_v_output_lens, __pyx_v_output, __pyx_v_output_offsets, __pyx_v_scores, __pyx_v_subsampling_cap, __pyx_v_nthreads, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 60, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -3662,6 +3962,7 @@ static PyObject *__pyx_pf_8datasets_23graph_dataset_util_fast_2_sample_edges_per
   __PYX_XDEC_MEMVIEW(&__pyx_v_pos, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_sizes, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_edges_buffer, 1);
+  __PYX_XDEC_MEMVIEW(&__pyx_v_output_lens, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_output, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_output_offsets, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_scores, 1);
@@ -19744,6 +20045,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_u_numpy_core_umath_failed_to_impor, __pyx_k_numpy_core_umath_failed_to_impor, sizeof(__pyx_k_numpy_core_umath_failed_to_impor), 0, 1, 0, 0},
   {&__pyx_n_s_obj, __pyx_k_obj, sizeof(__pyx_k_obj), 0, 0, 1, 1},
   {&__pyx_n_s_output, __pyx_k_output, sizeof(__pyx_k_output), 0, 0, 1, 1},
+  {&__pyx_n_s_output_lens, __pyx_k_output_lens, sizeof(__pyx_k_output_lens), 0, 0, 1, 1},
   {&__pyx_n_s_output_offsets, __pyx_k_output_offsets, sizeof(__pyx_k_output_offsets), 0, 0, 1, 1},
   {&__pyx_n_s_pack, __pyx_k_pack, sizeof(__pyx_k_pack), 0, 0, 1, 1},
   {&__pyx_n_s_pickle, __pyx_k_pickle, sizeof(__pyx_k_pickle), 0, 0, 1, 1},

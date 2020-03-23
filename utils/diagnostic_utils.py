@@ -22,9 +22,12 @@ class Diagnostic():
     )
 
     filter_tokens = [cd.pad_df]
-    replace_tokens = [cd.head_token_df, cd.tail_token_df, cd.blank_token_df,
-                        cd.e1_start_token_df, cd.e1_end_token_df,
-                        cd.e2_start_token_df, cd.e2_end_token_df]
+    replace_tokens = [
+        cd.head_token_df, cd.tail_token_df, cd.blank_token_df,
+        cd.e1_start_token_df, cd.e1_end_token_df,
+        cd.e2_start_token_df, cd.e2_end_token_df,
+        cd.blank_head_other_df, cd.blank_tail_other_df,
+    ]
 
     def __init__(self, dictionary, entity_dictionary, task=None):
         self.bpe = get_encoder(self.encoder_json, self.vocab_bpe)

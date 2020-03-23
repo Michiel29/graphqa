@@ -69,13 +69,13 @@ def create_graph(
     # mentions ordered by starting position
     left_annotations = deque()
     num_undirected_edges = 0
-    current_document = None
+    current_sentence, current_document = None, None
 
     # annotation = (global starting position, global ending position, sentence idx, document idx, entity idx)
     with trange(len(annotation_data), desc='Collecting entity pairs') as progress_bar:
         for index in progress_bar:
             annotation = annotation_data[index]
-            if annotation[3] == current_document:
+            if annotation[2] == current_sentence:
                 right_start_pos = annotation[0]
                 right_end_pos = annotation[1]
                 right_sentence_idx = annotation[2]
@@ -115,21 +115,28 @@ def create_graph(
                 left_annotations.append(annotation)
             else:
                 left_annotations.clear()
+                current_sentence = annotation[2]
                 current_document = annotation[3]
 
             if index % 5000 == 0:
                 progress_bar.set_postfix(
                     num_documents=current_document,
+                    num_sentences=current_sentence,
                     num_undir_edges=num_undirected_edges,
                     entities_queue_sz=len(left_annotations),
                 )
 
         progress_bar.set_postfix(
             num_documents=current_document,
+            num_sentences=current_sentence,
             num_undir_edges=num_undirected_edges,
             entities_queue_sz=len(left_annotations),
         )
-        print('-- num documents %d, num undirected edges %d' % (current_document, num_undirected_edges))
+        print('-- num documents %d, num sentences %d, num undirected edges %d' % (
+            current_document,
+            current_sentence,
+            num_undirected_edges,
+        ))
 
     return edges
 

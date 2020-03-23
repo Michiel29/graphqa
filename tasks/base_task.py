@@ -99,7 +99,7 @@ class BaseTask(FairseqTask):
         """
         assert isinstance(dataset, FairseqDataset)
 
-        logger.info('get batch iterator: START : seed=%d, epoch=%d, num_shards=%d' % (
+        logger.info('get batch iterator: START (seed=%d, epoch=%d, num_shards=%d)' % (
             seed,
             epoch,
             num_shards,
@@ -108,7 +108,7 @@ class BaseTask(FairseqTask):
         # initialize the dataset with the correct starting epoch
         start_time = time.time()
         dataset.set_epoch(epoch)
-        logger.info('get batch iterator: set epoch (seed=%d, epoch=%d) is done in %d seconds' % (
+        logger.info('get batch iterator: set epoch (seed=%d, epoch=%d) is done in %.3f seconds' % (
             seed,
             epoch,
             time.time() - start_time,
@@ -118,7 +118,7 @@ class BaseTask(FairseqTask):
         start_time = time.time()
         with data_utils.numpy_seed(seed, epoch):
             indices = dataset.ordered_indices()
-        logger.info('get batch iterator: sorting (seed=%d, epoch=%d) is done in %d seconds' % (
+        logger.info('get batch iterator: sorting (seed=%d, epoch=%d) is done in %.3f seconds' % (
             seed,
             epoch,
             time.time() - start_time,
@@ -130,7 +130,7 @@ class BaseTask(FairseqTask):
             indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
-        logger.info('get batch iterator: batch by size is done in %d seconds' % (
+        logger.info('get batch iterator: batch by size is done in %.3f seconds' % (
             time.time() - start_time,
         ))
 
