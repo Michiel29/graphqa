@@ -326,7 +326,6 @@ class WikiProcessor(object):
                 impl=self.dataset_impl,
                 vocab_size=len(vocab),
             )
-            text_list = list()
             annotations_list = list()
 
         with codecs.open(path, 'r', 'utf8') as f:
@@ -384,7 +383,6 @@ class WikiProcessor(object):
                         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
                         assert len(ids_tensor) == len(ids) + int(self.append_eos)
                         dataset_builder.add_item(ids_tensor)
-                        text_list.append(ids_tensor.numpy().astype(np.uint16))
                         annotations_list.extend([
                             [x['start_word'] + total_length, x['end_word'] + total_length, num_sentences, num_documents, int(entities[x['uri']])]
                             for x in annotations_per_sentence
@@ -394,19 +392,16 @@ class WikiProcessor(object):
 
                 if self.entity_vocab is not None:
                     dataset_builder.add_item(empty_line_tensor)
-                    text_list.append(empty_line_tensor.numpy().astype(np.uint16))
                     total_length += len(empty_line_tensor)
                     num_sentences += 1
                     num_documents += 1
 
         if self.entity_vocab is not None:
             dataset_builder.finalize(output_prefix + '.text.idx')
-            text_list = np.concatenate(text_list)
             annotations_list = np.array(annotations_list, dtype=np.int32)
 
         return (
             annotation_entities if self.entity_vocab is None else output_prefix,
-            text_list if self.entity_vocab is not None else None,
             annotations_list if self.entity_vocab is not None else None,
             total_length if self.entity_vocab is not None else 0,
             num_documents,
@@ -476,12 +471,11 @@ def main(args):
             vocab_size=len(vocab),
         )
         entities = load_entities(args.entity_vocab)
-        text_list = list()
         annotations_list = list()
 
     if args.nworkers == 1:
         processor.initializer()
-        for output, _text_list, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in map(processor, input_files):
+        for output, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in map(processor, input_files):
             if build_entity_vocab_mode:
                 entities.update(output)
             else:
@@ -491,7 +485,6 @@ def main(args):
                 _annotations_list[:, 2] += num_sentences
                 _annotations_list[:, 3] += num_documents
                 annotations_list.append(_annotations_list)
-                text_list.append(_text_list)
             total_length += _total_length
             num_documents += _num_documents
             num_sentences += s
@@ -518,7 +511,7 @@ def main(args):
             pbar.update()
     else:
         with mp.Pool(processes=args.nworkers, initializer=processor.initializer) as pool:
-            for output, _text_list, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in pool.imap_unordered(processor, input_files):
+            for output, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in pool.imap_unordered(processor, input_files):
                 if build_entity_vocab_mode:
                     entities.update(output)
                 else:
@@ -528,7 +521,6 @@ def main(args):
                     _annotations_list[:, 2] += num_sentences
                     _annotations_list[:, 3] += num_documents
                     annotations_list.append(_annotations_list)
-                    text_list.append(_text_list)
                 total_length += _total_length
                 num_documents += _num_documents
                 num_sentences += s
@@ -572,8 +564,6 @@ def main(args):
         ))
     else:
         dataset_builder.finalize(args.output + '.text.idx')
-        text_list = np.concatenate(text_list)
-        np.save(args.output + '.raw_text', text_list)
         annotations_list = np.concatenate(annotations_list)
         np.save(args.output + '.annotations', annotations_list)
 

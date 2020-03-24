@@ -70,6 +70,7 @@ def create_graph(
     left_annotations = deque()
     num_undirected_edges = 0
     current_sentence, current_document = None, None
+    edge_same_sentence = 0
 
     # annotation = (global starting position, global ending position, sentence idx, document idx, entity idx)
     with trange(len(annotation_data), desc='Collecting entity pairs') as progress_bar:
@@ -93,7 +94,7 @@ def create_graph(
                     left_sentence_idx = left_annotation[2]
                     left_entity = left_annotation[4]
 
-                    if left_entity != right_entity:
+                    if left_entity != right_entity and right_end_pos - left_start_pos <= max_positions:
                         start_block, end_block = expand_mention(
                             text_data=text_data,
                             left_sentence_idx=left_sentence_idx,
@@ -112,17 +113,20 @@ def create_graph(
                             (left_entity, right_entity, right_start_pos, right_end_pos, left_start_pos, left_end_pos, start_block, end_block)
                         )
                         num_undirected_edges += 1
-                left_annotations.append(annotation)
+                        edge_same_sentence += int(left_sentence_idx == right_sentence_idx)
             else:
                 left_annotations.clear()
                 current_sentence = annotation[2]
                 current_document = annotation[3]
+
+            left_annotations.append(annotation)
 
             if index % 5000 == 0:
                 progress_bar.set_postfix(
                     num_documents=current_document,
                     num_sentences=current_sentence,
                     num_undir_edges=num_undirected_edges,
+                    num_undir_edges_same_s=edge_same_sentence,
                     entities_queue_sz=len(left_annotations),
                 )
 
@@ -130,12 +134,14 @@ def create_graph(
             num_documents=current_document,
             num_sentences=current_sentence,
             num_undir_edges=num_undirected_edges,
+            num_undir_edges_same_s=edge_same_sentence,
             entities_queue_sz=len(left_annotations),
         )
-        print('-- num documents %d, num sentences %d, num undirected edges %d' % (
+        print('-- num documents %d, num sentences %d, num undirected edges %d (within same sentence %d)' % (
             current_document,
             current_sentence,
             num_undirected_edges,
+            edge_same_sentence,
         ))
 
     return edges
@@ -172,6 +178,9 @@ def expand_mention(
                 start_pos -= budget_left
             else:
                 raise Exception('Something is bad')
+        if end_pos - start_pos > max_positions:
+            import pdb; pdb.set_trace()
+            pass
         assert end_pos - start_pos <= max_positions
         assert start_pos >= text_data.sentence_start_pos[left_sentence_idx]
         assert end_pos <= text_data.sentence_end_pos[right_sentence_idx]
