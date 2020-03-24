@@ -64,6 +64,9 @@ def main(args, init_distributed=False):
     for valid_sub_split in args.valid_subset.split(','):
         task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
+    # Set up evaluation metrics
+    task.setup_eval_metrics(['train', 'valid'])
+
     # Build models
     model = task.build_model(args)
 
@@ -93,6 +96,9 @@ def main(args, init_distributed=False):
         # Set up eval_task
         eval_task = tasks.setup_task(eval_args)
 
+        # Set up evaluation metrics
+        eval_task.setup_eval_metrics(['train', 'valid'])
+
         # Load eval dataset
         for valid_sub_split in args.valid_subset.split(','):
             eval_task.load_dataset(valid_sub_split, combine=False, epoch=0)
@@ -119,6 +125,13 @@ def main(args, init_distributed=False):
         and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):
+        # Reset eval metrics for new epoch
+        if args.eval_metric == 'f1':
+            for split in ['train', 'valid']:
+                task.eval_metrics[split].reset_metrics()
+        if args.eval_downstream and eval_args.eval_metric == 'f1':
+            eval_task.eval_metrics['valid'].reset_metrics()
+
         # train for one epoch
         train(args, trainer, task, epoch_itr)
 
@@ -212,6 +225,10 @@ def train(args, trainer, task, epoch_itr):
             ):
                 valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
                 checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+
+                # Reset validation eval metrics
+                if args.eval_metric == 'f1':
+                    task.eval_metrics['valid'].reset_metrics()
 
             if num_updates >= max_update:
                 break

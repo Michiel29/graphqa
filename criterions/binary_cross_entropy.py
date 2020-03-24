@@ -40,37 +40,46 @@ class BinaryCrossEntropy(FairseqCriterion):
 
         probs = torch.sigmoid(logits)
         predicted_class = probs >= 0.5
-        accuracy = (predicted_class == target).float().sum()
-
+        
         sample_size = target.numel()
         logging_output = {
             'sample_size': sample_size,
             'loss': utils.item(loss.data) if reduce else loss.data,
-            'accuracy': utils.item(accuracy.data),
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'ntokens_AB': sample['ntokens_AB'],
             'ntokens_mem': torch.numel(sample['textA']) + sample['textB_size'],
         }
+        
+        if self.args.eval_metric == 'accuracy':
+            accuracy = (predicted_class == target).float().sum()
+            logging_output['accuracy'] = utils.item(accuracy.data)
+        else:
+            raise NotImplementedError
+
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, prefix='') -> None:
+    def reduce_metrics(logging_outputs, eval_metric='accuracy', prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
         sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
-        accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
 
         ntokens = sum(log.get(prefix + 'ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get(prefix + 'nsentences', 0) for log in logging_outputs)
         ntokens_AB = sum(log.get(prefix + 'ntokens_AB', 0) for log in logging_outputs)
         ntokens_mem = sum(log.get(prefix + 'ntokens_mem', 0) for log in logging_outputs)
 
-        metrics.log_scalar(prefix + 'acc', accuracy_sum / sample_size, sample_size, round=3)
         metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, sample_size, round=3)
         metrics.log_scalar(prefix + 'wpb_mem', ntokens_mem, sample_size, round=3)
         metrics.log_scalar(prefix + 'wpb_AB', ntokens_AB, sample_size, round=3)
+
+        if eval_metric == 'accuracy':
+            accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+            metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

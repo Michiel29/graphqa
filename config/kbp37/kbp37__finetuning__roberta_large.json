@@ -25,7 +25,7 @@
     "update_freq": [2],
     "max_tokens": 15000,
 
-    "num_workers": 1,
+    "num_workers": 0,
     "load_component_prefix": "encoder"
 
 }

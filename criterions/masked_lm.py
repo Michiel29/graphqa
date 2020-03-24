@@ -94,7 +94,7 @@ class MaskedLmCustomLoss(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, prefix='') -> None:
+    def reduce_metrics(logging_outputs, eval_metric='accuracy', prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
         loss_sum = utils.item(sum(log.get(prefix + 'loss', 0) for log in logging_outputs))

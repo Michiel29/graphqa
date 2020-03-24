@@ -4,5 +4,6 @@
     "n_way": 5,
     "n_shot": 1,
 
-    "criterion": "cross_entropy_custom"
+    "criterion": "cross_entropy_custom",
+    "eval_metric": "accuracy"
 }

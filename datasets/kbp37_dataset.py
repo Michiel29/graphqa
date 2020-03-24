@@ -13,6 +13,7 @@ class KBP37Dataset(FairseqDataset):
 
     def __init__(
         self,
+        split,
         annotation_text_dataset,
         relation_dataset,
         dictionary,
@@ -20,6 +21,7 @@ class KBP37Dataset(FairseqDataset):
         mask_type,
         seed,
     ):
+        self.split = split
         self.annotation_text_dataset = annotation_text_dataset
         self.relation_dataset = relation_dataset
         self.dictionary = dictionary
@@ -84,6 +86,7 @@ class KBP37Dataset(FairseqDataset):
         padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
 
         batch = {
+            'split': self.split,
             'text': padded_text,
             'target': torch.LongTensor(target),
             'ntokens': ntokens,

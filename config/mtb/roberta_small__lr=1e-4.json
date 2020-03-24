@@ -46,6 +46,7 @@
     // "restore_file": "../save/task_mtb/arch_encoder_mtb__roberta_small/lr_0.0001/03m_17d_23h_44m/checkpoints/checkpoint_last.pt",
     // "restore_file": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_14d_02h_04m/checkpoints/checkpoint3.pt",
 
+    "eval_metric": "accuracy",
     "criterion": "binary_cross_entropy_custom"
 
 

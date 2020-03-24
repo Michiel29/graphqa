@@ -16,6 +16,7 @@ from utils.data_utils import (
     CustomDictionary,
     EntityDictionary,
 )
+from criterions.eval_metrics import F1Score
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 class BaseTask(FairseqTask):
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args)
+        self.args = args
         self.seed = args.seed
         self.dictionary = dictionary
         self.entity_dictionary = entity_dictionary
@@ -41,6 +43,12 @@ class BaseTask(FairseqTask):
 
         task = cls(args, dictionary, entity_dictionary)
         return task
+
+    def setup_eval_metrics(self, splits):
+        if self.args.eval_metric == 'f1':
+            self.eval_metrics = {}
+            for split in splits:
+                self.eval_metrics[split] = F1Score()
 
     def reduce_metrics(self, logging_outputs, criterion):
         if not any('ntokens' in log for log in logging_outputs):
@@ -63,7 +71,7 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
-        criterion.__class__.reduce_metrics(logging_outputs)
+        criterion.__class__.reduce_metrics(logging_outputs, self.args.eval_metric)
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

@@ -35,5 +35,6 @@
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
+    "eval_metric": "accuracy",
     "criterion": "cross_entropy_custom"
 }

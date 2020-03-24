@@ -34,37 +34,51 @@ class CrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
-        model_output = model(sample)
+        split = sample['split']
         target = sample['target']
+        model_output = model(sample)
+        
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
-
         predicted_class = torch.argmax(model_output, dim=1)
-        accuracy = (predicted_class == target).float().sum()
 
         sample_size = target.numel()
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
             'sample_size': sample_size,
-            'accuracy': utils.item(accuracy.data),
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
         }
+
+        if self.args.eval_metric == 'accuracy':
+            accuracy = (predicted_class == target).float().sum()
+            logging_output['accuracy'] = utils.item(accuracy.data)
+        elif self.args.eval_metric == 'f1':
+            self.task.eval_metrics[split].update_metrics(predicted_class, target)
+            logging_output['f1'] = self.task.eval_metrics[split].f1_value
+        else:
+            raise NotImplementedError
+
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, prefix='') -> None:
+    def reduce_metrics(logging_outputs, eval_metric='accuracy', prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
         sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
-        accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
 
         ntokens = sum(log.get(prefix + 'ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get(prefix + 'nsentences', 0) for log in logging_outputs)
 
-        metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
         metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, sample_size, round=3)
 
+        if eval_metric == 'accuracy':
+            accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+            metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
+        elif eval_metric == 'f1':
+            metrics.log_scalar(prefix + 'f1', logging_outputs[-1].get(prefix + 'f1', 0), sample_size, round=3)
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

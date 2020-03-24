@@ -2,5 +2,6 @@
     "task": "kbp37",
     "data_path": "../data/kbp37/bin",
 
-    "criterion": "cross_entropy_custom"
+    "criterion": "cross_entropy_custom",
+    "eval_metric": "f1"
 }
