@@ -22,10 +22,11 @@ $ python scripts/prepare_wiki.py --roberta /data/urikz/nki/roberta --tmp /tmp --
 -- Build entity vocab mode: OFF
 Processing Wiki: 100%|█| 425/425 [00:20<00:00 , s=1207940, p=1812896, ann=1014396, f_ed=407930, f_h_overlap=307946, f_self_overlap=1159, f_cross_s_bd=8255, f_solo_s=0, f_xao=1057, f_vocab=216704]
 
-$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix valid
-650629 entities
-Collecting entity pairs: 100%|█| 1263488/1263488 [00:40<00:00, 31164.32it/s, entities_queue_sz=0, num_documents=55509, num_undir_edges=1.8e+6]
-Building graph dataset: 100%|█|650629/650629 [00:04<00:00, 150085.73it/s]
+$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix valid --max-positions 123
+-- 650629 entities
+Collecting entity pairs: 100%|█|  1014396/1014396 [00:40<00:00, 24904.36it/s, entities_queue_sz=2, num_documents=54995, num_sentences=1256428, num_undir_edges=886955, num_undir_edges_same_s=886955]
+-- num documents 55547, num sentences 1263486, num undirected edges 889842 (within same sentence 889842)
+Building graph dataset: 100%|█|  650629/650629 [00:06<00:00, 94026.92it/s]
 ```
 
 4. Construct training dataset
@@ -35,10 +36,11 @@ $ python scripts/prepare_wiki.py --roberta /data/urikz/nki/roberta --tmp /tmp --
 -- Build entity vocab mode: OFF
 Processing Wiki: 100%|█| 42137/42137 [21:31<00:00 , s=1.19e+8, p=1.82e+8, ann=1e+8, f_ed=4.06e+7, f_h_overlap=3e+7, f_self_overlap=111276, f_cross_s_bd=767234, f_solo_s=0, f_xao=133244, f_vocab=2.15e+7]
 
-$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix train
-650629 entities
-Collecting entity pairs: 100%|█| 124895757/124895757 [1:12:08<00:00, 28853.43it/s, entities_queue_sz=0, num_documents=5546587, num_undir_edges=1.79e+8]
-Building graph dataset: 100%|█|650629/650629 [05:11<00:00, 2085.52it/s]
+$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix valid --max-positions 123
+-- 650629 entities
+Collecting entity pairs: 100%|█| 100373302/100373302 [1:03:00<00:00, 26548.91it/s, entities_queue_sz=1, num_documents=5546256, num_sentences=1.25e+8, num_undir_edges=8.86e+7, num_undir_edges_same_s=8.86e+7]
+-- num documents 5546645, num sentences 124895749, num undirected edges 88651776 (within same sentence 88651776)
+Building graph dataset: 100%|█| 650629/650629 [05:04<00:00, 2137.25it/s]
 ```
 
 # FewRel Corpus
