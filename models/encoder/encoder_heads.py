@@ -61,27 +61,6 @@ class EntityStart(nn.Module):
         return head_tail_concat
 
 
-class EntityPoolingFirstToken(nn.Module):
-
-    def __init__(self, args, dictionary):
-        super().__init__()
-
-    def forward(self, x, src_tokens, annotation, **unused):
-        # x: [batch_size, length, enc_dim]
-        head_first_tokens = torch.max(annotation == 0, dim=1)[1]
-        tail_first_tokens = torch.max(annotation == 1, dim=1)[1]
-        arange = torch.arange(x.shape[0], device=x.device)
-
-        head_tail_concat = torch.cat(
-            (
-                x[arange, head_first_tokens],
-                x[arange, tail_first_tokens],
-            ),
-            dim=-1,
-        ) # [batch_size, 2 * enc_dim]
-        return head_tail_concat
-
-
 class EntityStartLinear(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -111,6 +90,27 @@ class EntityStartLinear(nn.Module):
         linear_projection = self.linear(head_tail_concat)
 
         return linear_projection
+
+
+class EntityPoolingFirstToken(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+        head_first_tokens = torch.max(annotation == 0, dim=1)[1]
+        tail_first_tokens = torch.max(annotation == 1, dim=1)[1]
+        arange = torch.arange(x.shape[0], device=x.device)
+
+        head_tail_concat = torch.cat(
+            (
+                x[arange, head_first_tokens],
+                x[arange, tail_first_tokens],
+            ),
+            dim=-1,
+        ) # [batch_size, 2 * enc_dim]
+        return head_tail_concat
 
 
 class CLSTokenLinear(nn.Module):
