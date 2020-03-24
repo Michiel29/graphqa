@@ -13,6 +13,7 @@ from fairseq.tasks import FairseqTask
 
 from datasets import filter_by_max_length
 from utils.dictionary import CustomDictionary, EntityDictionary
+from utils.data_utils_fast import batch_by_size_fast
 
 logger = logging.getLogger(__name__)
 
@@ -147,15 +148,6 @@ class BaseTask(FairseqTask):
         )
         return epoch_iter
 
-    def filter_by_max_positions(self, dataset, return_indices=False):
-        filtered_dataset, indicies = filter_by_max_length(
-            dataset,
-            self.args.max_positions - 4, # to account for the entity markers
-        )
-        if return_indices:
-            return filtered_dataset, indicies
-        else:
-            return filtered_dataset
 
     # def train_step(
     #     self, sample, model, criterion, optimizer, update_num, ignore_grad=False

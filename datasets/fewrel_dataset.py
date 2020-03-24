@@ -103,11 +103,7 @@ class FewRelDataset(FairseqDataset):
         return self.annotation_text_dataset.sizes
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     def collater(self, instances):
         batch_size = len(instances)

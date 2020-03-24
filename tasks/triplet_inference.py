@@ -34,7 +34,7 @@ class TripletInferenceTask(RelationInferenceTask):
             dictionary=self.dictionary,
             entity_dictionary=self.entity_dictionary,
             mask_type=self.args.mask_type,
-            alpha=self.args.alpha,
+            non_mask_rate=self.args.non_mask_rate,
         )
 
         graph_data = safe_load_indexed_dataset(
@@ -44,6 +44,7 @@ class TripletInferenceTask(RelationInferenceTask):
             edges=graph_data,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
+            epoch_splits=self.args.epoch_splits,
             seed=self.args.seed,
         )
 

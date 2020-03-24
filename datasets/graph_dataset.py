@@ -23,21 +23,46 @@ class GraphDataset(FairseqDataset):
 
     NUM_THREADS = 5
 
-    def __init__(self, edges, subsampling_strategy, subsampling_cap, seed):
+    def __init__(
+        self,
+        edges,
+        subsampling_strategy,
+        subsampling_cap,
+        epoch_splits,
+        seed,
+    ):
         self.edges = edges
-        self.seed = seed
         self.subsampling_strategy = subsampling_strategy
         self.subsampling_cap = subsampling_cap
-        self.epoch = None
-        self.indices = None
-        # self.set_epoch(0)
-        self._sizes = None
+        self.epoch_splits = epoch_splits
+        self.epoch_for_generation = None
+        self.seed = seed
 
     def set_epoch(self, epoch):
-        if epoch != self.epoch:
-            with data_utils.numpy_seed(271828, self.seed, epoch):
-                self.subsample_graph_by_entity_pairs()
-            self.epoch = epoch
+        assert epoch >= 1
+        self.epoch = epoch
+        epoch_for_generation = (epoch - 1) // self.epoch_splits
+        epoch_offset = (epoch - 1) % self.epoch_splits
+        if epoch_for_generation != self.epoch_for_generation:
+            with data_utils.numpy_seed(271828, self.seed, epoch_for_generation):
+                indices, sizes = self.subsample_graph_by_entity_pairs()
+                random_permutation = np.random.permutation(len(indices))
+                indices = indices[random_permutation]
+                sizes = sizes[random_permutation]
+                self._generated_indices = plasma_utils.PlasmaArray(indices)
+                self._generated_sizes = plasma_utils.PlasmaArray(sizes)
+            self.epoch_for_generation = epoch_for_generation
+
+        data_per_epoch = len(self._generated_indices.array) // self.epoch_splits
+        data_start = data_per_epoch * epoch_offset
+        data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
+        self._indices = plasma_utils.PlasmaArray(self._generated_indices.array[data_start:data_end])
+        self._sizes = plasma_utils.PlasmaArray(self._generated_sizes.array[data_start:data_end])
+        logger.info('selected %d samples from generation epoch %d and epoch offset %d' % (
+            data_end - data_start,
+            self.epoch_for_generation,
+            epoch_offset,
+        ))
 
     def __getitem__(self, index):
         source_entity, local_index = self._indices.array[index]
@@ -58,10 +83,7 @@ class GraphDataset(FairseqDataset):
         return self._sizes.array
 
     def ordered_indices(self):
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     def get_neighbors(self, entity):
         return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
@@ -126,10 +148,12 @@ class GraphDataset(FairseqDataset):
             sizes.append(chunk_sizes)
             start_edge, start_entity = end_edge, end_entity
 
-        self._indices = plasma_utils.PlasmaArray(np.concatenate(indices))
-        self._sizes = plasma_utils.PlasmaArray(np.concatenate(sizes))
+        indices, sizes = np.concatenate(indices), np.concatenate(sizes)
+
         logger.info('subsampled %d edges by entity pairs (cap = %d) in %.3f seconds.' % (
-            len(self._sizes.array),
+            len(sizes),
             self.subsampling_cap,
             time.time() - start_time,
         ))
+
+        return indices, sizes

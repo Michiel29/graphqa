@@ -29,11 +29,7 @@ class FilteredDataset(BaseWrapperDataset):
         return self.dataset.size(self.data_indices[index])
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
 
 def filter_by_max_length(dataset, max_positions, size=-1):
