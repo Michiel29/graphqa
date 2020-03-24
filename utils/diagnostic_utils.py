@@ -32,8 +32,8 @@ class Diagnostic():
         self.entity_dictionary = entity_dictionary
         self.task = task
 
-    def decode_sentence(self, sentence):
-        token_ids = self.dictionary.string(sentence).split()
+    def decode_text(self, text):
+        token_ids = self.dictionary.string(text).split()
         processed_ids = []
         for token in token_ids:
             if token in self.replace_tokens:
@@ -41,13 +41,13 @@ class Diagnostic():
             elif token not in self.filter_tokens:
                 processed_ids.append(token)
 
-        decoded_sentence = self.bpe.decode([int(x) for x in processed_ids])
+        decoded_text = self.bpe.decode([int(x) for x in processed_ids])
 
-        return decoded_sentence
+        return decoded_text
 
     def inspect_item(self, text_id, head_id=None, tail_id=None):
 
-        decoded_text = self.decode_sentence(text_id)    
+        decoded_text = self.decode_text(text_id)    
         print('\n\nTEXT ID LIST:\n {}\n'.format(self.dictionary.string(text_id).split()))    
         print('DECODED TEXT:\n {}\n'.format(decoded_text))
 
@@ -65,7 +65,7 @@ class Diagnostic():
             print('\n')
             for key, val in A_dict.items():
                 if key == 'textA':
-                    decoded_text = self.decode_sentence(val)    
+                    decoded_text = self.decode_text(val)    
                     print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))    
                     print('{} DECODED TEXT:\n {}\n'.format(key, decoded_text))
                 else:
@@ -76,7 +76,7 @@ class Diagnostic():
         if B_dict is not None:
             for i in range(len(B_dict)):
                 pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i) 
-                decoded_text = self.decode_sentence(B_dict['textB'][i])    
+                decoded_text = self.decode_text(B_dict['textB'][i])    
                 print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))    
                 print('{} DECODED TEXT ({}):\n {}\n'.format('textB', pair_type, decoded_text))
 
@@ -102,6 +102,8 @@ class Diagnostic():
             n_way = self.task.args.n_way
             n_shot = self.task.args.n_shot
             exemplars_id = batch['exemplars'].reshape(batch_size, n_way, n_shot, -1)
+        elif self.task.args.task == 'kbp37':
+            text_id = batch['text']
         elif self.task.args.task == 'mtb':
             textA_id = batch['textA']
             textB_id = []
@@ -120,7 +122,7 @@ class Diagnostic():
                     pass
                 elif head_id[i,0] not in ent_filter or tail_id[i,0] not in ent_filter:
                     continue
-                decoded_text = self.decode_sentence(text_id[i])
+                decoded_text = self.decode_text(text_id[i])
                 pos_head_ent = self.task.entity_dictionary[head_id[i,0]]
                 pos_tail_ent = self.task.entity_dictionary[tail_id[i,0]]
                 neg_head_ent = [self.task.entity_dictionary[head_id[i,j]] for j in range(1, head_id.shape[1])]
@@ -140,13 +142,13 @@ class Diagnostic():
                     print('\n')
 
             elif self.task.args.task == 'fewrel':
-                decoded_text = self.decode_sentence(text_id[i])
+                decoded_text = self.decode_text(text_id[i])
                 decoded_exemplars = {}
                 for j in range(n_way):
                     decoded_exemplars[j] = set()
                     for k in range(n_shot):
                         # cur_exemplar_id = self.task.dictionary.string(exemplars_id[i,j,k,:]).split()
-                        decoded_exemplars[j].add(self.decode_sentence(exemplars_id[i,j,k,:]))
+                        decoded_exemplars[j].add(self.decode_text(exemplars_id[i,j,k,:]))
 
                 print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
                 print('DECODED TEXT:\n {}\n'.format(decoded_text))
@@ -154,6 +156,17 @@ class Diagnostic():
                 for j in range(n_way):
                     print('Class {0}: {1}\n'.format(j, decoded_exemplars[j]))
 
+                print('TARGET: \n {}\n'.format(target[i].cpu().detach().numpy()))
+                if scores is not None:
+                    print('SCORES: \n {}\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
+                else:
+                    print('\n')
+
+            elif self.task.args.task == 'kbp37':
+                decoded_text = self.decode_text(text_id[i])
+                print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
+                print('DECODED TEXT:\n {}\n'.format(decoded_text))
+                
                 print('TARGET: \n {}\n'.format(target[i].cpu().detach().numpy()))
                 if scores is not None:
                     print('SCORES: \n {}\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
@@ -168,7 +181,7 @@ class Diagnostic():
 
                 # Print textA, headA, and tailA
                 cur_textA = textA_id[i]
-                decoded_textA = self.decode_sentence(cur_textA) 
+                decoded_textA = self.decode_text(cur_textA) 
                 print('\nTEXTA ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textA).split()))
                 print('DECODED TEXTA:\n {}\n'.format(decoded_textA))
 
@@ -181,7 +194,7 @@ class Diagnostic():
                 # Print textB, headB, and tailB
                 for j in range(n_pairs):
                     cur_textB = textB_id[batch['A2B'][i * n_pairs + j]]
-                    decoded_textB = self.decode_sentence(cur_textB)
+                    decoded_textB = self.decode_text(cur_textB)
                     pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)  
                     print('\nTEXTB ID LIST ({}):\n {}\n'.format(pair_type, self.task.dictionary.string(cur_textB).split()))
                     print('DECODED TEXTB ({}):\n {}\n'.format(pair_type, decoded_textB))
