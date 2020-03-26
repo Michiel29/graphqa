@@ -1,7 +1,8 @@
+import numpy as np
 import torch
 
-import numpy as np
-import numpy.random as rd
+from fairseq.data import plasma_utils
+
 
 class AnnotatedText(object):
 
@@ -14,20 +15,36 @@ class AnnotatedText(object):
         text_data,
         annotation_data,
         dictionary,
-        entity_dictionary,
         mask_type,
         non_mask_rate,
     ):
         self.text_data = text_data
         self.annotation_data = annotation_data
-        self.entity_dictionary = entity_dictionary
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end', None]
-        if self.mask_type == 'start_end':
-            self.start_tokens = [self.dictionary.e1_start(), self.dictionary.e2_start()]
-            self.end_tokens = [self.dictionary.e1_end(), self.dictionary.e2_end()]
         self.non_mask_rate = non_mask_rate
+
+        offsets = np.roll(np.cumsum(self.text_data._index._sizes), 1)
+        offsets[0] = 0
+        self.sentence_offsets = plasma_utils.PlasmaArray(offsets)
+
+    def annotate_sentence(self, index, head_entity, tail_entity):
+        start_block = self.sentence_offsets.array[index]
+        end_block = start_block + self.text_data._index._sizes[index]
+        annotations = self.annotations_block(start_block, end_block)
+        head_annotation = self.sample_annotation(annotations, head_entity)
+        tail_annotation = self.sample_annotation(annotations, tail_entity)
+        return self.annotate(
+            tail_entity=tail_entity,
+            head_entity=head_entity,
+            head_start_pos=head_annotation[self.INDEX_ANNOTATION_START],
+            head_end_pos=head_annotation[self.INDEX_ANNOTATION_END],
+            tail_start_pos=tail_annotation[self.INDEX_ANNOTATION_START],
+            tail_end_pos=tail_annotation[self.INDEX_ANNOTATION_END],
+            start_block=start_block,
+            end_block=end_block,
+        )
 
     def annotate(
         self,
@@ -125,7 +142,6 @@ class AnnotatedText(object):
         # annotations[e - 1].start_pos < end_block does not exists.
         # In this case, searchsorted will return 0
         # and we need to return an empty list
-        assert e < len(self.annotation_data)
         if e == 0:
             return []
 
@@ -137,6 +153,12 @@ class AnnotatedText(object):
             if annotation[self.INDEX_ANNOTATION_ENTITY] in entity_set:
                 annotations_new.append(annotation)
         return np.stack(annotations_new)
+
+    def sample_annotation(self, annotations, entity):
+        annotations = self.filter_by_entities(annotations, {entity})
+        assert len(annotations) > 0
+        index = np.random.randint(len(annotations))
+        return annotations[index]
 
     def mask_annotations(self, text, annotations, entity_id, replacement, target_annotation_start):
         for annotation in annotations:
@@ -272,3 +294,16 @@ class AnnotatedText(object):
             )
 
         return text
+
+    def __len__(self):
+        return len(self.text_data)
+
+    def num_tokens(self, index):
+        return self.text_data.sizes[index]
+
+    def size(self, index):
+        return self.text_data.sizes[index]
+
+    @property
+    def sizes(self):
+        return self.text_data.sizes

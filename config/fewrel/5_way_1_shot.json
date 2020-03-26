@@ -1,6 +1,6 @@
 {
     "task": "fewrel",
-    "data_path": "../data/fewrel/bin",
+    "data_path": "../data/fewrel/bin-v2",
     "n_way": 5,
     "n_shot": 1,
 

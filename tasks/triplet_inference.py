@@ -32,7 +32,6 @@ class TripletInferenceTask(RelationInferenceTask):
             text_data=text_data,
             annotation_data=annotation_data,
             dictionary=self.dictionary,
-            entity_dictionary=self.entity_dictionary,
             mask_type=self.args.mask_type,
             non_mask_rate=self.args.non_mask_rate,
         )

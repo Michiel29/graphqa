@@ -50,16 +50,21 @@ Building graph dataset: 100%|█| 650629/650629 [05:04<00:00, 2137.25it/s]
 ### Latest dataset location: fantasia.usc.edu:/data2/urikz/fewrel/bin
 
 1. Download training and validation data
-> $ wget https://github.com/thunlp/FewRel/raw/master/data/train_wiki.json
-
-> $ wget https://github.com/thunlp/FewRel/raw/master/data/val_wiki.json
-
+```console
+$ mkdir /data/urikz/fewrel/bin-v2/train
+$ wget https://github.com/thunlp/FewRel/raw/master/data/train_wiki.json
+$ wget https://github.com/thunlp/FewRel/raw/master/data/val_wiki.json
+```
 2. Preprocess the data
+```console
+$ python scripts/prepare_fewrel.py --roberta /data/urikz/nki/roberta --data /data/urikz/fewrel/val_wiki.json --output /data/urikz/fewrel/bin-v2/valid --append-eos
+-- Loaded data from /data/urikz/fewrel/val_wiki.json
+Processing Wiki: 100%|█| 11200/11200 [00:06<00:00 ]
 
-> $ python scripts/prepare_fewrel.py --roberta /data2/urikz/nki/roberta --data /data2/urikz/fewrel/val_wiki.json --output /data2/urikz/fewrel/bin/valid --append-eos
-
-> $ python scripts/prepare_fewrel.py --roberta /data2/urikz/nki/roberta --data /data2/urikz/fewrel/train_wiki.json --output /data2/urikz/fewrel/bin/train --append-eos
-
+$ python scripts/prepare_fewrel.py --roberta /data/urikz/nki/roberta --data /data/urikz/fewrel/train_wiki.json --output /data/urikz/fewrel/bin-v2/train --append-eos
+-- Loaded data from /data/urikz/fewrel/train_wiki.json
+Processing Wiki: 100%|█| 44800/44800 [00:22<00:00 ]
+```
 
 # MTB Triplet Datasets
 

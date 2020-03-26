@@ -13,7 +13,6 @@ from fairseq.tasks import FairseqTask
 
 from datasets import filter_by_max_length
 from utils.dictionary import CustomDictionary, EntityDictionary
-from utils.data_utils_fast import batch_by_size_fast
 
 logger = logging.getLogger(__name__)
 

@@ -48,30 +48,23 @@ class FewRelTask(BaseTask):
         return cls(args, dictionary, None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        text_data, annotation_data = load_annotated_text(
-            self.args.data_path,
-            split,
-            self.dictionary.bos(),
+        text_data = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.text'),
         )
-        relation_data = safe_load_indexed_dataset(
-            os.path.join(self.args.data_path, split + '.relations')
+        annotation_data = np.load(
+            os.path.join(self.args.data_path, split + '.annotations.npy'),
+            mmap_mode='r',
         )
-        annotated_text_dataset = AnnotatedTextDataset(
+        annotated_text = AnnotatedText(
             text_data=text_data,
             annotation_data=annotation_data,
             dictionary=self.dictionary,
-            entity_dictionary=self.entity_dictionary,
-            shift_annotations=1,
             mask_type=self.args.mask_type,
-            assign_head_tail='first',
-            seed=self.seed,
-            alpha=self.args.alpha,
+            non_mask_rate=self.args.non_mask_rate,
         )
-        annotated_text_dataset, indices = self.filter_by_max_positions(
-            annotated_text_dataset,
-            return_indices=True,
+        relation_dataset = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.relations')
         )
-        relation_dataset = FilteredDataset(relation_data, indices)
 
         n_examples = int(getattr(self.args, 'n_' + split + '_examples'))
         if n_examples > 0:
@@ -84,11 +77,9 @@ class FewRelTask(BaseTask):
             relation_dataset = FilteredDataset(relation_dataset, indices)
 
         dataset = FewRelDataset(
-            annotation_text_dataset=annotated_text_dataset,
+            annotation_text=annotated_text,
             relation_dataset=relation_dataset,
             dictionary=self.dictionary,
-            entity_dictionary=self.entity_dictionary,
-            mask_type=self.mask_type,
             n_way=self.args.n_way,
             n_shot=self.args.n_shot,
             seed=self.seed,
