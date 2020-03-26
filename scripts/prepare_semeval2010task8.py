@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import os
 import tqdm
+from operator import itemgetter
 
 import torch
 
@@ -12,6 +13,7 @@ from fairseq.data import Dictionary
 from fairseq.data import indexed_dataset
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
+np.random.seed(0)
 
 TRAINING_TQDM_BAD_FORMAT = (
     '{l_bar}{bar}| '
@@ -19,18 +21,23 @@ TRAINING_TQDM_BAD_FORMAT = (
 )
 
 
-class FewRelProcessor(object):
+class SemEval2010Task8Processor(object):
     def __init__(self, roberta_dir, dataset_impl, append_eos):
         self.dataset_impl = dataset_impl
         self.append_eos = append_eos
         self.roberta_dir = roberta_dir
         assert os.path.isdir(self.roberta_dir)
 
+        self.ent_tokens = {
+            1: {'start': '<e1>', 'end': '</e1>'},
+            2: {'start': '<e2>', 'end': '</e2>'},
+        }
+
     def initializer(self):
         global bpe
         bpe = get_encoder(
-            os.path.join(os.path.join(self.roberta_dir, 'gpt2_bpe', 'encoder.json')),
-            os.path.join(os.path.join(self.roberta_dir, 'gpt2_bpe', 'vocab.bpe')),
+            os.path.join(self.roberta_dir, 'gpt2_bpe', 'encoder.json'),
+            os.path.join(self.roberta_dir, 'gpt2_bpe', 'vocab.bpe'),
         )
         global vocab
         vocab = Dictionary.load(os.path.join(self.roberta_dir, 'roberta.base', 'dict.txt'))
@@ -51,33 +58,8 @@ class FewRelProcessor(object):
             text = words
         if text.startswith(' '):
             text = text[1:]
-        text = (
-            text.lower()
-            .replace('( ', '(').replace(' )', ')')
-            .replace(' :', ':').replace(': ', ':')
-            .replace(' ,', ',').replace(' %', '%')
-            .replace(' \'', '\'').replace('\' ', '\'')
-            .replace(' ...', '...').replace(' / ', '/')
-            .replace(' "', '"').replace('" ', '"')
-            .replace(' !', '!').replace(' .', '.')
-            .replace(' -', '-').replace('- ', '-')
-            .replace('„ ', '„').replace(' “', '“')
-            .replace(' \u2013 ', '\u2013').replace(' \u2014 ', '\u2014')
-            .replace(' °', '°').replace(' ?', '?')
-            .replace('# ', '#').replace('$ ', '$')
-            .replace('¡ ', '¡').replace('. ', '.')
-            .replace('[ ', '[').replace('¿ ', '¿')
-            .replace('! ', '!').replace(' …', '…')
-        )
+        text = text.lower()
 
-        surface_form = (
-            surface_form
-            .replace(' "', '"').replace('" ', '"')
-            .replace(' - ', '-').replace(' \u2013 ', '\u2013')
-            .replace(' \'', '\'').replace('\' ', '\'')
-            .replace('. ', '.').replace(' / ', '/')
-            .replace(': ', ':').replace(' !', '!')
-        )
         assert text == surface_form
 
     def strip_empty_words(self, words, annotations):
@@ -98,6 +80,7 @@ class FewRelProcessor(object):
                 new_words[annotation['start_word']:annotation['end_word']],
                 annotation['surface_form'],
             )
+
         return new_words, new_annotations
 
     def apply_gt2_bpe(self, sentence, annotations):
@@ -130,25 +113,51 @@ class FewRelProcessor(object):
                 decoded,
                 annotation['surface_form'],
             )
+
         return ids, annotations
 
-    def build_annotations(self, d, entity_id):
-        assert len(d) == 3
-        return [
-            {
-                'surface_form': d[0],
-                'start_word': min(interval),
-                'end_word': max(interval) + 1,
-                'uri': entity_id,
-            }
-            for interval in d[2]
-        ]
+    def filter_tokens_and_build_annotations(self, tokens):
+        start_idx, end_idx = {}, {}
 
-    def __call__(self, sample):
+        for ent_id in [1, 2]:
+            start_idx_tmp = tokens.index(self.ent_tokens[ent_id]['start'])
+            end_idx_tmp = tokens.index(self.ent_tokens[ent_id]['end'])
+            if end_idx_tmp - start_idx_tmp == 1:
+                tokens.insert(end_idx_tmp, '<BLANK>')
+
+        for ent_id in [1, 2]:
+            start_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['start'])
+            end_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['end'])
+
+        if start_idx[1] < start_idx[2]:
+            end_idx[1] -= 1
+            start_idx[2] -= 2
+            end_idx[2] -= 3
+        else:
+            start_idx[1] -= 2
+            end_idx[1] -= 3
+            end_idx[2] -= 1
+        
+        new_tokens = copy.deepcopy(tokens)
+        new_tokens = [x for x in new_tokens if x not in list(self.ent_tokens[1].values()) + list(self.ent_tokens[2].values())]
+        annotations = []
+        for ent_id in [1, 2]:
+            annotations.append({   
+                'surface_form': ' '.join(new_tokens[start_idx[ent_id]:end_idx[ent_id]]).lower(),
+                'start_word': start_idx[ent_id],
+                'end_word': end_idx[ent_id],
+                'uri': ent_id
+            })
+
+        return new_tokens, annotations
+
+    def __call__(self, text):
         global vocab
-        annotations = self.build_annotations(sample['h'], 0) + self.build_annotations(sample['t'], 1)
+        text = text.replace('<e1>', ' <e1> ').replace('</e1>', ' </e1> ').replace('<e2>', ' <e2> ').replace('</e2>', ' </e2> ')
+        tokens = text.split()
+        tokens, annotations = self.filter_tokens_and_build_annotations(tokens)
         annotations.sort(key=lambda x: x['start_word'])
-        words, annotations = self.strip_empty_words(sample['tokens'], annotations)
+        words, annotations = self.strip_empty_words(tokens, annotations)
         ids, annotations = self.apply_gt2_bpe(' '.join(words), annotations)
         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
 
@@ -161,56 +170,83 @@ class FewRelProcessor(object):
 
 
 def main(args):
-    with codecs.open(args.data, 'r', 'utf8') as f:
-        data = json.load(f)
-    print('-- Loaded data from %s' % args.data)
+    if args.split in ['train', 'dev']:
+        data_path = os.path.join(args.root_dir, 'SemEval2010_task8_training', 'TRAIN_FILE.TXT')
+        rand_indices = np.random.permutation(8000)
+        train_indices, dev_indices = rand_indices[:6500], rand_indices[6500:]
+    elif args.split == 'test':
+        data_path = os.path.join(args.root_dir, 'SemEval2010_task8_testing_keys', 'TEST_FILE_FULL.TXT')
+    else:
+        raise NotImplementedError
 
-    processor = FewRelProcessor(
-        args.roberta,
+    with open(data_path, 'r') as f:
+        data = f.read().splitlines()
+        
+    data = [x for x in data if x != '']
+    texts = [x.split('\t')[1][1:-1] for x in data[0::3]]
+    relation_types = [x.replace(' ', '') for x in data[1::3]]
+    unique_relation_types = sorted(list(set(relation_types)))
+
+    if args.split == 'train':
+        texts = list(itemgetter(*train_indices)(texts))
+        relation_types = list(itemgetter(*train_indices)(relation_types))
+    elif args.split == 'dev':
+        texts = list(itemgetter(*dev_indices)(texts))
+        relation_types = list(itemgetter(*dev_indices)(relation_types))
+
+    print('-- Loaded data from %s' % data_path)
+
+    processor = SemEval2010Task8Processor(
+        args.roberta_dir,
         args.dataset_impl,
         args.append_eos,
     )
     pbar = tqdm.tqdm(
-        total=sum([len(v) for _, v in data.items()]),
+        total=len(texts),
         desc='Processing Wiki',
         bar_format=TRAINING_TQDM_BAD_FORMAT,
     )
 
-    vocab = Dictionary.load(os.path.join(args.roberta, 'roberta.base', 'dict.txt'))
+    output_dir = os.path.join(args.root_dir, 'bin')
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    split = args.split if args.split != 'dev' else 'valid'
+    vocab = Dictionary.load(os.path.join(args.roberta_dir, 'roberta.base', 'dict.txt'))
     dataset_builder = indexed_dataset.make_builder(
-        args.output + '.text.bin',
+        os.path.join(output_dir, split+'.text.bin'),
         impl=args.dataset_impl,
         vocab_size=len(vocab),
     )
     annotations_builder = indexed_dataset.make_builder(
-        args.output + '.annotations.bin',
+        os.path.join(output_dir, split+'.annotations.bin'),
         impl=args.dataset_impl,
         vocab_size=None,
     )
     relations_builder = indexed_dataset.make_builder(
-        args.output + '.relations.bin',
+        os.path.join(output_dir, split+'.relations.bin'),
         impl=args.dataset_impl,
         vocab_size=None,
     )
     processor.initializer()
-    for relation_type_id, (_, samples) in enumerate(data.items()):
-        for ids_tensor, annotations_tensor in map(processor, samples):
+    for i in range(len(texts)):
+        text, relation_type_id = [texts[i]], unique_relation_types.index(relation_types[i])
+        for ids_tensor, annotations_tensor in map(processor, text):
             dataset_builder.add_item(ids_tensor)
             annotations_builder.add_item(annotations_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))
             pbar.update()
     pbar.close()
 
-    dataset_builder.finalize(args.output + '.text.idx')
-    annotations_builder.finalize(args.output + '.annotations.idx')
-    relations_builder.finalize(args.output + '.relations.idx')
+    dataset_builder.finalize(os.path.join(output_dir, split+'.text.idx'))
+    annotations_builder.finalize(os.path.join(output_dir, split+'.annotations.idx'))
+    relations_builder.finalize(os.path.join(output_dir, split+'.relations.idx'))
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Data preparation for FewRel dataset')
-    parser.add_argument('--data', type=str, help='Input FewRel json file')
-    parser.add_argument('--output', type=str, help='Output filename')
-    parser.add_argument('--roberta', type=str, default='../data/roberta', help='RoBERTa directory with all dictionaries.')
+    parser = argparse.ArgumentParser(description='Data preparation for SemEval 2010 Task 8 dataset')
+    parser.add_argument('--split', type=str, help='Dataset split', choices=['train', 'dev', 'test'])
+    parser.add_argument('--root-dir', type=str, default='../data/SemEval2010_task8_all_data', help='SemEval 2010 Task 8 root directory')
+    parser.add_argument('--roberta-dir', type=str, default='../data/roberta', help='RoBERTa directory with all dictionaries.')
     parser.add_argument('--append-eos', default=False, action='store_true')
     parser.add_argument(
         '--dataset-impl',

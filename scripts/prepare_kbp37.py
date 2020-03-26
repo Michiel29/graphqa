@@ -58,6 +58,8 @@ class KBP37Processor(object):
             text = text[1:]
         text = text.lower()
 
+        assert text == surface_form
+
     def strip_empty_words(self, words, annotations):
         new_words = []
         new_annotations = copy.deepcopy(annotations)
@@ -119,7 +121,7 @@ class KBP37Processor(object):
             start_idx_tmp = tokens.index(self.ent_tokens[ent_id]['start'])
             end_idx_tmp = tokens.index(self.ent_tokens[ent_id]['end'])
             if end_idx_tmp - start_idx_tmp == 1:
-                tokens.insert(end_idx_tmp, '<UNK>')
+                tokens.insert(end_idx_tmp, '<BLANK>')
 
         for ent_id in [1, 2]:
             start_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['start'])
@@ -169,7 +171,7 @@ def main(args):
     with open(data_path, 'r') as f:
         data = f.read().splitlines()
     data = [x for x in data if x != '']
-    texts = [x.split('"')[1] for x in data[0::2]]
+    texts = [x.split('\t')[1][1:-1] for x in data[0::2]]
     relation_types = [x.replace(' ', '') for x in data[1::2]]
     unique_relation_types = sorted(list(set(relation_types)))
     print('-- Loaded data from %s' % data_path)
