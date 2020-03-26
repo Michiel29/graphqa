@@ -16,7 +16,7 @@ from fairseq.data.encoders.utils import get_whole_word_mask
 from fairseq.tasks import register_task
 
 from datasets import (
-    AnnotatedTextDataset,
+    AnnotatedText,
     SelectDictionaryDataset,
     filter_by_max_length,
     prune_dataset_size,
@@ -24,12 +24,10 @@ from datasets import (
 )
 from tasks import BaseTask
 from utils.data_utils import (
-    CustomDictionary,
-    EntityDictionary,
     load_annotated_text,
     safe_load_indexed_dataset,
 )
-
+from utils.dictionary import CustomDictionary, EntityDictionary
 
 logger = logging.getLogger(__name__)
 

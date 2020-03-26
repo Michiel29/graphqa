@@ -5,8 +5,8 @@
     "arch": "encoder_triplet__roberta_small",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
-    // "data_path": "../data/nki/bin-v3-threshold20",
-    "data_path": "../data/nki/bin-v3-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
 
     "eval_downstream": true,
     "eval_kwargs": {
@@ -19,9 +19,10 @@
     },
 
     "mask_type": "start_end",
-    "alpha": 0.7,
+    "non_mask_rate": 0.7,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 1000,
+    "epoch_splits": 10,
 
     "max_epoch": 4,
     "warmup_updates": 2491, // = 10379 * 4 * 0.06
@@ -29,7 +30,8 @@
     "lr": [1e-5],
 
     "num_workers": 3,
-    "max_sentences": 1536,
+    // "max_sentences": 1536,
+    "max_sentences": 16,
     "update_freq": [2],
     "max_tokens": 14000,
     // batch size ~ 2278.7

@@ -19,7 +19,4 @@ class ShuffledDataset(BaseWrapperDataset):
         return self._sizes
 
     def ordered_indices(self):
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]

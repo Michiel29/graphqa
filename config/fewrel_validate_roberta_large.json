@@ -3,10 +3,10 @@
 
     "arch": "encoder_fewrel__roberta_large",
     "mask_type": "start_end",
-    "alpha": 1,
+    "non_mask_rate": 1,
 
-    "encoder_output_layer_type": "bag_of_words",
-    // "encoder_output_layer_type": "entity_start",
+    // "encoder_output_layer_type": "bag_of_words",
+    "encoder_output_layer_type": "entity_start",
 
     "max_sentences": 10,
     "max_tokens": 2000,

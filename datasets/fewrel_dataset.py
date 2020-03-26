@@ -6,26 +6,23 @@ from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import data_utils, FairseqDataset
 
-from datasets import AnnotatedTextDataset
+from datasets import AnnotatedText
 
 
 class FewRelDataset(FairseqDataset):
 
     def __init__(
         self,
-        annotation_text_dataset,
+        annotation_text,
         relation_dataset,
         dictionary,
-        entity_dictionary,
-        mask_type,
         n_way,
         n_shot,
         seed,
     ):
-        self.annotation_text_dataset = annotation_text_dataset
+        self.annotation_text = annotation_text
         self.relation_dataset = relation_dataset
         self.dictionary = dictionary
-        self.entity_dictionary = entity_dictionary
         self.n_way = n_way
         assert self.n_way > 1
         self.n_shot = n_shot
@@ -42,7 +39,7 @@ class FewRelDataset(FairseqDataset):
 
     def __getitem__(self, index):
         with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
-            target_item = self.annotation_text_dataset[index]
+            target_item = self.annotation_text.annotate_sentence(index, head_entity=0, tail_entity=1)
             target_relation = self.relation_dataset[index]
             relations = rd.choice(
                 list(self.relation_index.keys()),
@@ -56,41 +53,29 @@ class FewRelDataset(FairseqDataset):
 
             relations = [target_relation.item()] + relations
 
-            exemplars_annotations, exemplars = [], []
+            exemplars = []
             for rel in relations:
                 rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
                 exemplars += [
-                    self.annotation_text_dataset[idx]['text']
+                    self.annotation_text.annotate_sentence(idx, head_entity=0, tail_entity=1)
                     for idx in rel_examplar_idxs
-                ]
-                exemplars_annotations += [
-                    self.annotation_text_dataset[idx]['annotation']
-                    for idx in rel_examplar_idxs
-                    if 'annotation' in self.annotation_text_dataset[idx]
                 ]
 
-            ntokens, nsentences = len(target_item['text']), 1
+            ntokens, nsentences = len(target_item), 1
             for exemplar in exemplars:
                 nsentences += 1
                 ntokens += len(exemplars)
 
         item = {
-            'text': target_item['text'],
+            'text': target_item,
             'exemplars': exemplars,
             'ntokens': ntokens,
             'nsentences': nsentences,
         }
-
-        if 'annotation' in target_item:
-            item['annotation'] = target_item.get('annotation')
-        if len(exemplars_annotations) > 0:
-            assert len(exemplars_annotations) == len(exemplars)
-            item['exemplars_annotations'] = exemplars_annotations
-
         return item
 
     def __len__(self):
-        return len(self.annotation_text_dataset)
+        return len(self.annotation_text)
 
     def num_tokens(self, index):
         return self.sizes[index]
@@ -100,14 +85,10 @@ class FewRelDataset(FairseqDataset):
 
     @property
     def sizes(self):
-        return self.annotation_text_dataset.sizes
+        return self.annotation_text.sizes
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     def collater(self, instances):
         batch_size = len(instances)
