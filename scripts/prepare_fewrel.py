@@ -199,7 +199,6 @@ def main(args):
         for ids_tensor, _annotations_list in map(processor, samples):
             dataset_builder.add_item(ids_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))
-            import pdb; pdb.set_trace
             _annotations_list[:, 0] += total_length
             _annotations_list[:, 1] += total_length
             _annotations_list[:, 2] += num_sentences

@@ -16,6 +16,7 @@ from datasets import (
     AnnotatedText,
     FewRelDataset,
     FilteredDataset,
+    PrependTokenDataset,
     prune_dataset_size,
 )
 from utils.data_utils import (
@@ -84,5 +85,6 @@ class FewRelTask(BaseTask):
             n_shot=self.args.n_shot,
             seed=self.seed,
         )
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
 
         self.datasets[split] = dataset

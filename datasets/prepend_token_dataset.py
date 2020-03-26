@@ -6,15 +6,30 @@ from fairseq.data import BaseWrapperDataset
 
 class PrependTokenDataset(BaseWrapperDataset):
 
-    def __init__(self, dataset, token, key):
+    def __init__(self, dataset, token, keys):
         super().__init__(dataset)
         self.token = token
-        self.key = key
+        if not isinstance(keys, list):
+            self.keys = [keys]
+        else:
+            self.keys = keys
         self._sizes = None
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
-        item[self.key] = torch.cat([item[self.key].new([self.token]), item[self.key]])
+        ntokens = item.get('ntokens', 0)
+
+        for key in self.keys:
+            if isinstance(item[key], list):
+                for i in range(len(item[key])):
+                    item[key][i] = torch.cat([item[key][i].new([self.token]), item[key][i]])
+                    ntokens += 1
+            else:
+                item[key] = torch.cat([item[key].new([self.token]), item[key]])
+                ntokens += 1
+
+        if 'ntokens' in item:
+            item['ntokens'] = ntokens
         return item
 
     @property
