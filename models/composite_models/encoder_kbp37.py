@@ -18,6 +18,8 @@ class EncoderKBP37Model(BaseFairseqModel):
         self.encoder = encoder
         if args.encoder_output_layer_type in ['entity_start', 'entity_pooling_first_token']:
             self.classifier = nn.Linear(2*args.encoder_embed_dim, 37)
+        elif args.encoder_output_layer_type in ['entity_start_linear']:
+            self.classifier = nn.Linear(args.entity_dim, 37)
         else:
             self.classifier = nn.Linear(args.encoder_embed_dim, 37)
 

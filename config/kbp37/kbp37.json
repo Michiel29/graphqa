@@ -1,7 +1,7 @@
 {
     "task": "kbp37",
     "data_path": "../data/kbp37/bin",
-    "path_attributes": ["task", "arch", "lr", "max_sentences", "update_freq"],
+    "path_attributes": ["task", "arch", "encoder_output_layer_type", "lr", "max_sentences", "update_freq"],
 
     "criterion": "cross_entropy_custom",
     "eval_metric": "f1"
