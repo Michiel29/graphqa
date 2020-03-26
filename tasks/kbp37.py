@@ -82,7 +82,6 @@ class KBP37Task(BaseTask):
             relation_dataset = FilteredDataset(relation_dataset, indices)
 
         dataset = KBP37Dataset(
-            split=split,
             annotation_text_dataset=annotated_text_dataset,
             relation_dataset=relation_dataset,
             dictionary=self.dictionary,

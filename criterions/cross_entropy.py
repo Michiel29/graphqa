@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from fairseq import utils, metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
+from utils.logging_utils import compute_confusion_matrix, F1Meter
 
 @register_criterion('cross_entropy_custom')
 class CrossEntropy(FairseqCriterion):
@@ -34,12 +35,11 @@ class CrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
-        split = sample['split']
         target = sample['target']
         model_output = model(sample)
         
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
-        predicted_class = torch.argmax(model_output, dim=1)
+        pred = torch.argmax(model_output, dim=1)
 
         sample_size = target.numel()
         logging_output = {
@@ -50,18 +50,20 @@ class CrossEntropy(FairseqCriterion):
         }
 
         if self.args.eval_metric == 'accuracy':
-            accuracy = (predicted_class == target).float().sum()
+            accuracy = (pred == target).float().sum()
             logging_output['accuracy'] = utils.item(accuracy.data)
         elif self.args.eval_metric == 'f1':
-            self.task.eval_metrics[split].update_metrics(predicted_class, target)
-            logging_output['f1'] = self.task.eval_metrics[split].f1_value
+            fn, tp, fp = compute_confusion_matrix(target.cpu().numpy(), pred.detach().cpu().numpy())
+            logging_output['fn'] = fn
+            logging_output['tp'] = tp
+            logging_output['fp'] = fp
         else:
             raise NotImplementedError
 
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, eval_metric='accuracy', prefix='') -> None:
+    def reduce_metrics(logging_outputs, eval_metric, task, prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
 
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
@@ -76,7 +78,10 @@ class CrossEntropy(FairseqCriterion):
             accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
             metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
         elif eval_metric == 'f1':
-            metrics.log_scalar(prefix + 'f1', logging_outputs[-1].get(prefix + 'f1', 0), sample_size, round=3)
+            fn = logging_outputs[-1].get(prefix + 'fn', 0)
+            tp = logging_outputs[-1].get(prefix + 'tp', 0)
+            fp = logging_outputs[-1].get(prefix + 'fp', 0)
+            metrics.log_custom(F1Meter, 'f1', fn, tp, fp, task.split, sample_size)
         else:
             raise NotImplementedError
 

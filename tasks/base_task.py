@@ -16,7 +16,6 @@ from utils.data_utils import (
     CustomDictionary,
     EntityDictionary,
 )
-from criterions.eval_metrics import F1Score
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +43,6 @@ class BaseTask(FairseqTask):
         task = cls(args, dictionary, entity_dictionary)
         return task
 
-    def setup_eval_metrics(self, splits):
-        if self.args.eval_metric == 'f1':
-            self.eval_metrics = {}
-            for split in splits:
-                self.eval_metrics[split] = F1Score()
-
     def reduce_metrics(self, logging_outputs, criterion):
         if not any('ntokens' in log for log in logging_outputs):
             warnings.warn('ntokens not found in Criterion logging outputs, cannot log wpb or wps')
@@ -71,7 +64,7 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
-        criterion.__class__.reduce_metrics(logging_outputs, self.args.eval_metric)
+        criterion.__class__.reduce_metrics(logging_outputs, self.args.eval_metric, self)
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

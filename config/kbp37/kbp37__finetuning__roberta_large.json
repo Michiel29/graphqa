@@ -14,16 +14,19 @@
     "alpha": 1,
     "encoder_output_layer_type": "entity_start",
 
-    // "max_epoch": 10,
-    "total_num_update": 7000,
-    // "total_num_update": 100000000,
-    "warmup_updates": 420,
-    // "warmup_updates": 447,
-    "lr": [1e-5],
+    "max_epoch": 10,
+    // "total_num_update": 7000,
+    // "warmup_updates": 593, // bsz=16, max_epoch=10
+    // "warmup_updates": 297, // bsz=32, max_epoch=10
+    "warmup_updates": 149, // bsz=64, max_epoch=10
+    // "warmup_updates": 420,
+    // "lr": [1e-5],
+    "lr": [3e-5],
 
     "max_sentences": 16,
-    "update_freq": [2],
-    "max_tokens": 15000,
+    // "update_freq": [1],
+    "update_freq": [4],
+    "max_tokens": 2e3,
 
     "num_workers": 0,
     "load_component_prefix": "encoder"
