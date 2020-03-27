@@ -32,10 +32,9 @@ def main(args):
     )
 
     graph_path = os.path.join(args.data_path, args.prefix + '.graph')
-    graph_builder = indexed_dataset.make_builder(
+    graph_builder = indexed_dataset.MMapIndexedDatasetBuilder(
         graph_path + '.bin',
-        impl='mmap',
-        vocab_size=n_entities,
+        dtype=np.int64,
     )
     with trange(n_entities, desc='Building graph dataset') as progress_bar:
         for entity in progress_bar:
@@ -178,9 +177,6 @@ def expand_mention(
                 start_pos -= budget_left
             else:
                 raise Exception('Something is bad')
-        if end_pos - start_pos > max_positions:
-            import pdb; pdb.set_trace()
-            pass
         assert end_pos - start_pos <= max_positions
         assert start_pos >= text_data.sentence_start_pos[left_sentence_idx]
         assert end_pos <= text_data.sentence_end_pos[right_sentence_idx]

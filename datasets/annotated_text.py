@@ -147,7 +147,7 @@ class AnnotatedText(object):
         #
         # First, we need to find an index s such that
         # annotations[s - 1].end_pos <= start_block < annotations[s].end_pos
-        s = np.searchsorted(self.annotation_end.array, np.int32(start_block), side='right')
+        s = np.searchsorted(self.annotation_end.array, start_block, side='right')
 
         # It's possible that if start_block is so large that s for which
         # start_block < annotations[s].end_pos does not exist.
@@ -158,7 +158,7 @@ class AnnotatedText(object):
 
         # Second, we need to find an index e such that
         # annotations[e - 1].start_pos < end_block <= annotations[e].start_pos
-        e = np.searchsorted(self.annotation_start.array, np.int32(end_block), side='left')
+        e = np.searchsorted(self.annotation_start.array, end_block, side='left')
 
         # It's possible that if start_block is so small that e for which
         # annotations[e - 1].start_pos < end_block does not exists.
