@@ -91,6 +91,35 @@ class EntityStartLinear(nn.Module):
 
         return linear_projection
 
+class EntityStartLayerNorm(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        if args.mask_type == 'head_tail':
+            self.head_idx = dictionary.head()
+            self.tail_idx = dictionary.tail()
+        elif args.mask_type == 'start_end':
+            self.head_idx = dictionary.e1_start()
+            self.tail_idx = dictionary.e2_start()
+        else:
+            raise Exception('EntityStartLinear is unsupported for the mask type %s' % str(args.mask_type))
+
+        self.layer_norm = nn.LayerNorm(2*args.encoder_embed_dim)
+
+    def forward(self, x, src_tokens, **unused):
+        # x: [batch_size, length, enc_dim]
+
+        head_mask = (src_tokens == self.head_idx) # [batch_size, length]
+        tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
+
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+
+        head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
+
+        output = self.layer_norm(head_tail_concat)
+
+        return output
 
 class EntityPoolingFirstToken(nn.Module):
 
@@ -136,6 +165,7 @@ encoder_head_dict = {
     'bag_of_words_linear': BoWLinear,
     'entity_start': EntityStart,
     'entity_start_linear': EntityStartLinear,
+    'entity_start_layer_norm': EntityStartLayerNorm,
     'entity_pooling_first_token': EntityPoolingFirstToken,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,

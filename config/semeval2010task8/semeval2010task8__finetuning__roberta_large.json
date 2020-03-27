@@ -1,35 +1,31 @@
 {
-    "add_configs": ["kbp37.json", "../roberta/large.json", "../base.json"],
+    "add_configs": ["semeval2010task8.json", "../roberta/large.json", "../base.json"],
 
     "eval_downstream": false,
 
     "n_train_examples": -1,
     "n_valid_examples": -1,
     "n_test_examples": -1,
-    // "seed": 239,
     "seed": 0,
 
-    "arch": "encoder_kbp37__roberta_large",
-    "entity_dim": 256,
+    "arch": "encoder_semeval2010task8__roberta_large",
+    // "entity_dim": 256,
     // "entity_dim": 512,
     // "entity_dim": 768,
-    // "entity_dim": null,
+    "entity_dim": null,
     "mask_type": "start_end",
     "alpha": 1,
     // "encoder_output_layer_type": "entity_start",
-    "encoder_output_layer_type": "entity_start_linear",
+    // "encoder_output_layer_type": "entity_start_linear",
+    "encoder_output_layer_type": "entity_start_layer_norm",
 
     "max_epoch": 10,
     // "max_epoch": 20,
-    // "warmup_updates": 1187, // bsz=16, max_epoch=20
-    // "warmup_updates": 594, // bsz=16, max_epoch=10
-    // "warmup_updates": 297, // bsz=32, max_epoch=10
-    "warmup_updates": 149, // bsz=64, max_epoch=10
+    "warmup_updates": 61, // bsz=64, max_epoch=10
     // "lr": [5e-6],
     // "lr": [1e-5],
     "lr": [3e-5],
     // "lr_scheduler": "fixed",
-    // "weight_decay": 0,
 
     "max_sentences": 16,
     // "update_freq": [1],

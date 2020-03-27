@@ -1,6 +1,6 @@
 {
-    "task": "kbp37",
-    "data_path": "../data/kbp37/bin",
+    "task": "semeval2010task8",
+    "data_path": "../data/SemEval2010_task8_all_data/bin",
     "path_attributes": ["task", "arch", "encoder_output_layer_type", "entity_dim", "lr", "max_sentences", "update_freq"],
 
     "criterion": "cross_entropy_custom",
