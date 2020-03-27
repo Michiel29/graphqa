@@ -106,7 +106,9 @@ $ cp ../data/roberta/roberta.base/dict.txt ../data/kbp37/bin
 # SemEval 2010 Task 8 Dataset
 
 [SemEval 2010 Task 8 Paper](https://arxiv.org/abs/1911.10422)
+
 [SemEval 2010 Task 8 Website 1](http://www.kozareva.com/downloads.html)
+
 [SemEval 2010 Task 8 Website 2](http://semeval2.fbk.eu/semeval2.php?location=tasks)
 
 ### Latest dataset location: waldstein.usc.edu:/data1/aarchan/self_inference/data/SemEval2010_task8_all_data/bin
