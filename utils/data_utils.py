@@ -1,4 +1,6 @@
 import os
+import numpy as np
+from contextlib import contextmanager
 
 from fairseq.data import data_utils, PrependTokenDataset
 
@@ -26,3 +28,25 @@ def load_annotated_text(data_path, prefix, bos):
             os.path.join(data_path, prefix + '.annotations'),
         ),
     )
+
+@contextmanager
+def numpy_seed(seed, *addl_seeds):
+    """Context manager which seeds the NumPy PRNG with the specified seed and
+    restores the state afterward"""
+    if seed is None:
+        yield
+        return
+
+    def make_hashable(hash_input): # generates integer representation from string for seed
+        if isinstance(hash_input, str):
+            hash_input = int(''.join([str(ord(char)) for char in hash_input]))
+        return hash_input
+
+    seed_list = [make_hashable(seed)] + [make_hashable(add_seed) for add_seed in addl_seeds]
+    seed = int(hash(tuple(seed_list)) % 1e6)
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
