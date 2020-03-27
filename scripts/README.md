@@ -42,10 +42,9 @@ Collecting entity pairs: 100%|█| 100373302/100373302 [1:03:00<00:00, 26548.91i
 -- num documents 5546645, num sentences 124895749, num undirected edges 88651776 (within same sentence 88651776)
 Building graph dataset: 100%|█| 650629/650629 [05:04<00:00, 2137.25it/s]
 ```
+# FewRel Dataset
 
-# FewRel Corpus
-
-[FewRel v1 Official Webiste ](https://thunlp.github.io/1/fewrel1.html)
+[FewRel v1 Official Website](https://thunlp.github.io/1/fewrel1.html)
 
 ### Latest dataset location: ravenclaw.usc.edu:/data/urikz/fewrel/bin-v2
 
@@ -57,13 +56,89 @@ $ wget https://github.com/thunlp/FewRel/raw/master/data/val_wiki.json
 ```
 2. Preprocess the data
 ```console
-$ python scripts/prepare_fewrel.py --data /data/urikz/fewrel/val_wiki.json --output /data/urikz/fewrel/bin-v2/valid --append-eos
--- Loaded data from /data/urikz/fewrel/val_wiki.json
-Processing Wiki: 100%|█| 11200/11200 [00:06<00:00 ]
-
 $ python scripts/prepare_fewrel.py --data /data/urikz/fewrel/train_wiki.json --output /data/urikz/fewrel/bin-v2/train --append-eos
 -- Loaded data from /data/urikz/fewrel/train_wiki.json
 Processing Wiki: 100%|█| 44800/44800 [00:23<00:00 ]
+
+$ python scripts/prepare_fewrel.py --data /data/urikz/fewrel/val_wiki.json --output /data/urikz/fewrel/bin-v2/valid --append-eos
+-- Loaded data from /data/urikz/fewrel/val_wiki.json
+Processing Wiki: 100%|█| 11200/11200 [00:06<00:00 ]
+```
+
+# KBP37 Dataset
+
+[KBP37 Paper](https://arxiv.org/abs/1508.01006)
+
+### Latest dataset location: waldstein.usc.edu:/data1/aarchan/self_inference/data/kbp37/bin
+
+1. Download train/dev/test data
+```console
+$ cd path/to/data
+$ mkdir kbp37 && cd kbp37
+$ wget https://github.com/zhangdongxu/kbp37/blob/master/train.txt
+$ wget https://github.com/zhangdongxu/kbp37/blob/master/dev.txt
+$ wget https://github.com/zhangdongxu/kbp37/blob/master/test.txt
+```
+
+2. Preprocess the data
+```console
+$ cd path/to/self_inference
+
+$ python scripts/prepare_kbp37.py --split train --root-dir ../data/kbp37 --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/kbp37/train.txt
+Processing Wiki: 100%|█| 15917/15917 [00:18<00:00 ]
+
+$ python scripts/prepare_kbp37.py --split dev --root-dir ../data/kbp37 --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/kbp37/dev.txt
+Processing Wiki: 100%|█| 1724/1724 [00:02<00:00 ]
+
+$ python scripts/prepare_kbp37.py --split test --root-dir ../data/kbp37 --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/kbp37/test.txt
+Processing Wiki: 100%|█| 3405/3405 [00:05<00:00 ]
+```
+
+3. Copy dict.txt into data/kbp37/bin
+```console
+$ cd path/to/self_inference
+$ cp ../data/roberta/roberta.base/dict.txt ../data/kbp37/bin
+```
+
+# SemEval 2010 Task 8 Dataset
+
+[SemEval 2010 Task 8 Paper](https://arxiv.org/abs/1911.10422)
+[SemEval 2010 Task 8 Website 1](http://www.kozareva.com/downloads.html)
+[SemEval 2010 Task 8 Website 2](http://semeval2.fbk.eu/semeval2.php?location=tasks)
+
+### Latest dataset location: waldstein.usc.edu:/data1/aarchan/self_inference/data/SemEval2010_task8_all_data/bin
+
+1. Download and extract data
+```console
+$ cd path/to/data
+$ wget https://github.com/davidsbatista/Annotated-Semantic-Relationships-Datasets/raw/master/datasets/SemEval2010_task8_all_data.tar.gz
+$ tar xvzf SemEval2010_task8_all_data.tar.gz
+```
+
+2. Preprocess the data
+```console
+$ cd path/to/self_inference
+
+$ python scripts/prepare_semeval2010task8.py --split train --root-dir ../data/SemEval2010_task8_all_data --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/SemEval2010_task8_all_data/SemEval2010_task8_training/TRAIN_FILE.TXT
+Processing Wiki: 100%|█| 6500/6500 [00:05<00:00 ]
+
+$ python scripts/prepare_semeval2010task8.py --split dev --root-dir ../data/SemEval2010_task8_all_data --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/SemEval2010_task8_all_data/SemEval2010_task8_training/TRAIN_FILE.TXT
+Processing Wiki: 100%|█| 1500/1500 [00:02<00:00 ]
+
+$ python scripts/prepare_semeval2010task8.py --split test --root-dir ../data/SemEval2010_task8_all_data --roberta-dir ../data/roberta --append-eos
+-- Loaded data from ../data/SemEval2010_task8_all_data/SemEval2010_task8_testing_keys/TEST_FILE_FULL.TXT
+Processing Wiki: 100%|█| 2717/2717 [00:02<00:00 ]
+```
+
+3. Copy dict.txt into data/SemEval2010_task8_all_data/bin
+```console
+$ cd path/to/self_inference
+$ cp ../data/roberta/roberta.base/dict.txt ../data/SemEval2010_task8_all_data/bin
 ```
 
 # MTB Triplet Datasets
