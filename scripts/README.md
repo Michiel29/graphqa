@@ -1,6 +1,6 @@
 # Wikipedia Corpus
 
-### Latest dataset location: fantasia.usc.edu:/data2/urikz/nki/bin-v2
+### Latest dataset location: ravenclaw.usc.edu:/data/urikz/nki/bin-v5-threshold20 and ravenclaw.usc.edu:/data/urikz/nki/bin-v5-threshold20-small
 
 1. Create output directory
 ```console
@@ -20,12 +20,12 @@ Processing Wiki: 100%|█| 42562/42562 [02:32<00:00 , s=1.21e+8, p=2.87e+8, ann=
 $ python scripts/prepare_wiki.py --roberta /data/urikz/nki/roberta --tmp /tmp --output /data/urikz/nki/bin-v5-threshold20/valid --entity-vocab /data/urikz/nki/bin-v5-threshold20/entity.dict.txt --limit-set-of-entities --append-eos --nworkers 60 --data "/data/urikz/nki/wiki/annotated_el_unquote_expand2_v2/*/wiki99*"  --min-entities-per-sentence 0
 -- Found 425 files
 -- Build entity vocab mode: OFF
-Processing Wiki: 100%|█| 425/425 [00:20<00:00 , s=1207940, p=1812896, ann=1014396, f_ed=407930, f_h_overlap=307946, f_self_overlap=1159, f_cross_s_bd=8255, f_solo_s=0, f_xao=1057, f_vocab=216704]
+Processing Wiki: 100%|█| 425/425 [00:22<00:00 , s=1263488, d=55548, ann=1014396, f_ed=407930, f_h_overlap=307946, f_self_overlap=1159, f_cross_s_bd=8255, f_solo_s=0, f_xao=1057, f_vocab=216704]
 
 $ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix valid --max-positions 123
 -- 650629 entities
-Collecting entity pairs: 100%|█|  1014396/1014396 [00:40<00:00, 24904.36it/s, entities_queue_sz=2, num_documents=54995, num_sentences=1256428, num_undir_edges=886955, num_undir_edges_same_s=886955]
--- num documents 55547, num sentences 1263486, num undirected edges 889842 (within same sentence 889842)
+Collecting entity pairs: 100%|█|  1014396/1014396 [00:18<00:00, 54514.03it/s, entities_queue_sz=3, num_documents=55058, num_sentences=1257078, num_undir_edges=886562, num_undir_edges_same_s=886562]
+-- num documents 55547, num sentences 1263481, num undirected edges 889842 (within same sentence 889842)
 Building graph dataset: 100%|█|  650629/650629 [00:06<00:00, 94026.92it/s]
 ```
 
@@ -34,9 +34,9 @@ Building graph dataset: 100%|█|  650629/650629 [00:06<00:00, 94026.92it/s]
 $ python scripts/prepare_wiki.py --roberta /data/urikz/nki/roberta --tmp /tmp --output /data/urikz/nki/bin-v5-threshold20/train --entity-vocab /data/urikz/nki/bin-v5-threshold20/entity.dict.txt --limit-set-of-entities --append-eos --nworkers 60 --min-entities-per-sentence 0 --data "/data/urikz/nki/wiki/annotated_el_unquote_expand2_v2/*/wiki[0-8]*,/data/urikz/nki/wiki/annotated_el_unquote_expand2_v2/*/wiki9[0-8]*"
 -- Found 42137 files
 -- Build entity vocab mode: OFF
-Processing Wiki: 100%|█| 42137/42137 [21:31<00:00 , s=1.19e+8, p=1.82e+8, ann=1e+8, f_ed=4.06e+7, f_h_overlap=3e+7, f_self_overlap=111276, f_cross_s_bd=767234, f_solo_s=0, f_xao=133244, f_vocab=2.15e+7]
+Processing Wiki: 100%|█| 42137/42137 [23:26<00:00 , s=1.25e+8, d=5546646, ann=1e+8, f_ed=4.06e+7, f_h_overlap=3e+7, f_self_overlap=111276, f_cross_s_bd=767234, f_solo_s=0, f_xao=133244, f_vocab=2.15e+7]
 
-$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix valid --max-positions 123
+$ python scripts/prepare_graph.py --data-path /data/urikz/nki/bin-v5-threshold20 --document-sep-len 1 --max-entity-pair-distance 40 --prefix train --max-positions 123
 -- 650629 entities
 Collecting entity pairs: 100%|█| 100373302/100373302 [1:03:00<00:00, 26548.91it/s, entities_queue_sz=1, num_documents=5546256, num_sentences=1.25e+8, num_undir_edges=8.86e+7, num_undir_edges_same_s=8.86e+7]
 -- num documents 5546645, num sentences 124895749, num undirected edges 88651776 (within same sentence 88651776)
@@ -47,7 +47,7 @@ Building graph dataset: 100%|█| 650629/650629 [05:04<00:00, 2137.25it/s]
 
 [FewRel v1 Official Webiste ](https://thunlp.github.io/1/fewrel1.html)
 
-### Latest dataset location: fantasia.usc.edu:/data2/urikz/fewrel/bin
+### Latest dataset location: ravenclaw.usc.edu:/data/urikz/fewrel/bin-v2
 
 1. Download training and validation data
 ```console
@@ -57,13 +57,13 @@ $ wget https://github.com/thunlp/FewRel/raw/master/data/val_wiki.json
 ```
 2. Preprocess the data
 ```console
-$ python scripts/prepare_fewrel.py --roberta /data/urikz/nki/roberta --data /data/urikz/fewrel/val_wiki.json --output /data/urikz/fewrel/bin-v2/valid --append-eos
+$ python scripts/prepare_fewrel.py --data /data/urikz/fewrel/val_wiki.json --output /data/urikz/fewrel/bin-v2/valid --append-eos
 -- Loaded data from /data/urikz/fewrel/val_wiki.json
 Processing Wiki: 100%|█| 11200/11200 [00:06<00:00 ]
 
-$ python scripts/prepare_fewrel.py --roberta /data/urikz/nki/roberta --data /data/urikz/fewrel/train_wiki.json --output /data/urikz/fewrel/bin-v2/train --append-eos
+$ python scripts/prepare_fewrel.py --data /data/urikz/fewrel/train_wiki.json --output /data/urikz/fewrel/bin-v2/train --append-eos
 -- Loaded data from /data/urikz/fewrel/train_wiki.json
-Processing Wiki: 100%|█| 44800/44800 [00:22<00:00 ]
+Processing Wiki: 100%|█| 44800/44800 [00:23<00:00 ]
 ```
 
 # MTB Triplet Datasets

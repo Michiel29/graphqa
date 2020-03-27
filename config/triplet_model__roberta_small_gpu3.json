@@ -12,7 +12,7 @@
     "eval_kwargs": {
         "task": "fewrel",
         "arch": "encoder_fewrel__roberta_small",
-        "data_path": "../data/fewrel/bin",
+        "data_path": "../data/fewrel/bin-v2",
         "n_way": 5,
         "n_shot": 1,
         "criterion": "cross_entropy_custom"
@@ -29,9 +29,8 @@
     "total_num_updates": 41516, // = 10379 * 4
     "lr": [1e-5],
 
-    "num_workers": 3,
-    // "max_sentences": 1536,
-    "max_sentences": 16,
+    "num_workers": 0,
+    "max_sentences": 1536,
     "update_freq": [2],
     "max_tokens": 14000,
     // batch size ~ 2278.7

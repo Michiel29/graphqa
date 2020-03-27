@@ -6,8 +6,6 @@ from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import data_utils, FairseqDataset
 
-from datasets import AnnotatedTextDataset
-
 
 class KBP37Dataset(FairseqDataset):
 

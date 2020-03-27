@@ -40,7 +40,7 @@ def main(args):
     with trange(n_entities, desc='Building graph dataset') as progress_bar:
         for entity in progress_bar:
             edges[entity].sort()
-            graph_builder.add_item(torch.IntTensor(edges[entity]))
+            graph_builder.add_item(torch.LongTensor(edges[entity]))
     graph_builder.finalize(graph_path + '.idx')
 
 

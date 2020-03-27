@@ -1,7 +1,12 @@
+import logging
 import numpy as np
+import time
 import torch
 
 from fairseq.data import plasma_utils
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnnotatedText(object):
@@ -18,8 +23,15 @@ class AnnotatedText(object):
         mask_type,
         non_mask_rate,
     ):
+        start_time = time.time()
         self.text_data = text_data
-        self.annotation_data = annotation_data
+        self.annotation_start = plasma_utils.PlasmaArray(
+            np.ascontiguousarray(annotation_data[:, 0])
+        )
+        self.annotation_end = plasma_utils.PlasmaArray(
+            np.ascontiguousarray(annotation_data[:, 1])
+        )
+        self.annotation_data = plasma_utils.PlasmaArray(annotation_data)
         self.dictionary = dictionary
         self.mask_type = mask_type
         assert self.mask_type in ['head_tail', 'start_end', None]
@@ -28,6 +40,12 @@ class AnnotatedText(object):
         offsets = np.roll(np.cumsum(self.text_data._index._sizes), 1)
         offsets[0] = 0
         self.sentence_offsets = plasma_utils.PlasmaArray(offsets)
+        logger.info('set up annotated text [n_sentences=%d, n_annotations=%d, mask_type=%s] in %.3f seconds' % (
+            len(self.text_data),
+            len(self.annotation_data.array),
+            self.mask_type,
+            time.time() - start_time,
+        ))
 
     def annotate_sentence(self, index, head_entity, tail_entity):
         start_block = self.sentence_offsets.array[index]
@@ -114,6 +132,10 @@ class AnnotatedText(object):
         return text
 
     def annotations_block(self, start_block, end_block):
+        # From http://sociograph.blogspot.com/2011/12/gotcha-with-numpys-searchsorted.html
+        start_block = self.annotation_end.array.dtype.type(start_block)
+        end_block = self.annotation_start.array.dtype.type(end_block)
+
         # We are interested in all annotations that INTERSECT [start_block; end_block)
         # Recall that the [start_pos; end_pos) interval for the annotation s is defined as
         # [annotations[s - 1][0], annotations[s - 1][1])
@@ -125,18 +147,18 @@ class AnnotatedText(object):
         #
         # First, we need to find an index s such that
         # annotations[s - 1].end_pos <= start_block < annotations[s].end_pos
-        s = np.searchsorted(self.annotation_data[:, 1], start_block, side='right')
+        s = np.searchsorted(self.annotation_end.array, np.int32(start_block), side='right')
 
         # It's possible that if start_block is so large that s for which
         # start_block < annotations[s].end_pos does not exist.
         # In this case, searchsorted will return len(self.annotation_data)
         # and we need to return an empty list
-        if s == len(self.annotation_data):
+        if s == len(self.annotation_end.array):
             return []
 
         # Second, we need to find an index e such that
         # annotations[e - 1].start_pos < end_block <= annotations[e].start_pos
-        e = np.searchsorted(self.annotation_data[:, 0], end_block, side='left')
+        e = np.searchsorted(self.annotation_start.array, np.int32(end_block), side='left')
 
         # It's possible that if start_block is so small that e for which
         # annotations[e - 1].start_pos < end_block does not exists.
@@ -145,7 +167,7 @@ class AnnotatedText(object):
         if e == 0:
             return []
 
-        return self.annotation_data[slice(s, e)]
+        return self.annotation_data.array[slice(s, e)]
 
     def filter_by_entities(self, annotations, entity_set):
         annotations_new = list()

@@ -101,13 +101,13 @@ class GraphDataset(FairseqDataset):
         while start_entity < len(self.edges):
             approx_edges_per_entity = int(self.edges._index._sizes[start_entity:start_entity + 5].mean())
             if approx_edges_per_entity > 0:
-                chunk_size = int(self.EDGE_CHUNK_SIZE / approx_edges_per_entity)
+                chunk_size = max(int(self.EDGE_CHUNK_SIZE / approx_edges_per_entity), 1)
             end_entity = min(len(self.edges), start_entity + chunk_size)
             head_entities = list(range(start_entity, end_entity))
-            num_edges_per_head_entity = np.zeros(end_entity - start_entity, dtype=np.int32)
+            num_edges_per_head_entity = np.zeros(end_entity - start_entity, dtype=np.int64)
 
             head_entities_lens = self.edges._index._sizes[start_entity:end_entity]
-            head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int32), 1)
+            head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int64), 1)
             head_entities_pos[0] = 0
             end_edge = start_edge + head_entities_lens.sum()
 
@@ -126,9 +126,9 @@ class GraphDataset(FairseqDataset):
                 self.subsampling_cap,
                 self.NUM_THREADS,
             )
-            chunk_sizes = np.zeros(num_edges_per_head_entity.sum(), dtype=np.int32)
-            chunk_indices = np.zeros((num_edges_per_head_entity.sum(), 2), dtype=np.int32)
-            output_offsets = np.roll(np.cumsum(num_edges_per_head_entity, dtype=np.int32), 1)
+            chunk_sizes = np.zeros(num_edges_per_head_entity.sum(), dtype=np.int64)
+            chunk_indices = np.zeros((num_edges_per_head_entity.sum(), 2), dtype=np.int64)
+            output_offsets = np.roll(np.cumsum(num_edges_per_head_entity, dtype=np.int64), 1)
             output_offsets[0] = 0
             random_scores = np.random.random(len(edges_buffer) // self.EDGE_SIZE)
             _sample_edges_per_entity_pair(

@@ -50,13 +50,8 @@ class Diagnostic():
 
     def inspect_item(self, text_id, head_id=None, tail_id=None):
 
-<<<<<<< HEAD
-        decoded_text = self.decode_text(text_id)    
-        print('\n\nTEXT ID LIST:\n {}\n'.format(self.dictionary.string(text_id).split()))    
-=======
-        decoded_text = self.decode_sentence(text_id)
+        decoded_text = self.decode_text(text_id)
         print('\n\nTEXT ID LIST:\n {}\n'.format(self.dictionary.string(text_id).split()))
->>>>>>> awesome
         print('DECODED TEXT:\n {}\n'.format(decoded_text))
 
         if head_id is not None:
@@ -73,13 +68,8 @@ class Diagnostic():
             print('\n')
             for key, val in A_dict.items():
                 if key == 'textA':
-<<<<<<< HEAD
-                    decoded_text = self.decode_text(val)    
-                    print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))    
-=======
-                    decoded_text = self.decode_sentence(val)
+                    decoded_text = self.decode_text(val)
                     print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))
->>>>>>> awesome
                     print('{} DECODED TEXT:\n {}\n'.format(key, decoded_text))
                 else:
                     ent = self.entity_dictionary[val]
@@ -88,15 +78,9 @@ class Diagnostic():
 
         if B_dict is not None:
             for i in range(len(B_dict)):
-<<<<<<< HEAD
-                pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i) 
-                decoded_text = self.decode_text(B_dict['textB'][i])    
-                print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))    
-=======
                 pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i)
-                decoded_text = self.decode_sentence(B_dict['textB'][i])
+                decoded_text = self.decode_text(B_dict['textB'][i])
                 print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))
->>>>>>> awesome
                 print('{} DECODED TEXT ({}):\n {}\n'.format('textB', pair_type, decoded_text))
 
                 head_ent = self.entity_dictionary[B_dict['headB'][i]]
@@ -185,7 +169,7 @@ class Diagnostic():
                 decoded_text = self.decode_text(text_id[i])
                 print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
                 print('DECODED TEXT:\n {}\n'.format(decoded_text))
-                
+
                 print('TARGET: \n {}\n'.format(target[i].cpu().detach().numpy()))
                 if scores is not None:
                     print('SCORES: \n {}\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
@@ -200,11 +184,7 @@ class Diagnostic():
 
                 # Print textA, headA, and tailA
                 cur_textA = textA_id[i]
-<<<<<<< HEAD
-                decoded_textA = self.decode_text(cur_textA) 
-=======
-                decoded_textA = self.decode_sentence(cur_textA)
->>>>>>> awesome
+                decoded_textA = self.decode_text(cur_textA)
                 print('\nTEXTA ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textA).split()))
                 print('DECODED TEXTA:\n {}\n'.format(decoded_textA))
 
@@ -217,13 +197,8 @@ class Diagnostic():
                 # Print textB, headB, and tailB
                 for j in range(n_pairs):
                     cur_textB = textB_id[batch['A2B'][i * n_pairs + j]]
-<<<<<<< HEAD
                     decoded_textB = self.decode_text(cur_textB)
-                    pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)  
-=======
-                    decoded_textB = self.decode_sentence(cur_textB)
                     pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)
->>>>>>> awesome
                     print('\nTEXTB ID LIST ({}):\n {}\n'.format(pair_type, self.task.dictionary.string(cur_textB).split()))
                     print('DECODED TEXTB ({}):\n {}\n'.format(pair_type, decoded_textB))
 

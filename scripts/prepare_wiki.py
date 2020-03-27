@@ -398,7 +398,7 @@ class WikiProcessor(object):
 
         if self.entity_vocab is not None:
             dataset_builder.finalize(output_prefix + '.text.idx')
-            annotations_list = np.array(annotations_list, dtype=np.int32)
+            annotations_list = np.array(annotations_list, dtype=np.int64)
 
         return (
             annotation_entities if self.entity_vocab is None else output_prefix,

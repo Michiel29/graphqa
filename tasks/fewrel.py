@@ -88,4 +88,3 @@ class FewRelTask(BaseTask):
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
 
         self.datasets[split] = dataset
-        

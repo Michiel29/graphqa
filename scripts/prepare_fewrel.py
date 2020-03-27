@@ -157,7 +157,7 @@ class FewRelProcessor(object):
             [annotation['start_word'], annotation['end_word'], 0, 0, annotation['uri']]
             for annotation in annotations
         ]
-        return ids_tensor, np.array(annotations_list, dtype=np.int32)
+        return ids_tensor, np.array(annotations_list, dtype=np.int64)
 
 
 def main(args):
@@ -176,11 +176,7 @@ def main(args):
         bar_format=TRAINING_TQDM_BAD_FORMAT,
     )
 
-<<<<<<< HEAD
     vocab = Dictionary.load(os.path.join(args.roberta, 'roberta.base', 'dict.txt'))
-=======
-    vocab = Dictionary.load(os.path.join(args.roberta, 'dict.txt'))
->>>>>>> awesome
     dataset_builder = indexed_dataset.make_builder(
         args.output + '.text.bin',
         impl=args.dataset_impl,
