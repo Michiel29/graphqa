@@ -11,7 +11,7 @@
     "random_token_prob": 0.1,
     "freq_weighted_replacement": false,
     "mask_whole_words": true,
-    "alpha": 0.7,
+    "non_mask_rate": 0.7,
 
     "encoder_output_layer_type": "lm_head",
 
