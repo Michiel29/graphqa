@@ -2,7 +2,7 @@
     "task": "masked_lm_em",
     "arch": "roberta_wrapper_base",
     "mask_type": "start_end",
-    "alpha": 0.7,
+    "non_mask_rate": 0.7,
     "data_path": "../data/nki/bin-v3-threshold20",
     "seed": 239,
 

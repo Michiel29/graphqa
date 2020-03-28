@@ -11,7 +11,7 @@
 
     "arch": "encoder_fewrel__roberta_small",
     "mask_type": null,
-    "alpha": null,
+    "non_mask_rate": null,
     "encoder_layers": 12,
     "encoder_embed_dim": 256,
     "encoder_ffn_embed_dim": 1024,

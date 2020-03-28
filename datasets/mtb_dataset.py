@@ -59,11 +59,7 @@ class MTBDataset(FairseqDataset):
         return self.sizes[index]
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            rd.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     @property
     def sizes(self):
@@ -71,35 +67,35 @@ class MTBDataset(FairseqDataset):
 
     def sample_text(self, headB_tailB_edges, headB, tailB, textA, strong_neg=False, tailA=None):
 
-        # Iterate through edges between headB and tailB (i.e., textB candidates) 
+        # Iterate through edges between headB and tailB (i.e., textB candidates)
         for edge in headB_tailB_edges:
 
             # For strong negatives, discard the current edge if it contains tailA
             if strong_neg:
                 edge_entity_ids = self.train_dataset.annotation_data[edge][2::3].numpy()
-                if tailA in edge_entity_ids: 
+                if tailA in edge_entity_ids:
                     continue
-            
+
             # Get textB, using the given edge, headB, and tailB
             textB = self.train_dataset.__getitem__(edge, head_entity=headB, tail_entity=tailB)['text']
 
             # Discard textB if it is longer than max_positions
             if len(textB) > self.max_positions:
                 continue
-            
-            # Check that textA and textB are not the same (this may occur for positive pairs). 
-            # If not, return textB. 
-            if not torch.equal(textA, textB): 
-                return textB            
 
-        # Generally, there should always be candidates satisfying both case0 and cashead. 
+            # Check that textA and textB are not the same (this may occur for positive pairs).
+            # If not, return textB.
+            if not torch.equal(textA, textB):
+                return textB
+
+        # Generally, there should always be candidates satisfying both case0 and cashead.
         # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
     def sample_positive(self, head, tail, head_neighbors, head_edges, textA):
         # Get all indices of head_neighbors, for which the neighbor is tail
         head_tail_edges_idxs = np.flatnonzero(head_neighbors == tail)
-        
+
         # Check that head and tail are mentioned in at least two training texts
         if len(head_tail_edges_idxs) < 1:
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -123,17 +119,17 @@ class MTBDataset(FairseqDataset):
 
         # Get tailB candidate indices -- i.e., indices of headA_neighbors, for which the neighbor is not tailA
         tailB_candidates_idxs = np.flatnonzero(headA_neighbors != tailA)
-            
+
         # Check that headA has at least one neighbor besides tailA
         if len(tailB_candidates_idxs) == 0:
             raise Exception("STRONG NEGATIVE -- headA has no neighbors besides tailA")
-        
+
         # Get tailB candidates -- i.e., all of headB's neighbors, excluding tailA
         tailB_candidates = np.take(headA_neighbors, tailB_candidates_idxs, 0)
 
         # Get unique array of tailB candidates -- i.e., all of headB's neighbors, excluding tailA and graph duplicates
         tailB_candidates_unique = np.unique(tailB_candidates)
-        
+
         # Get all of headB's edges, excluding those shared with tailA
         headB_edges = np.take(headA_edges, tailB_candidates_idxs, 0)
 
@@ -169,18 +165,18 @@ class MTBDataset(FairseqDataset):
 
             # Get array of unique entity ids for textB
             unique_entity_ids = np.unique(self.train_dataset.annotation_data[textB_idx][2::3].numpy())
-            
+
             # Check that there are at least two entities in textB
             assert len(unique_entity_ids) >= 2
 
-            # Check that headA and tailA are not in the textB 
+            # Check that headA and tailA are not in the textB
             if headA in unique_entity_ids or tailA in unique_entity_ids:
                 continue
 
             # Sample two of the entities in textB to use as headB and tailB
             headB, tailB = np.random.choice(unique_entity_ids, size=2, replace=False)
 
-            # Retrieve textB token sequence, with headB and tailB marked 
+            # Retrieve textB token sequence, with headB and tailB marked
             textB = self.train_dataset.__getitem__(textB_idx, headB, tailB)['text']
 
             # Check that textB is not longer than max_positions
@@ -257,11 +253,11 @@ class MTBDataset(FairseqDataset):
             item_dict['tailA'] = tailA
             item_dict['headB'] = headB
             item_dict['tailB'] = tailB
-        
+
         return item_dict
 
     def collater(self, instances):
-        # Filter out instances for which no positive text pair exists 
+        # Filter out instances for which no positive text pair exists
         instances = [x for x in instances if x is not None]
 
         # Get batch size
@@ -282,7 +278,7 @@ class MTBDataset(FairseqDataset):
             tailA_list = []
             headB_list = []
             tailB_list = []
-        
+
         # Get array of textB lengths
         textB_len = np.array([instance['textB_len'] for instance in instances])
 
@@ -292,8 +288,8 @@ class MTBDataset(FairseqDataset):
 
         # Generate cluster candidates based on textB lengths statistics
         bin_vals = [0] + [textB_mean + 0.5*k*textB_std for k in range(-3, 4)] + [float('inf')]
-        cluster_candidates = [np.where(np.logical_and(textB_len > bin_vals[i], textB_len <= bin_vals[i+1])) for i in range(len(bin_vals)-1)]            
-        
+        cluster_candidates = [np.where(np.logical_and(textB_len > bin_vals[i], textB_len <= bin_vals[i+1])) for i in range(len(bin_vals)-1)]
+
         # Build textB clusters; initialize textB_dict, A2B_dict, and target_dict
         cluster_id = 0
         textB_clusters = -1 * np.ones((batch_size, self.k_weak_neg+2))
@@ -335,7 +331,7 @@ class MTBDataset(FairseqDataset):
         padded_textB = {}
         padded_textB_size = 0
         A2B_list = []
-        target_list = []            
+        target_list = []
         for cluster_id, cluster_texts in textB_dict.items():
             padded_textB[cluster_id] = pad_sequence(cluster_texts, batch_first=True, padding_value=self.dictionary.pad())
             padded_textB_size += torch.numel(padded_textB[cluster_id])

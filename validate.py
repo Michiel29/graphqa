@@ -25,6 +25,7 @@ logger = logging.getLogger('fairseq_cli.train')
 
 def main(args):
     utils.import_user_module(args)
+    utils.set_torch_seed(args.seed)
 
     assert args.max_tokens is not None or args.max_sentences is not None, \
         'Must specify batch size either with --max-tokens or --max-sentences'

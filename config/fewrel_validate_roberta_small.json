@@ -3,7 +3,7 @@
 
     "arch": "encoder_fewrel__roberta_small",
     "mask_type": "start_end",
-    "alpha": 1,
+    "non_mask_rate": 1,
 
     "entity_dim": 256,
     // "encoder_output_layer_type": "bag_of_words",
@@ -12,7 +12,7 @@
     "max_sentences": 10,
     "max_tokens": 2000,
 
-    "load_checkpoint": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_14d_02h_04m/checkpoints/checkpoint3.pt",
+    // "load_checkpoint": "../save/task_multi_task/arch_encoder_triplet__roberta_small/lr_1e-05/03m_15d_03h_25m/checkpoints/checkpoint4.pt",
 
     "load_component_prefix": "encoder"
 }

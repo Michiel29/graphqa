@@ -13,16 +13,17 @@ from fairseq.tasks import register_task
 
 from tasks import BaseTask
 from datasets import (
-    AnnotatedTextDataset,
+    AnnotatedText,
     KBP37Dataset,
     FilteredDataset,
     prune_dataset_size,
 )
 from utils.data_utils import (
-    CustomDictionary,
     load_annotated_text,
     safe_load_indexed_dataset,
 )
+from utils.dictionary import CustomDictionary
+
 
 logger = logging.getLogger(__name__)
 
@@ -91,4 +92,3 @@ class KBP37Task(BaseTask):
         )
 
         self.datasets[split] = dataset
-        

@@ -1,15 +1,18 @@
-import logging
-
 from fairseq.tasks import register_task
+import logging
+import numpy as np
+import os
+import time
 
 from datasets import (
-    AnnotatedTextDataset,
-    filter_by_max_length,
+    AnnotatedText,
+    GraphDataset,
+    PrependTokenDataset,
     prune_dataset_size,
     TripletDataset,
 )
+from utils.data_utils import safe_load_indexed_dataset
 from tasks import RelationInferenceTask
-from utils.data_utils import load_annotated_text
 
 logger = logging.getLogger(__name__)
 
@@ -19,35 +22,52 @@ class TripletInferenceTask(RelationInferenceTask):
     """Task for training inference models."""
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        text_data, annotation_data = load_annotated_text(
-            self.args.data_path,
-            split,
-            self.dictionary.bos(),
+        text_data = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.text'),
         )
-        annotated_text_dataset = AnnotatedTextDataset(
+        start_time = time.time()
+        annotation_path = os.path.join(self.args.data_path, split + '.annotations.npy')
+        annotation_data = np.load(
+            annotation_path,
+            mmap_mode='r',
+        )
+        logger.info('loaded annotations %s from %s in %.3f seconds' % (
+            str(annotation_data.shape),
+            annotation_path,
+            time.time() - start_time,
+        ))
+
+        annotated_text = AnnotatedText(
             text_data=text_data,
             annotation_data=annotation_data,
             dictionary=self.dictionary,
-            entity_dictionary=self.entity_dictionary,
-            shift_annotations=1,
             mask_type=self.args.mask_type,
-            assign_head_tail='random',
-            seed=self.args.seed,
-            alpha=self.args.alpha,
+            non_mask_rate=self.args.non_mask_rate,
         )
-        dataset = TripletDataset(
-            annotated_text_dataset=annotated_text_dataset,
-            dictionary=self.dictionary,
-            graph=self.graph,
-            k_negative=self.args.k_negative,
-            n_entities=len(self.entity_dictionary),
+
+        graph_data = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.graph'),
+        )
+        graph = GraphDataset(
+            edges=graph_data,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
-            max_positions=self.args.max_positions - 4,
+            epoch_splits=self.args.epoch_splits,
             seed=self.args.seed,
         )
+
+        dataset = TripletDataset(
+            annotated_text=annotated_text,
+            graph=graph,
+            k_negative=self.args.k_negative,
+            n_entities=len(self.entity_dictionary),
+            seed=self.args.seed,
+            dictionary=self.dictionary,
+        )
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text')
+
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-        if self.args.subsampling_strategy is None:
-            dataset = self.filter_by_max_positions(dataset)
-        dataset = prune_dataset_size(dataset, n_examples, self.seed)
+        if n_examples != -1:
+            dataset = prune_dataset_size(dataset, n_examples, self.seed)
+
         self.datasets[split] = dataset

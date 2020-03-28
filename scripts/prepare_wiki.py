@@ -19,6 +19,7 @@ from fairseq.data import Dictionary
 from fairseq.data import indexed_dataset
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
+
 TRAINING_TQDM_BAD_FORMAT = (
     '{l_bar}{bar}| '
     '{n_fmt}/{total_fmt} [{elapsed}<{remaining} {postfix}]'
@@ -273,6 +274,8 @@ class WikiProcessor(object):
     def apply_gt2_bpe(self, sentence, annotations):
         global bpe
         ids = list(map(str, bpe.encode(sentence)))
+        if len(annotations) == 0:
+            return ids, annotations
         word_index = 0
         current_annotation_index, next_annotation_index = None, 0
         for token_id, token in enumerate(ids):
@@ -304,12 +307,15 @@ class WikiProcessor(object):
     def __call__(self, path):
         global vocab
         global entities
-        num_annotations, num_sentences = 0, 0
-        num_total_pairs = 0
+        num_annotations, num_sentences, num_documents = 0, 0, 0
+        total_length = 0
         num_filtered_xao = 0
         num_filtered_by_candidate_set, num_filtered_by_human_annotations, num_filtered_by_self_overlaps = 0, 0, 0
         num_filtered_by_crossing_sentence_boundaries, num_filtered_solo_annotion_in_sentence = 0, 0
         num_filtered_by_entity_vocab = 0
+
+        empty_line_tensor = vocab.encode_line(line='', append_eos=self.append_eos)
+        assert len(empty_line_tensor) == int(self.append_eos)
 
         if self.entity_vocab is None:
             annotation_entities = Counter()
@@ -320,11 +326,7 @@ class WikiProcessor(object):
                 impl=self.dataset_impl,
                 vocab_size=len(vocab),
             )
-            annotations_builder = indexed_dataset.make_builder(
-                output_prefix + '.annotations.bin',
-                impl=self.dataset_impl,
-                vocab_size=len(entities),
-            )
+            annotations_list = list()
 
         with codecs.open(path, 'r', 'utf8') as f:
             for line in f:
@@ -367,9 +369,6 @@ class WikiProcessor(object):
                         num_filtered_solo_annotion_in_sentence += 1
                         continue
                     num_annotations += len(annotations_per_sentence)
-                    num_sentences += 1
-
-                    num_total_pairs += num_unique_entities * (num_unique_entities - 1)
 
                     if self.entity_vocab is None:
                         annotation_entities.update([annotation['uri'] for annotation in annotations_per_sentence])
@@ -382,18 +381,30 @@ class WikiProcessor(object):
                         ids, annotations_per_sentence = self.apply_gt2_bpe(fixed_sentence, annotations_per_sentence)
 
                         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
-                        assert len(ids_tensor) == len(ids) + 1
+                        assert len(ids_tensor) == len(ids) + int(self.append_eos)
                         dataset_builder.add_item(ids_tensor)
-                        annotations_builder.add_item(torch.IntTensor(
-                            [[x['start_word'], x['end_word'], int(entities[x['uri']])] for x in annotations_per_sentence]
-                        ))
+                        annotations_list.extend([
+                            [x['start_word'] + total_length, x['end_word'] + total_length, num_sentences, num_documents, int(entities[x['uri']])]
+                            for x in annotations_per_sentence
+                        ])
+                        total_length += len(ids_tensor)
+                    num_sentences += 1
+
+                if self.entity_vocab is not None:
+                    dataset_builder.add_item(empty_line_tensor)
+                    total_length += len(empty_line_tensor)
+                    num_sentences += 1
+                    num_documents += 1
 
         if self.entity_vocab is not None:
             dataset_builder.finalize(output_prefix + '.text.idx')
-            annotations_builder.finalize(output_prefix + '.annotations.idx')
+            annotations_list = np.array(annotations_list, dtype=np.int64)
+
         return (
             annotation_entities if self.entity_vocab is None else output_prefix,
-            num_total_pairs,
+            annotations_list if self.entity_vocab is not None else None,
+            total_length if self.entity_vocab is not None else 0,
+            num_documents,
             num_sentences,
             num_annotations,
             num_filtered_by_candidate_set,
@@ -426,11 +437,11 @@ def main(args):
         args.append_eos,
         args.entity_vocab if not build_entity_vocab_mode else None,
     )
-    num_sentences = 0
-    num_total_pairs = 0
+    num_documents, num_sentences = 0, 0
     num_annotations, num_filtered_by_candidate_set, num_filtered_by_human_annotations, num_filtered_by_self_overlaps = 0, 0, 0, 0
     num_filtered_xao, num_filtered_by_crossing_sentence_boundaries, num_filtered_solo_annotion_in_sentence = 0, 0, 0
     num_filtered_by_entity_vocab = 0
+    total_length = 0
 
     pbar = tqdm.tqdm(
         total=len(input_files),
@@ -439,7 +450,7 @@ def main(args):
     )
     pbar.set_postfix({
         's': num_sentences,
-        'p': num_total_pairs,
+        'd': num_documents,
         'ann': num_annotations,
         'f_ed': num_filtered_by_candidate_set,
         'f_h_overlap': num_filtered_by_human_annotations,
@@ -460,21 +471,23 @@ def main(args):
             vocab_size=len(vocab),
         )
         entities = load_entities(args.entity_vocab)
-        annotations_builder = indexed_dataset.make_builder(
-            args.output + '.annotations.bin',
-            impl=args.dataset_impl,
-            vocab_size=len(entities),
-        )
+        annotations_list = list()
+
     if args.nworkers == 1:
         processor.initializer()
-        for output, pp, s, x, y, z, w, v, u, t, q in map(processor, input_files):
+        for output, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in map(processor, input_files):
             if build_entity_vocab_mode:
                 entities.update(output)
             else:
                 dataset_builder.merge_file_(output + '.text')
-                annotations_builder.merge_file_(output + '.annotations')
+                _annotations_list[:, 0] += total_length
+                _annotations_list[:, 1] += total_length
+                _annotations_list[:, 2] += num_sentences
+                _annotations_list[:, 3] += num_documents
+                annotations_list.append(_annotations_list)
+            total_length += _total_length
+            num_documents += _num_documents
             num_sentences += s
-            num_total_pairs += pp
             num_annotations += x
             num_filtered_by_candidate_set += y
             num_filtered_by_human_annotations += z
@@ -485,7 +498,7 @@ def main(args):
             num_filtered_by_entity_vocab += q
             pbar.set_postfix({
                 's': num_sentences,
-                'p': num_total_pairs,
+                'd': num_documents,
                 'ann': num_annotations,
                 'f_ed': num_filtered_by_candidate_set,
                 'f_h_overlap': num_filtered_by_human_annotations,
@@ -498,14 +511,19 @@ def main(args):
             pbar.update()
     else:
         with mp.Pool(processes=args.nworkers, initializer=processor.initializer) as pool:
-            for output, pp, s, x, y, z, w, v, u, t, q in pool.imap_unordered(processor, input_files):
+            for output, _annotations_list, _total_length, _num_documents, s, x, y, z, w, v, u, t, q in pool.imap_unordered(processor, input_files):
                 if build_entity_vocab_mode:
                     entities.update(output)
                 else:
                     dataset_builder.merge_file_(output + '.text')
-                    annotations_builder.merge_file_(output + '.annotations')
+                    _annotations_list[:, 0] += total_length
+                    _annotations_list[:, 1] += total_length
+                    _annotations_list[:, 2] += num_sentences
+                    _annotations_list[:, 3] += num_documents
+                    annotations_list.append(_annotations_list)
+                total_length += _total_length
+                num_documents += _num_documents
                 num_sentences += s
-                num_total_pairs += pp
                 num_annotations += x
                 num_filtered_by_candidate_set += y
                 num_filtered_by_human_annotations += z
@@ -516,7 +534,7 @@ def main(args):
                 num_filtered_by_entity_vocab += q
                 pbar.set_postfix({
                     's': num_sentences,
-                    'p': num_total_pairs,
+                    'd': num_documents,
                     'ann': num_annotations,
                     'f_ed': num_filtered_by_candidate_set,
                     'f_h_overlap': num_filtered_by_human_annotations,
@@ -546,7 +564,8 @@ def main(args):
         ))
     else:
         dataset_builder.finalize(args.output + '.text.idx')
-        annotations_builder.finalize(args.output + '.annotations.idx')
+        annotations_list = np.concatenate(annotations_list)
+        np.save(args.output + '.annotations', annotations_list)
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 from fairseq import file_utils
 
-from .data_utils import CustomDictionary as cd
+from .dictionary import CustomDictionary as cd
 
 class Diagnostic():
     DEFAULT_ENCODER_JSON = 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/encoder.json'
@@ -22,9 +22,12 @@ class Diagnostic():
     )
 
     filter_tokens = [cd.pad_df]
-    replace_tokens = [cd.head_token_df, cd.tail_token_df, cd.blank_token_df,
-                        cd.e1_start_token_df, cd.e1_end_token_df, 
-                        cd.e2_start_token_df, cd.e2_end_token_df]
+    replace_tokens = [
+        cd.head_token_df, cd.tail_token_df, cd.blank_token_df,
+        cd.e1_start_token_df, cd.e1_end_token_df,
+        cd.e2_start_token_df, cd.e2_end_token_df,
+        cd.blank_head_other_df, cd.blank_tail_other_df,
+    ]
 
     def __init__(self, dictionary, entity_dictionary, task=None):
         self.bpe = get_encoder(self.encoder_json, self.vocab_bpe)
@@ -47,8 +50,8 @@ class Diagnostic():
 
     def inspect_item(self, text_id, head_id=None, tail_id=None):
 
-        decoded_text = self.decode_text(text_id)    
-        print('\n\nTEXT ID LIST:\n {}\n'.format(self.dictionary.string(text_id).split()))    
+        decoded_text = self.decode_text(text_id)
+        print('\n\nTEXT ID LIST:\n {}\n'.format(self.dictionary.string(text_id).split()))
         print('DECODED TEXT:\n {}\n'.format(decoded_text))
 
         if head_id is not None:
@@ -65,19 +68,19 @@ class Diagnostic():
             print('\n')
             for key, val in A_dict.items():
                 if key == 'textA':
-                    decoded_text = self.decode_text(val)    
-                    print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))    
+                    decoded_text = self.decode_text(val)
+                    print('{} ID LIST:\n {}\n'.format(key, self.dictionary.string(val).split()))
                     print('{} DECODED TEXT:\n {}\n'.format(key, decoded_text))
                 else:
                     ent = self.entity_dictionary[val]
-                    print('<{}> ENTITY:\n {} (ID={})\n'.format(key, ent, val))  
+                    print('<{}> ENTITY:\n {} (ID={})\n'.format(key, ent, val))
             print('\n')
-            
+
         if B_dict is not None:
             for i in range(len(B_dict)):
-                pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i) 
-                decoded_text = self.decode_text(B_dict['textB'][i])    
-                print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))    
+                pair_type = 'POSITIVE' if i == 0 else 'NEGATIVE {}'.format(i)
+                decoded_text = self.decode_text(B_dict['textB'][i])
+                print('\n{} ID LIST ({}):\n {}\n'.format('textB', pair_type, self.dictionary.string(B_dict['textB'][i]).split()))
                 print('{} DECODED TEXT ({}):\n {}\n'.format('textB', pair_type, decoded_text))
 
                 head_ent = self.entity_dictionary[B_dict['headB'][i]]
@@ -166,7 +169,7 @@ class Diagnostic():
                 decoded_text = self.decode_text(text_id[i])
                 print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
                 print('DECODED TEXT:\n {}\n'.format(decoded_text))
-                
+
                 print('TARGET: \n {}\n'.format(target[i].cpu().detach().numpy()))
                 if scores is not None:
                     print('SCORES: \n {}\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
@@ -181,7 +184,7 @@ class Diagnostic():
 
                 # Print textA, headA, and tailA
                 cur_textA = textA_id[i]
-                decoded_textA = self.decode_text(cur_textA) 
+                decoded_textA = self.decode_text(cur_textA)
                 print('\nTEXTA ID LIST:\n {}\n'.format(self.task.dictionary.string(cur_textA).split()))
                 print('DECODED TEXTA:\n {}\n'.format(decoded_textA))
 
@@ -190,12 +193,12 @@ class Diagnostic():
 
                 tailA_ent = self.task.entity_dictionary[tailA_id[i]]
                 print('<tailA> ENTITY:\n {} (ID={})\n'.format(tailA_ent, tailA_id[i].item()))
-        
+
                 # Print textB, headB, and tailB
                 for j in range(n_pairs):
                     cur_textB = textB_id[batch['A2B'][i * n_pairs + j]]
                     decoded_textB = self.decode_text(cur_textB)
-                    pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)  
+                    pair_type = 'POSITIVE' if j == 0 else 'NEGATIVE {}'.format(j)
                     print('\nTEXTB ID LIST ({}):\n {}\n'.format(pair_type, self.task.dictionary.string(cur_textB).split()))
                     print('DECODED TEXTB ({}):\n {}\n'.format(pair_type, decoded_textB))
 
@@ -203,13 +206,12 @@ class Diagnostic():
                     print('<headB> ENTITY ({}):\n {} (ID={})\n'.format(pair_type, headB_ent, headB_id[i, j].item()))
 
                     tailB_ent = self.task.entity_dictionary[tailB_id[i, j]]
-                    print('<tailB> ENTITY ({}):\n {} (ID={})\n'.format(pair_type, tailB_ent, tailB_id[i, j].item()))             
+                    print('<tailB> ENTITY ({}):\n {} (ID={})\n'.format(pair_type, tailB_ent, tailB_id[i, j].item()))
 
                 # Print targets and scores
                 print('TARGETS: \n {}\n'.format(np.array([1] + (n_pairs-1) * [0])))
                 if scores is not None:
                     print('SCORES: \n {}\n\n'.format(np.round(torch.sigmoid(scores.reshape(batch_size, n_pairs)[i]).detach().cpu().numpy(), decimals=5)))
                 else:
-                    print('\n') 
+                    print('\n')
                 print('------------------------------------------------------------\n')
-            
