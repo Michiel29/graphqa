@@ -6,8 +6,8 @@
     "n_train_examples": -1,
     "n_valid_examples": -1,
     "n_test_examples": -1,
-    // "seed": 239,
-    "seed": 0,
+    "seed": 239,
+    // "seed": 0,
 
     "arch": "encoder_kbp37__roberta_large",
     "entity_dim": 256,
@@ -37,7 +37,7 @@
     "update_freq": [4],
     "max_tokens": 1.75e3,
 
-    "num_workers": 1,
+    "num_workers": 0,
     "load_component_prefix": "encoder"
 
 }
