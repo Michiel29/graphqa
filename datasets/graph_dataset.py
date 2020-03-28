@@ -4,6 +4,7 @@ import time
 
 from fairseq.data import FairseqDataset, plasma_utils
 from fairseq.data import data_utils
+from utils.data_utils import shuffle_arrays
 
 
 logger = logging.getLogger(__name__)
@@ -51,22 +52,30 @@ class GraphDataset(FairseqDataset):
         if epoch_for_generation != self.epoch_for_generation:
             with data_utils.numpy_seed(271828, self.seed, epoch_for_generation):
                 indices, sizes = self.subsample_graph_by_entity_pairs()
+                start_time = time.time()
                 random_permutation = np.random.permutation(len(indices))
                 indices = indices[random_permutation]
                 sizes = sizes[random_permutation]
+                # shuffled edges in 176 seconds
+                # shuffle_arrays([indices, sizes])
+                logger.info('shuffled edges in %d seconds' % (time.time() - start_time))
+                start_time = time.time()
                 self._generated_indices = plasma_utils.PlasmaArray(indices)
                 self._generated_sizes = plasma_utils.PlasmaArray(sizes)
+                logger.info('prepared plasma_arrays in %d seconds' % (time.time() - start_time))
             self.epoch_for_generation = epoch_for_generation
 
+        start_time = time.time()
         data_per_epoch = len(self._generated_indices.array) // (self.epoch_splits or 1)
         data_start = data_per_epoch * epoch_offset
         data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
         self._indices = plasma_utils.PlasmaArray(self._generated_indices.array[data_start:data_end])
         self._sizes = plasma_utils.PlasmaArray(self._generated_sizes.array[data_start:data_end])
-        logger.info('selected %d samples from generation epoch %d and epoch offset %d' % (
+        logger.info('selected %d samples from generation epoch %d and epoch offset %d in %d seconds' % (
             data_end - data_start,
             self.epoch_for_generation,
             epoch_offset,
+            time.time() - start_time,
         ))
 
     def __getitem__(self, index):
