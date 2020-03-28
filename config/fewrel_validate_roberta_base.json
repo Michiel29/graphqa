@@ -5,6 +5,7 @@
     "mask_type": "start_end",
     "non_mask_rate": 1,
 
+    "entity_dim": 256,
     "encoder_output_layer_type": "bag_of_words",
     // "encoder_output_layer_type": "entity_start",
 

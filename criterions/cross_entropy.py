@@ -1,6 +1,3 @@
-
-import math
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,6 +5,7 @@ import torch.nn.functional as F
 from fairseq import utils, metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
 from utils.logging_utils import compute_confusion_matrix, F1Meter
+
 
 @register_criterion('cross_entropy_custom')
 class CrossEntropy(FairseqCriterion):
@@ -37,7 +35,7 @@ class CrossEntropy(FairseqCriterion):
 
         target = sample['target']
         model_output = model(sample)
-        
+
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
         pred = torch.argmax(model_output, dim=1)
 
@@ -47,43 +45,24 @@ class CrossEntropy(FairseqCriterion):
             'sample_size': sample_size,
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
+            'accuracy': utils.item((pred == target).float().sum()),
         }
-
-        if self.args.eval_metric == 'accuracy':
-            accuracy = (pred == target).float().sum()
-            logging_output['accuracy'] = utils.item(accuracy.data)
-        elif self.args.eval_metric == 'f1':
-            fn, tp, fp = compute_confusion_matrix(target.cpu().numpy(), pred.detach().cpu().numpy())
-            logging_output['fn'] = fn
-            logging_output['tp'] = tp
-            logging_output['fp'] = fp
-        else:
-            raise NotImplementedError
-
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, eval_metric, task, prefix='') -> None:
+    def reduce_metrics(logging_outputs, split, prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
+        sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
+        weight = 0 if split == 'train' else sample_size
 
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
-        sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
-
         ntokens = sum(log.get(prefix + 'ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get(prefix + 'nsentences', 0) for log in logging_outputs)
 
-        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, sample_size, round=3)
+        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, weight, round=3)
 
-        if eval_metric == 'accuracy':
-            accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
-            metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, sample_size, round=3)
-        elif eval_metric == 'f1':
-            fn = logging_outputs[-1].get(prefix + 'fn', 0)
-            tp = logging_outputs[-1].get(prefix + 'tp', 0)
-            fp = logging_outputs[-1].get(prefix + 'fp', 0)
-            metrics.log_custom(F1Meter, 'f1', fn, tp, fp, task.split, sample_size)
-        else:
-            raise NotImplementedError
+        accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+        metrics.log_scalar(prefix + 'accuracy', accuracy_sum / sample_size, weight, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

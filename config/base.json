@@ -12,9 +12,9 @@
     "required_batch_size_multiple": 1,
     "skip_invalid_size_inputs_valid_test": true,
 
-    "n_train_examples": -1,
-    "n_valid_examples": -1,
-    "n_test_examples": -1,
+    "n_train_examples": null,
+    "n_valid_examples": null,
+    "n_test_examples": null,
 
     "num_workers": 2,
     "save_dir": "../save/",

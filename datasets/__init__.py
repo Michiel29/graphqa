@@ -4,7 +4,6 @@ from .kbp37_dataset import KBP37Dataset
 from .semeval2010task8_dataset import SemEval2010Task8Dataset
 from .filtered_dataset import (
     FilteredDataset,
-    filter_by_max_length,
     prune_dataset_size,
 )
 from .graph_dataset import GraphDataset

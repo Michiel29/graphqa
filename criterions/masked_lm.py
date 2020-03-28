@@ -94,11 +94,12 @@ class MaskedLmCustomLoss(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, eval_metric='accuracy', prefix='') -> None:
+    def reduce_metrics(logging_outputs, split, prefix='') -> None:
         """Aggregate logging outputs from data parallel training."""
+        sample_size = utils.item(sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs))
+        weight = 0 if split == 'train' else sample_size
 
         loss_sum = utils.item(sum(log.get(prefix + 'loss', 0) for log in logging_outputs))
-        sample_size = utils.item(sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs))
         sample_size_ht = utils.item(sum(log.get(prefix + 'sample_size_ht', 0) for log in logging_outputs))
         sample_size_w = utils.item(sum(log.get(prefix + 'sample_size_w', 0) for log in logging_outputs))
 
@@ -118,13 +119,13 @@ class MaskedLmCustomLoss(FairseqCriterion):
         accuracy_w = accuracy_w.round() if isinstance(accuracy_w, torch.Tensor) else round(accuracy_w, 3)
 
         # Hack round because "round" in log_scalar is broken
-        metrics.log_scalar(prefix + 'acc', accuracy, 0, round=3)
-        metrics.log_scalar(prefix + 'acc_ht', accuracy_ht, 0, round=3)
-        metrics.log_scalar(prefix + 'acc_w', accuracy_w, 0, round=3)
+        metrics.log_scalar(prefix + 'acc', accuracy, weight, round=3)
+        metrics.log_scalar(prefix + 'acc_ht', accuracy_ht, weight, round=3)
+        metrics.log_scalar(prefix + 'acc_w', accuracy_w, weight, round=3)
 
-        metrics.log_scalar(prefix + 'num_masked', sample_size, 0, round=3, priority=1e9)
-        metrics.log_scalar(prefix + 'num_masked_ht', sample_size_ht, 0, round=3, priority=1e9)
-        metrics.log_scalar(prefix + 'num_masked_w', sample_size_w, 0, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked', sample_size, weight, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked_ht', sample_size_ht, weight, round=3, priority=1e9)
+        metrics.log_scalar(prefix + 'num_masked_w', sample_size_w, weight, round=3, priority=1e9)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

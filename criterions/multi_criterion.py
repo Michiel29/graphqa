@@ -33,11 +33,11 @@ class MultiCriterion(FairseqCriterion):
         total_logging_output['loss'] = total_loss
         return total_loss, 1, total_logging_output
 
-    def reduce_metrics(self, logging_outputs) -> None:
+    def reduce_metrics(self, logging_outputs, split) -> None:
         assert len(logging_outputs) == 1
         metrics.log_scalar('loss', logging_outputs[0]['loss'], round=1)
         for task_name, criterion in self.criterion_dict.items():
-            criterion.reduce_metrics(logging_outputs, prefix=task_name + '_')
+            criterion.reduce_metrics(logging_outputs, split=split, prefix=task_name + '_')
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

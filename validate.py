@@ -35,6 +35,7 @@ def main(args):
 
     # Setup task, e.g., translation, language modeling, etc.
     task = tasks.setup_task(args)
+    task.split = 'valid'
 
     # Load model
     load_checkpoint = getattr(args, 'load_checkpoint')

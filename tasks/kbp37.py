@@ -72,8 +72,8 @@ class KBP37Task(BaseTask):
         )
         relation_dataset = FilteredDataset(relation_data, indices)
 
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples'))
-        if n_examples > 0:
+        n_examples = getattr(self.args, 'n_' + split + '_examples', None)
+        if n_examples is not None:
             annotated_text_dataset, indices = prune_dataset_size(
                 annotated_text_dataset,
                 n_examples,
