@@ -2,14 +2,19 @@ import logging
 import numpy as np
 
 from fairseq.data import BaseWrapperDataset, data_utils
+from utils.data_utils import numpy_seed
 
 logger = logging.getLogger(__name__)
 
 
 class FilteredDataset(BaseWrapperDataset):
-    def __init__(self, dataset, data_indices):
+    def __init__(self, dataset, data_indices_fn):
         super().__init__(dataset)
-        self.data_indices = data_indices
+        self.data_indices_fn = data_indices_fn
+
+    def set_epoch(self, epoch):
+        self.dataset.set_epoch(epoch)
+        self.data_indices = self.data_indices_fn(self.dataset)
         self._sizes = self.dataset.sizes[self.data_indices]
 
     @property
@@ -26,32 +31,17 @@ class FilteredDataset(BaseWrapperDataset):
         return self.dataset.num_tokens(self.data_indices[index])
 
     def size(self, index):
-        return self.dataset.size(self.data_indices[index])
+        return self._sizes[index]
 
     def ordered_indices(self):
-        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
-
-
-def filter_by_max_length(dataset, max_positions, size=-1):
-    data_indices = np.nonzero(dataset.sizes <= max_positions)[0]
-    logger.info('Filtered corpus by max length %d: keep %d out of %d ' % (
-        max_positions,
-        len(data_indices),
-        len(dataset),
-    ))
-    return FilteredDataset(dataset, data_indices), data_indices
+        return np.argsort([10 * (np.random.random(len(self._sizes)) - 0.5) + self._sizes])[0]
 
 
 def prune_dataset_size(dataset, size, seed, return_indices=False):
-    if size == -1:
-        if return_indices:
-            return dataset, None
-        else:
-            return dataset
-    else:
-        with data_utils.numpy_seed(31415, seed):
-            data_indices = np.random.choice(len(dataset), size, replace=False)
-        if return_indices:
-            return FilteredDataset(dataset, data_indices), data_indices
-        else:
-            return FilteredDataset(dataset, data_indices)
+    def prune_dataset_size_fn(dataset):
+        with numpy_seed('prune_dataset_size', seed):
+            if len(dataset) <= size:
+                return np.arange(len(dataset))
+            else:
+                return np.random.choice(len(dataset), size, replace=False)
+    return FilteredDataset(dataset, prune_dataset_size_fn)

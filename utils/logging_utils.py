@@ -1,7 +1,9 @@
 import numpy as np
 from fairseq.logging.meters import AverageMeter, safe_round
 from typing import Optional
-from sklearn.metrics import multilabel_confusion_matrix
+# TODO: Uncomment if the class is used
+# from sklearn.metrics import multilabel_confusion_matrix
+
 
 class F1Meter(AverageMeter):
 

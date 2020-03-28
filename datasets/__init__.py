@@ -3,7 +3,6 @@ from .fewrel_dataset import FewRelDataset
 from .kbp37_dataset import KBP37Dataset
 from .filtered_dataset import (
     FilteredDataset,
-    filter_by_max_length,
     prune_dataset_size,
 )
 from .graph_dataset import GraphDataset

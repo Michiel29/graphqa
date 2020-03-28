@@ -67,16 +67,6 @@ class FewRelTask(BaseTask):
             os.path.join(self.args.data_path, split + '.relations')
         )
 
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples'))
-        if n_examples > 0:
-            annotated_text_dataset, indices = prune_dataset_size(
-                annotated_text_dataset,
-                n_examples,
-                self.seed,
-                return_indices=True,
-            )
-            relation_dataset = FilteredDataset(relation_dataset, indices)
-
         dataset = FewRelDataset(
             annotation_text=annotated_text,
             relation_dataset=relation_dataset,
@@ -86,5 +76,13 @@ class FewRelTask(BaseTask):
             seed=self.seed,
         )
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
+
+        n_examples = getattr(self.args, 'n_' + split + '_examples', None)
+        if n_examples is not None:
+            dataset = prune_dataset_size(
+                dataset,
+                n_examples,
+                self.seed,
+            )
 
         self.datasets[split] = dataset

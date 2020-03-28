@@ -11,7 +11,6 @@ from fairseq.data import (
 )
 from fairseq.tasks import FairseqTask
 
-from datasets import filter_by_max_length
 from utils.dictionary import CustomDictionary, EntityDictionary
 
 
@@ -62,7 +61,7 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
-        criterion.__class__.reduce_metrics(logging_outputs, self.args.eval_metric, self)
+        criterion.__class__.reduce_metrics(logging_outputs, self.split)
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

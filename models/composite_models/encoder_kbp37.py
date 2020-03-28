@@ -9,19 +9,22 @@ from fairseq.models import BaseFairseqModel, roberta
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 from utils.diagnostic_utils import Diagnostic
 
+
 @register_model('encoder_kbp37')
 class EncoderKBP37Model(BaseFairseqModel):
+
+    NUM_CLASSES = 37
 
     def __init__(self, args, encoder, task):
         super().__init__()
 
         self.encoder = encoder
         if args.encoder_output_layer_type in ['entity_start', 'entity_pooling_first_token']:
-            self.classifier = nn.Linear(2*args.encoder_embed_dim, 37)
+            self.classifier = nn.Linear(2 * args.encoder_embed_dim, self.NUM_CLASSES)
         elif args.encoder_output_layer_type in ['entity_start_linear']:
-            self.classifier = nn.Linear(args.entity_dim, 37)
+            self.classifier = nn.Linear(args.entity_dim, self.NUM_CLASSES)
         else:
-            self.classifier = nn.Linear(args.encoder_embed_dim, 37)
+            self.classifier = nn.Linear(args.encoder_embed_dim, self.NUM_CLASSES)
 
         self.task = task
 

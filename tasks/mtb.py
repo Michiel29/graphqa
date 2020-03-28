@@ -22,7 +22,6 @@ from datasets import (
     MTBTripletsDataset,
     AnnotatedText,
     SelectDictionaryDataset,
-    filter_by_max_length,
     prune_dataset_size,
     ShuffledDataset,
 )
@@ -119,10 +118,11 @@ class MTBTask(RelationInferenceTask):
             run_batch_diag=self.args.run_batch_diag,
         )
 
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-        dataset = prune_dataset_size(
-            dataset,
-            n_examples,
-            self.seed,
-        )
+        n_examples = getattr(self.args, 'n_' + split + '_examples', None)
+        if n_examples is not None:
+            dataset = prune_dataset_size(
+                dataset,
+                n_examples,
+                self.seed,
+            )
         self.datasets[split] = dataset

@@ -105,7 +105,7 @@ def main(args, init_distributed=False):
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
-    
+
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
     max_update = args.max_update or math.inf
@@ -135,7 +135,7 @@ def main(args, init_distributed=False):
                 # validate on eval_task validation set
                 validate(args, eval_trainer, eval_task, epoch_itr, valid_subsets, eval_args.task)
         else:
-            valid_losses = [None]       
+            valid_losses = [None]
 
         # only use first validation loss to update the learning rate
         lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
@@ -175,7 +175,6 @@ def should_stop_early(args, valid_loss):
 def train(args, trainer, task, epoch_itr):
     """Train the model for one epoch."""
     task.split = 'train'
-
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
         fix_batches_to_gpus=args.fix_batches_to_gpus,

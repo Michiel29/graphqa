@@ -35,7 +35,7 @@ class PrependTokenDataset(BaseWrapperDataset):
     @property
     def sizes(self):
         if self._sizes is None:
-            self._sizes = np.array(dataset.sizes) + 1
+            self._sizes = np.array(self.dataset.sizes) + 1
         return self._sizes
 
     def num_tokens(self, index):

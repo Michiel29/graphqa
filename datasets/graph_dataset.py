@@ -39,10 +39,15 @@ class GraphDataset(FairseqDataset):
         self.seed = seed
 
     def set_epoch(self, epoch):
-        assert epoch >= 1
         self.epoch = epoch
-        epoch_for_generation = (epoch - 1) // self.epoch_splits
-        epoch_offset = (epoch - 1) % self.epoch_splits
+        if self.epoch_splits is not None:
+            assert epoch >= 1
+            epoch_for_generation = (epoch - 1) // self.epoch_splits
+            epoch_offset = (epoch - 1) % self.epoch_splits
+        else:
+            epoch_for_generation = epoch
+            epoch_offset = 0
+
         if epoch_for_generation != self.epoch_for_generation:
             with data_utils.numpy_seed(271828, self.seed, epoch_for_generation):
                 indices, sizes = self.subsample_graph_by_entity_pairs()
@@ -53,7 +58,7 @@ class GraphDataset(FairseqDataset):
                 self._generated_sizes = plasma_utils.PlasmaArray(sizes)
             self.epoch_for_generation = epoch_for_generation
 
-        data_per_epoch = len(self._generated_indices.array) // self.epoch_splits
+        data_per_epoch = len(self._generated_indices.array) // (self.epoch_splits or 1)
         data_start = data_per_epoch * epoch_offset
         data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
         self._indices = plasma_utils.PlasmaArray(self._generated_indices.array[data_start:data_end])

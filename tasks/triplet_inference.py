@@ -52,7 +52,7 @@ class TripletInferenceTask(RelationInferenceTask):
             edges=graph_data,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
-            epoch_splits=self.args.epoch_splits,
+            epoch_splits=self.args.epoch_splits if split == 'train' else None,
             seed=self.args.seed,
         )
 
@@ -66,8 +66,8 @@ class TripletInferenceTask(RelationInferenceTask):
         )
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text')
 
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', -1))
-        if n_examples != -1:
+        n_examples = getattr(self.args, 'n_' + split + '_examples', None)
+        if n_examples is not None:
             dataset = prune_dataset_size(dataset, n_examples, self.seed)
 
         self.datasets[split] = dataset
