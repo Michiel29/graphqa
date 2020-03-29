@@ -3,9 +3,6 @@
 
     "eval_downstream": false,
 
-    "n_train_examples": -1,
-    "n_valid_examples": -1,
-    "n_test_examples": -1,
     "seed": 239,
     // "seed": 0,
 
@@ -37,7 +34,7 @@
     "update_freq": [4],
     "max_tokens": 1.75e3,
 
-    "num_workers": 0,
+    "num_workers": 2,
     "load_component_prefix": "encoder"
 
 }
