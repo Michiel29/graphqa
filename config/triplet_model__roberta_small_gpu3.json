@@ -24,16 +24,16 @@
     "non_mask_rate": 0.7,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
-    "epoch_splits": 1000,
+    "epoch_splits": 100,
 
-    "max_epoch": 4,
-    "warmup_updates": 2491, // = 10379 * 4 * 0.06
-    "total_num_updates": 41516, // = 10379 * 4
-    "lr": [1e-5],
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [5e-4],
 
-    "num_workers": 2,
+    "num_workers": 3,
     "max_sentences": 1536,
-    "update_freq": [2],
+    "update_freq": [6],
     "max_tokens": 14000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,

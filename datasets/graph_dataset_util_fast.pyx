@@ -9,6 +9,7 @@ cimport cython
 
 
 ctypedef np.int64_t DTYPE_t
+ctypedef np.int16_t DTYPE16_t
 
 
 @cython.boundscheck(False)
@@ -16,10 +17,10 @@ ctypedef np.int64_t DTYPE_t
 @cython.nonecheck(False)
 cpdef void _count_num_edges_per_head_entity(
     DTYPE_t num_entities,
-    const DTYPE_t[:] pos,
-    const int[:] sizes,
-    const DTYPE_t[:] edges_buffer,
-    DTYPE_t[:] output,
+    const DTYPE_t[:]& pos,
+    const int[:]& sizes,
+    const DTYPE_t[:]& edges_buffer,
+    int[:] output,
     DTYPE_t subsampling_cap,
     DTYPE_t nthreads
 ):
@@ -63,13 +64,13 @@ cpdef void _count_num_edges_per_head_entity(
 @cython.cdivision(True)
 cpdef void _sample_edges_per_entity_pair(
     DTYPE_t num_entities,
-    const DTYPE_t[:] pos,
-    const int[:] sizes,
-    const DTYPE_t[:] edges_buffer,
-    DTYPE_t[:] output_lens,
+    const DTYPE_t[:]& pos,
+    const int[:]& sizes,
+    const DTYPE_t[:]& edges_buffer,
+    DTYPE16_t[:] output_lens,
     DTYPE_t[:, :] output,
-    const DTYPE_t[:] output_offsets,
-    const double[:] scores,
+    const DTYPE_t[:]& output_offsets,
+    const double[:]& scores,
     DTYPE_t subsampling_cap,
     DTYPE_t nthreads
 ):

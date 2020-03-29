@@ -2,8 +2,10 @@ import logging
 import numpy as np
 import time
 
-from fairseq.data import FairseqDataset, plasma_utils
+from fairseq.data import FairseqDataset
+import utils.plasma_utils as plasma_utils
 from fairseq.data import data_utils
+from utils.data_utils import shuffle_arrays
 
 
 logger = logging.getLogger(__name__)
@@ -51,22 +53,34 @@ class GraphDataset(FairseqDataset):
         if epoch_for_generation != self.epoch_for_generation:
             with data_utils.numpy_seed(271828, self.seed, epoch_for_generation):
                 indices, sizes = self.subsample_graph_by_entity_pairs()
+                start_time = time.time()
                 random_permutation = np.random.permutation(len(indices))
                 indices = indices[random_permutation]
                 sizes = sizes[random_permutation]
+                # shuffled edges in 176 seconds
+                # shuffle_arrays([indices, sizes])
+                logger.info('shuffled edges in %d seconds' % (time.time() - start_time))
+                start_time = time.time()
                 self._generated_indices = plasma_utils.PlasmaArray(indices)
+                self._generated_indices.move_to_plasma()
                 self._generated_sizes = plasma_utils.PlasmaArray(sizes)
+                self._generated_sizes.move_to_plasma()
+                logger.info('prepared plasma_arrays in %d seconds' % (time.time() - start_time))
             self.epoch_for_generation = epoch_for_generation
 
+        start_time = time.time()
         data_per_epoch = len(self._generated_indices.array) // (self.epoch_splits or 1)
         data_start = data_per_epoch * epoch_offset
         data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
         self._indices = plasma_utils.PlasmaArray(self._generated_indices.array[data_start:data_end])
+        self._indices.move_to_plasma()
         self._sizes = plasma_utils.PlasmaArray(self._generated_sizes.array[data_start:data_end])
-        logger.info('selected %d samples from generation epoch %d and epoch offset %d' % (
+        self._sizes.move_to_plasma()
+        logger.info('selected %d samples from generation epoch %d and epoch offset %d in %d seconds' % (
             data_end - data_start,
             self.epoch_for_generation,
             epoch_offset,
+            time.time() - start_time,
         ))
 
     def __getitem__(self, index):
@@ -99,18 +113,18 @@ class GraphDataset(FairseqDataset):
             _sample_edges_per_entity_pair,
         )
         start_time = time.time()
+        num_entities = len(self.edges)
+
+        num_edges_per_head_entity = np.zeros(num_entities, dtype=np.int32)
         start_entity, start_edge = 0, 0
         chunk_size = None
-        indices, sizes = list(), list()
 
-        while start_entity < len(self.edges):
+        while start_entity < num_entities:
             approx_edges_per_entity = int(self.edges._index._sizes[start_entity:start_entity + 5].mean())
             if approx_edges_per_entity > 0:
                 chunk_size = max(int(self.EDGE_CHUNK_SIZE / approx_edges_per_entity), 1)
-            end_entity = min(len(self.edges), start_entity + chunk_size)
+            end_entity = min(num_entities, start_entity + chunk_size)
             head_entities = list(range(start_entity, end_entity))
-            num_edges_per_head_entity = np.zeros(end_entity - start_entity, dtype=np.int64)
-
             head_entities_lens = self.edges._index._sizes[start_entity:end_entity]
             head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int64), 1)
             head_entities_pos[0] = 0
@@ -127,33 +141,55 @@ class GraphDataset(FairseqDataset):
                 head_entities_pos,
                 head_entities_lens,
                 edges_buffer,
-                num_edges_per_head_entity,
+                num_edges_per_head_entity[start_entity:end_entity],
                 self.subsampling_cap,
                 self.NUM_THREADS,
             )
-            chunk_sizes = np.zeros(num_edges_per_head_entity.sum(), dtype=np.int64)
-            chunk_indices = np.zeros((num_edges_per_head_entity.sum(), 2), dtype=np.int64)
-            output_offsets = np.roll(np.cumsum(num_edges_per_head_entity, dtype=np.int64), 1)
+            start_edge, start_entity = end_edge, end_entity
+
+        indices = np.zeros((num_edges_per_head_entity.sum(), 2), dtype=np.int64)
+        sizes = np.zeros(num_edges_per_head_entity.sum(), dtype=np.int16)
+
+        start_entity, start_edge, start_output_edge = 0, 0, 0
+        chunk_size = None
+        while start_entity < num_entities:
+            approx_edges_per_entity = int(self.edges._index._sizes[start_entity:start_entity + 5].mean())
+            if approx_edges_per_entity > 0:
+                chunk_size = max(int(self.EDGE_CHUNK_SIZE / approx_edges_per_entity), 1)
+            end_entity = min(num_entities, start_entity + chunk_size)
+            head_entities = list(range(start_entity, end_entity))
+
+            head_entities_lens = self.edges._index._sizes[start_entity:end_entity]
+            head_entities_pos = np.roll(np.cumsum(head_entities_lens, dtype=np.int64), 1)
+            head_entities_pos[0] = 0
+            end_edge = start_edge + head_entities_lens.sum()
+
+            edges_buffer = np.frombuffer(
+                self.edges._bin_buffer,
+                dtype=self.edges._index.dtype,
+                count=end_edge - start_edge,
+                offset=start_edge * self.edges._index.dtype().itemsize,
+            )
+            output_offsets = np.roll(np.cumsum(num_edges_per_head_entity[start_entity:end_entity], dtype=np.int64), 1)
             output_offsets[0] = 0
+            # TODO: Move it out of the loop
             random_scores = np.random.random(len(edges_buffer) // self.EDGE_SIZE)
+
+            end_output_edge = start_output_edge + num_edges_per_head_entity[start_entity:end_entity].sum()
             _sample_edges_per_entity_pair(
                 len(head_entities),
                 head_entities_pos,
                 head_entities_lens,
                 edges_buffer,
-                chunk_sizes,
-                chunk_indices,
+                sizes[start_output_edge:end_output_edge],
+                indices[start_output_edge:end_output_edge],
                 output_offsets,
                 random_scores,
                 self.subsampling_cap,
                 self.NUM_THREADS,
             )
-            chunk_indices[:, 0] += head_entities[0]
-            indices.append(chunk_indices)
-            sizes.append(chunk_sizes)
-            start_edge, start_entity = end_edge, end_entity
-
-        indices, sizes = np.concatenate(indices), np.concatenate(sizes)
+            indices[start_output_edge:end_output_edge, 0] += head_entities[0]
+            start_edge, start_entity, start_output_edge = end_edge, end_entity, end_output_edge
 
         logger.info('subsampled %d edges by entity pairs (cap = %d) in %.3f seconds.' % (
             len(sizes),
