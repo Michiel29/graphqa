@@ -3,9 +3,6 @@
 
     "eval_downstream": false,
 
-    "n_train_examples": -1,
-    "n_valid_examples": -1,
-    "n_test_examples": -1,
     "seed": 0,
 
     "arch": "encoder_semeval2010task8__roberta_large",
@@ -14,7 +11,7 @@
     // "entity_dim": 768,
     "entity_dim": null,
     "mask_type": "start_end",
-    "alpha": 1,
+    "non_mask_rate": 1,
     // "encoder_output_layer_type": "entity_start",
     // "encoder_output_layer_type": "entity_start_linear",
     "encoder_output_layer_type": "entity_start_layer_norm",

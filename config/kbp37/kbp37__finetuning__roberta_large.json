@@ -11,10 +11,8 @@
     // "entity_dim": 512,
     // "entity_dim": 768,
     // "entity_dim": null,
-    // "mask_type": "start_end",
-    "mask_type": null,
-    // "non_mask_rate": 1,
-    "non_mask_rate": null,
+    "mask_type": "start_end",
+    "non_mask_rate": 1,
     // "encoder_output_layer_type": "entity_start",
     "encoder_output_layer_type": "entity_start_linear",
 

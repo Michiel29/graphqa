@@ -71,7 +71,7 @@ class KBP37Task(BaseTask):
             dictionary=self.dictionary,
             seed=self.seed,
         )
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:

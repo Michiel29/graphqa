@@ -123,7 +123,7 @@ class SemEval2010Task8Processor(object):
             start_idx_tmp = tokens.index(self.ent_tokens[ent_id]['start'])
             end_idx_tmp = tokens.index(self.ent_tokens[ent_id]['end'])
             if end_idx_tmp - start_idx_tmp == 1:
-                tokens.insert(end_idx_tmp, '<BLANK>')
+                tokens.insert(end_idx_tmp, '<blank>')
 
         for ent_id in [1, 2]:
             start_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['start'])
@@ -162,11 +162,11 @@ class SemEval2010Task8Processor(object):
         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
 
         assert len(ids_tensor) == len(ids) + int(self.append_eos)
-        annotations_tensor = torch.IntTensor([
-            [annotation['start_word'], annotation['end_word'], annotation['uri']]
+        annotations_list = [
+            [annotation['start_word'], annotation['end_word'], 0, 0, annotation['uri']]
             for annotation in annotations
-        ])
-        return ids_tensor, annotations_tensor
+        ]
+        return ids_tensor, np.array(annotations_list, dtype=np.int64)
 
 
 def main(args):
@@ -217,29 +217,34 @@ def main(args):
         impl=args.dataset_impl,
         vocab_size=len(vocab),
     )
-    annotations_builder = indexed_dataset.make_builder(
-        os.path.join(output_dir, split+'.annotations.bin'),
-        impl=args.dataset_impl,
-        vocab_size=None,
-    )
     relations_builder = indexed_dataset.make_builder(
         os.path.join(output_dir, split+'.relations.bin'),
         impl=args.dataset_impl,
         vocab_size=None,
     )
     processor.initializer()
+    annotations_list = list()
+    total_length, num_sentences = 0, 0
     for i in range(len(texts)):
         text, relation_type_id = [texts[i]], unique_relation_types.index(relation_types[i])
-        for ids_tensor, annotations_tensor in map(processor, text):
+        for ids_tensor, _annotations_list in map(processor, text):
             dataset_builder.add_item(ids_tensor)
-            annotations_builder.add_item(annotations_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))
+            _annotations_list[:, 0] += total_length
+            _annotations_list[:, 1] += total_length
+            _annotations_list[:, 2] += num_sentences
+            _annotations_list[:, 3] += num_sentences
+            num_sentences += 1
+            total_length += len(ids_tensor)
+            annotations_list.append(_annotations_list)
+
             pbar.update()
     pbar.close()
 
     dataset_builder.finalize(os.path.join(output_dir, split+'.text.idx'))
-    annotations_builder.finalize(os.path.join(output_dir, split+'.annotations.idx'))
     relations_builder.finalize(os.path.join(output_dir, split+'.relations.idx'))
+    annotations_list = np.concatenate(annotations_list)
+    np.save(os.path.join(output_dir, split+'.annotations'), annotations_list)
 
 
 if __name__ == '__main__':

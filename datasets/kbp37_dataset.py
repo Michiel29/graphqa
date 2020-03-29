@@ -33,11 +33,11 @@ class KBP37Dataset(FairseqDataset):
 
     def __getitem__(self, index):
         with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
-            annot_item = self.annotation_text.annotate_sentence(index, head_entity=0, tail_entity=1)
+            annot_item = self.annotation_text.annotate_sentence(index, head_entity=1, tail_entity=2)
             relation = self.relation_dataset[index]
 
         item = {
-            'text': annot_item['text'],
+            'text': annot_item,
             'target': relation
         }
 

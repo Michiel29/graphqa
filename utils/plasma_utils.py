@@ -30,7 +30,9 @@ class PlasmaArray(object):
         self.path = self._server_tmp.name
         self._server = subprocess.Popen([
             'plasma_store',
-            '-m', str(int(1.05 * self.array.nbytes)),
+            # '-m', str(int(1.05 * self.array.nbytes)),
+            # TODO: use 1.05, and don't use plasma array if dataset is small 
+            '-m', str(int(1.1 * self.array.nbytes)),
             '-s', self.path,
         ])
 

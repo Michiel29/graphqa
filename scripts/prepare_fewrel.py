@@ -182,11 +182,6 @@ def main(args):
         impl=args.dataset_impl,
         vocab_size=len(vocab),
     )
-    annotations_builder = indexed_dataset.make_builder(
-        args.output + '.annotations.bin',
-        impl=args.dataset_impl,
-        vocab_size=None,
-    )
     relations_builder = indexed_dataset.make_builder(
         args.output + '.relations.bin',
         impl=args.dataset_impl,

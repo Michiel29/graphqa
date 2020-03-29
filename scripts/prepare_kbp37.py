@@ -121,7 +121,7 @@ class KBP37Processor(object):
             start_idx_tmp = tokens.index(self.ent_tokens[ent_id]['start'])
             end_idx_tmp = tokens.index(self.ent_tokens[ent_id]['end'])
             if end_idx_tmp - start_idx_tmp == 1:
-                tokens.insert(end_idx_tmp, '<BLANK>')
+                tokens.insert(end_idx_tmp, '<blank>')
 
         for ent_id in [1, 2]:
             start_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['start'])
@@ -196,11 +196,6 @@ def main(args):
         os.path.join(output_dir, split+'.text.bin'),
         impl=args.dataset_impl,
         vocab_size=len(vocab),
-    )
-    annotations_builder = indexed_dataset.make_builder(
-        os.path.join(output_dir, split+'.annotations.bin'),
-        impl=args.dataset_impl,
-        vocab_size=None,
     )
     relations_builder = indexed_dataset.make_builder(
         os.path.join(output_dir, split+'.relations.bin'),
