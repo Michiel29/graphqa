@@ -31,7 +31,7 @@
     "total_num_updates": 41516, // = 10379 * 4
     "lr": [5e-4],
 
-    "num_workers": 2,
+    "num_workers": 0,
     "max_sentences": 1536,
     "update_freq": [6],
     "max_tokens": 14000,

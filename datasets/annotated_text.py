@@ -31,8 +31,6 @@ class AnnotatedText(object):
         self.annotation_end = plasma_utils.PlasmaArray(
             np.ascontiguousarray(annotation_data[:, 1])
         )
-        # self.annotation_start = np.ascontiguousarray(annotation_data[:, 0])
-        # self.annotation_end = np.ascontiguousarray(annotation_data[:, 1])
         self.annotation_data = annotation_data
 
         self.dictionary = dictionary
