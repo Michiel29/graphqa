@@ -3,4 +3,5 @@ fastBPE
 sacremoses
 requests
 commentjson
+pyarrow
 
