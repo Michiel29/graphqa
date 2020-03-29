@@ -2,7 +2,8 @@ import logging
 import numpy as np
 import time
 
-from fairseq.data import FairseqDataset, plasma_utils
+from fairseq.data import FairseqDataset
+import utils.plasma_utils as plasma_utils
 from fairseq.data import data_utils
 from utils.data_utils import shuffle_arrays
 
@@ -61,7 +62,9 @@ class GraphDataset(FairseqDataset):
                 logger.info('shuffled edges in %d seconds' % (time.time() - start_time))
                 start_time = time.time()
                 self._generated_indices = plasma_utils.PlasmaArray(indices)
+                self._generated_indices.move_to_plasma()
                 self._generated_sizes = plasma_utils.PlasmaArray(sizes)
+                self._generated_sizes.move_to_plasma()
                 logger.info('prepared plasma_arrays in %d seconds' % (time.time() - start_time))
             self.epoch_for_generation = epoch_for_generation
 
@@ -70,7 +73,9 @@ class GraphDataset(FairseqDataset):
         data_start = data_per_epoch * epoch_offset
         data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
         self._indices = plasma_utils.PlasmaArray(self._generated_indices.array[data_start:data_end])
+        self._indices.move_to_plasma()
         self._sizes = plasma_utils.PlasmaArray(self._generated_sizes.array[data_start:data_end])
+        self._sizes.move_to_plasma()
         logger.info('selected %d samples from generation epoch %d and epoch offset %d in %d seconds' % (
             data_end - data_start,
             self.epoch_for_generation,

@@ -3,7 +3,7 @@ import numpy as np
 import time
 import torch
 
-from fairseq.data import plasma_utils
+import utils.plasma_utils as plasma_utils
 
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,11 @@ class AnnotatedText(object):
         self.annotation_start = plasma_utils.PlasmaArray(
             np.ascontiguousarray(annotation_data[:, 0])
         )
+        self.annotation_start.move_to_plasma()
         self.annotation_end = plasma_utils.PlasmaArray(
             np.ascontiguousarray(annotation_data[:, 1])
         )
+        self.annotation_end.move_to_plasma()
         self.annotation_data = annotation_data
 
         self.dictionary = dictionary
@@ -41,6 +43,7 @@ class AnnotatedText(object):
         offsets = np.roll(np.cumsum(self.text_data._index._sizes), 1)
         offsets[0] = 0
         self.sentence_offsets = plasma_utils.PlasmaArray(offsets)
+        self.sentence_offsets.move_to_plasma()
         logger.info('set up annotated text [n_sentences=%d, n_annotations=%d, mask_type=%s] in %.3f seconds' % (
             len(self.text_data),
             len(self.annotation_data),
