@@ -11,8 +11,10 @@
     // "entity_dim": 512,
     // "entity_dim": 768,
     // "entity_dim": null,
-    "mask_type": "start_end",
-    "non_mask_rate": 1,
+    // "mask_type": "start_end",
+    "mask_type": null,
+    // "non_mask_rate": 1,
+    "non_mask_rate": null,
     // "encoder_output_layer_type": "entity_start",
     "encoder_output_layer_type": "entity_start_linear",
 
@@ -34,7 +36,7 @@
     "update_freq": [4],
     "max_tokens": 1.75e3,
 
-    "num_workers": 2,
+    "num_workers": 0,
     "load_component_prefix": "encoder"
 
 }

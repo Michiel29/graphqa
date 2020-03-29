@@ -6,22 +6,21 @@ from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import data_utils, FairseqDataset
 
+from datasets import AnnotatedText
+
 
 class KBP37Dataset(FairseqDataset):
 
     def __init__(
         self,
-        annotation_text_dataset,
+        annotation_text,
         relation_dataset,
         dictionary,
-        entity_dictionary,
-        mask_type,
         seed,
     ):
-        self.annotation_text_dataset = annotation_text_dataset
+        self.annotation_text = annotation_text
         self.relation_dataset = relation_dataset
         self.dictionary = dictionary
-        self.entity_dictionary = entity_dictionary
         self.seed = seed
         self.epoch = 0
 
@@ -34,7 +33,7 @@ class KBP37Dataset(FairseqDataset):
 
     def __getitem__(self, index):
         with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
-            annot_item = self.annotation_text_dataset[index]
+            annot_item = self.annotation_text.annotate_sentence(index, head_entity=0, tail_entity=1)
             relation = self.relation_dataset[index]
 
         item = {
@@ -45,7 +44,7 @@ class KBP37Dataset(FairseqDataset):
         return item
 
     def __len__(self):
-        return len(self.annotation_text_dataset)
+        return len(self.annotation_text)
 
     def num_tokens(self, index):
         return self.sizes[index]
@@ -55,14 +54,10 @@ class KBP37Dataset(FairseqDataset):
 
     @property
     def sizes(self):
-        return self.annotation_text_dataset.sizes
+        return self.annotation_text.sizes
 
     def ordered_indices(self):
-        """Sorts by sentence length, randomly shuffled within sentences of same length"""
-        return np.lexsort([
-            np.random.permutation(len(self)),
-            self.sizes,
-        ])
+        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     def collater(self, instances):
         batch_size = len(instances)
