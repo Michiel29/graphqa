@@ -45,7 +45,7 @@ class EncoderTripletModel(BaseFairseqModel):
         text_enc = text_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
 
         scores = self.triplet_model(text_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
-       
+
         #diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         #diag.inspect_batch(batch, scores=scores)
 
@@ -55,7 +55,7 @@ class EncoderTripletModel(BaseFairseqModel):
     def add_args(parser):
         """Add model-specific arguments to the parser."""
 
-        parser.add_argument('--triplet_type', type=str, default='distmult',
+        parser.add_argument('--triplet_type', type=str, default=None,
                             help='type of triplet model to use for inference')
 
         RobertaWrapper.add_args(parser)
@@ -79,7 +79,3 @@ def triplet_large_architecture(args):
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_small')
 def triplet_small_architecture(args):
     small_architecture(args)
-
-
-
-
