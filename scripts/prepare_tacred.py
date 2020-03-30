@@ -5,7 +5,6 @@ import copy
 import numpy as np
 import os
 import tqdm
-from operator import itemgetter
 
 import torch
 
@@ -13,7 +12,6 @@ from fairseq.data import Dictionary
 from fairseq.data import indexed_dataset
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
-np.random.seed(0)
 
 TRAINING_TQDM_BAD_FORMAT = (
     '{l_bar}{bar}| '
@@ -21,7 +19,7 @@ TRAINING_TQDM_BAD_FORMAT = (
 )
 
 
-class SemEval2010Task8Processor(object):
+class TACREDProcessor(object):
     def __init__(self, roberta_dir, dataset_impl, append_eos):
         self.dataset_impl = dataset_impl
         self.append_eos = append_eos
@@ -60,7 +58,10 @@ class SemEval2010Task8Processor(object):
             text = text[1:]
         text = text.lower()
 
-        assert text == surface_form
+        try:
+            assert text == surface_form
+        except:
+            print('stop')
 
     def strip_empty_words(self, words, annotations):
         new_words = []
@@ -116,46 +117,21 @@ class SemEval2010Task8Processor(object):
 
         return ids, annotations
 
-    def filter_tokens_and_build_annotations(self, tokens):
-        start_idx, end_idx = {}, {}
-
-        for ent_id in [1, 2]:
-            start_idx_tmp = tokens.index(self.ent_tokens[ent_id]['start'])
-            end_idx_tmp = tokens.index(self.ent_tokens[ent_id]['end'])
-            if end_idx_tmp - start_idx_tmp == 1:
-                tokens.insert(end_idx_tmp, '<blank>')
-
-        for ent_id in [1, 2]:
-            start_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['start'])
-            end_idx[ent_id] = tokens.index(self.ent_tokens[ent_id]['end'])
-
-        if start_idx[1] < start_idx[2]:
-            end_idx[1] -= 1
-            start_idx[2] -= 2
-            end_idx[2] -= 3
-        else:
-            start_idx[1] -= 2
-            end_idx[1] -= 3
-            end_idx[2] -= 1
-        
-        new_tokens = copy.deepcopy(tokens)
-        new_tokens = [x for x in new_tokens if x not in list(self.ent_tokens[1].values()) + list(self.ent_tokens[2].values())]
+    def build_annotations(self, tokens, annot):
         annotations = []
         for ent_id in [1, 2]:
             annotations.append({   
-                'surface_form': ' '.join(new_tokens[start_idx[ent_id]:end_idx[ent_id]]).lower(),
-                'start_word': start_idx[ent_id],
-                'end_word': end_idx[ent_id],
+                'surface_form': ' '.join(tokens[annot[ent_id]['start']:annot[ent_id]['end']]).lower(),
+                'start_word': annot[ent_id]['start'],
+                'end_word': annot[ent_id]['end'],
                 'uri': ent_id
             })
 
-        return new_tokens, annotations
+        return annotations
 
-    def __call__(self, text):
+    def __call__(self, tokens, annot):
         global vocab
-        text = text.replace('<e1>', ' <e1> ').replace('</e1>', ' </e1> ').replace('<e2>', ' <e2> ').replace('</e2>', ' </e2> ')
-        tokens = text.split()
-        tokens, annotations = self.filter_tokens_and_build_annotations(tokens)
+        annotations = self.build_annotations(tokens, annot)
         annotations.sort(key=lambda x: x['start_word'])
         words, annotations = self.strip_empty_words(tokens, annotations)
         ids, annotations = self.apply_gt2_bpe(' '.join(words), annotations)
@@ -170,44 +146,23 @@ class SemEval2010Task8Processor(object):
 
 
 def main(args):
-    # if args.split in ['train', 'dev']:
-    #     data_path = os.path.join(args.root_dir, 'SemEval2010_task8_training', 'TRAIN_FILE.TXT')
-    #     rand_indices = np.random.permutation(8000)
-    #     train_indices, dev_indices = rand_indices[:6500], rand_indices[6500:]
-    # elif args.split == 'test':
-    #     data_path = os.path.join(args.root_dir, 'SemEval2010_task8_testing_keys', 'TEST_FILE_FULL.TXT')
-
-    if args.split == 'train':
-        data_path = os.path.join(args.root_dir, 'SemEval2010_task8_training', 'TRAIN_FILE.TXT')
-    elif args.split == 'dev':
-        data_path = os.path.join(args.root_dir, 'SemEval2010_task8_testing_keys', 'TEST_FILE_FULL.TXT')
-    else:
-        raise NotImplementedError
-
-    with open(data_path, 'r') as f:
-        data = f.read().splitlines()
-        
-    data = [x for x in data if x != '']
-    texts = [x.split('\t')[1][1:-1] for x in data[0::3]]
-    relation_types = [x.replace(' ', '') for x in data[1::3]]
-    unique_relation_types = sorted(list(set(relation_types)))
-
-    # if args.split == 'train':
-    #     texts = list(itemgetter(*train_indices)(texts))
-    #     relation_types = list(itemgetter(*train_indices)(relation_types))
-    # elif args.split == 'dev':
-    #     texts = list(itemgetter(*dev_indices)(texts))
-    #     relation_types = list(itemgetter(*dev_indices)(relation_types))
-
+    data_path = os.path.join(args.root_dir, 'json', args.split+'.json')
+    with codecs.open(data_path, 'r', 'utf8') as f:
+        data = json.load(f)
     print('-- Loaded data from %s' % data_path)
 
-    processor = SemEval2010Task8Processor(
+    relations_path = os.path.join(args.root_dir, 'gold', args.split+'.gold')
+    with open(relations_path, 'r') as f:
+        relation_types = f.read().splitlines()
+    unique_relation_types = sorted(list(set(relation_types)))
+
+    processor = TACREDProcessor(
         args.roberta_dir,
         args.dataset_impl,
         args.append_eos,
     )
     pbar = tqdm.tqdm(
-        total=len(texts),
+        total=len(data),
         desc='Processing Wiki',
         bar_format=TRAINING_TQDM_BAD_FORMAT,
     )
@@ -230,9 +185,14 @@ def main(args):
     processor.initializer()
     annotations_list = list()
     total_length, num_sentences = 0, 0
-    for i in range(len(texts)):
-        text, relation_type_id = [texts[i]], unique_relation_types.index(relation_types[i])
-        for ids_tensor, _annotations_list in map(processor, text):
+    for sample in data:
+        tokens = [sample['token']]
+        annot = [{
+            1: {'start': sample['subj_start'], 'end': sample['subj_end']+1},
+            2: {'start': sample['obj_start'], 'end': sample['obj_end']+1}
+        }]
+        relation_type_id = unique_relation_types.index(sample['relation'])
+        for ids_tensor, _annotations_list in map(processor, tokens, annot):
             dataset_builder.add_item(ids_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))
             _annotations_list[:, 0] += total_length
@@ -253,9 +213,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Data preparation for SemEval 2010 Task 8 dataset')
+    parser = argparse.ArgumentParser(description='Data preparation for TACRED dataset')
     parser.add_argument('--split', type=str, help='Dataset split', choices=['train', 'dev', 'test'])
-    parser.add_argument('--root-dir', type=str, default='../data/SemEval2010_task8_all_data', help='SemEval 2010 Task 8 root directory')
+    parser.add_argument('--root-dir', type=str, default='../data/tacred/tacred/data', help='TACRED root directory')
     parser.add_argument('--roberta-dir', type=str, default='../data/roberta', help='RoBERTa directory with all dictionaries.')
     parser.add_argument('--append-eos', default=False, action='store_true')
     parser.add_argument(

@@ -1,0 +1,8 @@
+{
+    "task": "tacred",
+    "data_path": "../data/tacred/tacred/data/bin",
+    "path_attributes": ["task", "arch", "encoder_output_layer_type", "entity_dim", "lr", "max_sentences", "update_freq"],
+
+    "criterion": "cross_entropy_custom",
+    "eval_metric": "f1"
+}

@@ -21,7 +21,7 @@
     "weight_decay": 0.1,
 
     "max_epoch": 10,
-    "total_num_update": 1780,
+    "max_update": 1780,
     "warmup_updates": 107,
     "optimizer": "adam",
     "adam_betas": "(0.9, 0.98)",

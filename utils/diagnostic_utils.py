@@ -105,9 +105,7 @@ class Diagnostic():
             n_way = self.task.args.n_way
             n_shot = self.task.args.n_shot
             exemplars_id = batch['exemplars'].reshape(batch_size, n_way, n_shot, -1)
-        elif self.task.args.task == 'kbp37':
-            text_id = batch['text']
-        elif self.task.args.task == 'semeval2010task8':
+        elif self.task.args.task in ['kbp37', 'semeval2010task8', 'tacred']:
             text_id = batch['text']
         elif self.task.args.task == 'mtb':
             textA_id = batch['textA']
@@ -167,18 +165,7 @@ class Diagnostic():
                 else:
                     print('\n')
 
-            elif self.task.args.task == 'kbp37':
-                decoded_text = self.decode_text(text_id[i])
-                print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
-                print('DECODED TEXT:\n {}\n'.format(decoded_text))
-
-                print('TARGET: \n {}\n'.format(target[i].cpu().detach().numpy()))
-                if scores is not None:
-                    print('SCORES: \n {}\n'.format(F.softmax(scores[i,:], dim=-1).cpu().detach().numpy()))
-                else:
-                    print('\n')
-
-            elif self.task.args.task == 'semeval2010task8':
+            elif self.task.args.task in ['kbp37', 'semeval2010task8', 'tacred']:
                 decoded_text = self.decode_text(text_id[i])
                 print('\n\nTEXT ID LIST:\n {}\n'.format(self.task.dictionary.string(text_id[i]).split()))
                 print('DECODED TEXT:\n {}\n'.format(decoded_text))

@@ -1,24 +1,24 @@
 {
-    "add_configs": ["kbp37.json", "../roberta/large.json", "../base.json"],
+    "add_configs": ["tacred.json", "../roberta/large.json", "../base.json"],
 
     "eval_downstream": false,
 
     "seed": 0,
 
-    "arch": "encoder_kbp37__roberta_large",
+    "arch": "encoder_tacred__roberta_large",
     // "entity_dim": 256,
-    "entity_dim": 512,
-    // "entity_dim": 768,
+    // "entity_dim": 512,
+    "entity_dim": 768,
     "mask_type": "start_end",
     "non_mask_rate": 1,
     "encoder_output_layer_type": "entity_start_linear",
 
     "max_epoch": 10,
-    // "warmup_updates": 600, // bsz=16, max_epoch=10
-    // "warmup_updates": 300, // bsz=32, max_epoch=10
-    // "warmup_updates": 150, // bsz=64, max_epoch=10
-    // "warmup_updates": 75, // bsz=128, max_epoch=10
-    "warmup_updates": 38, // bsz=256, max_epoch=10
+    // "warmup_updates": 2580, // bsz=16, max_epoch=10
+    // "warmup_updates": 1290, // bsz=32, max_epoch=10
+    "warmup_updates": 645, // bsz=64, max_epoch=10
+    // "warmup_updates": 322, // bsz=128, max_epoch=10
+    // "warmup_updates": 161, // bsz=256, max_epoch=10
     // "lr": [5e-6],
     // "lr": [1e-5],
     // "lr": [2e-5],
@@ -29,9 +29,9 @@
     "max_sentences": 16,
     // "update_freq": [1],
     // "update_freq": [2],
-    // "update_freq": [4],
+    "update_freq": [4],
     // "update_freq": [8],
-    "update_freq": [16],
+    // "update_freq": [16],
     "max_tokens": 1.75e3,
     "max_positions": 512,
 
