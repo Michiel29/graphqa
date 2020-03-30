@@ -1,9 +1,8 @@
 {
     "task": "fewrel",
-    "data_path": "../data/fewrel/bin",
+    "data_path": "../data/fewrel/bin-v2",
     "n_way": 5,
     "n_shot": 1,
 
-    "criterion": "cross_entropy_custom",
-    "eval_metric": "accuracy"
+    "criterion": "cross_entropy_custom"
 }

@@ -3,6 +3,14 @@ import subprocess
 import tempfile
 
 
+MIN_SIZE_TO_USE_PLASMA_B = 50 * 1024 * 1024 # 50MB
+
+
+class FakePlasmaArray(object):
+    def __init__(self, array):
+        self.array = array
+
+
 class PlasmaArray(object):
     """
     Wrapper around numpy arrays that automatically moves the data to shared
@@ -30,9 +38,7 @@ class PlasmaArray(object):
         self.path = self._server_tmp.name
         self._server = subprocess.Popen([
             'plasma_store',
-            # '-m', str(int(1.05 * self.array.nbytes)),
-            # TODO: use 1.05, and don't use plasma array if dataset is small 
-            '-m', str(int(1.1 * self.array.nbytes)),
+            '-m', str(int(1.05 * self.array.nbytes)),
             '-s', self.path,
         ])
 
@@ -70,3 +76,12 @@ class PlasmaArray(object):
         self.start_server()
         self.object_id = self.client.put(self.array)
         self.array = self.client.get(self.object_id)
+
+
+def maybe_move_to_plasma(array):
+    if array.nbytes < MIN_SIZE_TO_USE_PLASMA_B:
+        return FakePlasmaArray(array)
+    else:
+        plasma_array = PlasmaArray(array)
+        plasma_array.move_to_plasma()
+        return plasma_array
