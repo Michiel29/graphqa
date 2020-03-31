@@ -11,6 +11,15 @@ from tasks import BaseTask
 logger = logging.getLogger(__name__)
 
 
+def eval_str_list(x, type, length):
+    if x is None:
+        return None
+    if isinstance(x, str):
+        x = eval(x)
+    assert len(x) == length
+    return list(map(type, x))
+
+
 class RelationInferenceTask(BaseTask):
     """Task for training inference models."""
     def __init__(self, args, dictionary, entity_dictionary):
@@ -26,6 +35,9 @@ class RelationInferenceTask(BaseTask):
         parser.add_argument('--subsampling-cap', type=int, default=None)
         parser.add_argument('--k-negative', default=1, type=int,
                             help='number of negative samples per mention')
+        parser.add_argument('--negative-split-probs', default=None,
+                            metavar='N1,N2,...,N_K',
+                            type=lambda uf: eval_str_list(uf, type=float, length=3))
         parser.add_argument('--mask-type', default='head_tail', type=str,
                             help='method for masking entities in a sentence')
         parser.add_argument('--non-mask-rate', default=1.0, type=float,

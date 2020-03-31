@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import numpy.random as rd
 import torch
@@ -18,6 +19,7 @@ class RelInfDataset(FairseqDataset):
         n_entities,
         seed,
         same_replace_heads_for_all_negatives,
+        negative_split_probs,
     ):
         self.annotated_text = annotated_text
         self.k_negative = k_negative
@@ -26,12 +28,18 @@ class RelInfDataset(FairseqDataset):
         self.seed = seed
         self.epoch = None
         self.same_replace_heads_for_all_negatives = same_replace_heads_for_all_negatives
+        self.negative_split_probs = copy.deepcopy(negative_split_probs)
+        assert len(self.negative_split_probs) == 3, self.negative_split_probs
+        assert sum(self.negative_split_probs) <= 1, self.negative_split_probs
+        self.negative_split_probs.append(1 - sum(self.negative_split_probs))
 
     def set_epoch(self, epoch):
         self.graph.set_epoch(epoch)
         self.epoch = epoch
 
     def sample_neighbors(self, neighbors_lists, n_samples_per_category):
+        assert len(neighbors_lists) == 3
+        assert len(n_samples_per_category) == 4
         result = []
         n_samples = 0
         for i, neighbors_list in enumerate(neighbors_lists):
@@ -40,10 +48,20 @@ class RelInfDataset(FairseqDataset):
             if actually_sampled > 0:
                 result.extend(rd.choice(neighbors_list, size=actually_sampled, replace=False))
             n_samples -= actually_sampled
+        n_samples += n_samples_per_category[3]
         if n_samples > 0:
             result.extend(rd.randint(self.n_entities, size=n_samples))
         assert len(result) == sum(n_samples_per_category)
         return result
+
+    def get_n_samples_per_category(self, num_replace_head):
+        n_samples_per_category = [
+            int(x * num_replace_head)
+            for x in self.negative_split_probs
+        ]
+        while sum(n_samples_per_category) < num_replace_head:
+            n_samples_per_category[rd.randint(4, size=1)[0]] += 1
+        return n_samples_per_category
 
     def __getitem__(self, index):
         edge = self.graph[index]
@@ -71,14 +89,21 @@ class RelInfDataset(FairseqDataset):
 
             item['head'] = (
                 [head]
-                + self.sample_neighbors([head_tail_neighbors, tail_neighbors, head_neighbors], [num_replace_head, 0, 0])
+                + self.sample_neighbors(
+                    [head_tail_neighbors, tail_only_neighbors, head_only_neighbors],
+                    self.get_n_samples_per_category(num_replace_head),
+                )
                 + [head] * (self.k_negative - num_replace_head)
             )
+
             assert len(item['head']) == self.k_negative + 1
             item['tail'] = (
                 [tail]
                 + [tail] * (num_replace_head)
-                + self.sample_neighbors([head_tail_neighbors, head_neighbors, tail_neighbors], [self.k_negative - num_replace_head, 0, 0])
+                + self.sample_neighbors(
+                    [head_tail_neighbors, head_only_neighbors, tail_only_neighbors],
+                    self.get_n_samples_per_category(self.k_negative - num_replace_head),
+                )
             )
             assert len(item['tail']) == self.k_negative + 1
             item['target'] = 0

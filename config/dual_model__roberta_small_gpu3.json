@@ -7,7 +7,8 @@
     "encoder_output_layer_type": "entity_target_linear",
     // "data_path": "../data/nki/bin-v5-threshold20-small",
     "data_path": "../data/nki/bin-v5-threshold20",
-    "k_negative": 1,
+    "k_negative": 100,
+    "negative_split_probs": null,
 
     "mask_type": "start_end",
     "non_mask_rate": 0,
