@@ -107,7 +107,7 @@ class EntityTargetLinear(nn.Module):
 
         self.linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
 
-    def forward(self, x, src_tokens, replace_heads, **unused):
+    def forward(self, x, src_tokens, replace_heads=None, **unused):
         # x: [batch_size, length, enc_dim]
 
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
@@ -116,9 +116,13 @@ class EntityTargetLinear(nn.Module):
         head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
         tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
-        head_or_tail = replace_heads * head_sum + (1 - replace_heads) * tail_sum
-        linear_projection = self.linear(head_or_tail)
-        return linear_projection
+        if replace_heads is not None:
+            head_or_tail = replace_heads * head_sum + (1 - replace_heads) * tail_sum
+            return self.linear(head_or_tail)
+        else:
+            head_sum = self.linear(head_sum)
+            tail_sum = self.linear(tail_sum)
+            return torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
 
 class EntityStartLayerNorm(nn.Module):

@@ -31,6 +31,20 @@ class RelInfDataset(FairseqDataset):
         self.graph.set_epoch(epoch)
         self.epoch = epoch
 
+    def sample_neighbors(self, neighbors_lists, n_samples_per_category):
+        result = []
+        n_samples = 0
+        for i, neighbors_list in enumerate(neighbors_lists):
+            n_samples += n_samples_per_category[i]
+            actually_sampled = min(n_samples, len(neighbors_list))
+            if actually_sampled > 0:
+                result.extend(rd.choice(neighbors_list, size=actually_sampled, replace=False))
+            n_samples -= actually_sampled
+        if n_samples > 0:
+            result.extend(rd.randint(self.n_entities, size=n_samples))
+        assert len(result) == sum(n_samples_per_category)
+        return result
+
     def __getitem__(self, index):
         edge = self.graph[index]
         head = edge[GraphDataset.HEAD_ENTITY]
@@ -42,34 +56,33 @@ class RelInfDataset(FairseqDataset):
             item['nsentences'] = 1
             item['ntokens'] = len(item['text'])
 
+            shall_replace_head = rd.randint(2, size=1)[0]
             if self.same_replace_heads_for_all_negatives:
-                replace_heads = np.repeat(rd.randint(2, size=1), self.k_negative)
+                num_replace_head = shall_replace_head * self.k_negative
             else:
-                replace_heads = rd.randint(2, size=self.k_negative)
+                num_replace_head = self.k_negative // 2 + shall_replace_head * (self.k_negative % 2)
 
             head_neighbors = self.graph.get_neighbors(head)
             tail_neighbors = self.graph.get_neighbors(tail)
 
-            tail_head_neighbors = [tail_neighbors, head_neighbors]
+            head_tail_neighbors = np.intersect1d(head_neighbors, tail_neighbors, assume_unique=True)
+            head_only_neighbors = np.setdiff1d(head_neighbors, tail_neighbors, assume_unique=True)
+            tail_only_neighbors = np.setdiff1d(tail_neighbors, head_neighbors, assume_unique=True)
 
-            replacement_entities = []
-
-            for replace_head in replace_heads:
-                replacement_neighbors, static_neighbors = tail_head_neighbors[replace_head], tail_head_neighbors[1 - replace_head]
-
-                if len(replacement_neighbors) > 0:
-                    replacement_entity = rd.choice(replacement_neighbors)
-                elif len(static_neighbors) > 0:
-                    replacement_entity = rd.choice(static_neighbors)
-                else:
-                    replacement_entity = rd.randint(self.n_entities)
-
-                replacement_entities.append(replacement_entity)
-
-            item['head'] = [head] + [head if not replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
-            item['tail'] = [tail] + [tail if replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
+            item['head'] = (
+                [head]
+                + self.sample_neighbors([head_tail_neighbors, tail_neighbors, head_neighbors], [num_replace_head, 0, 0])
+                + [head] * (self.k_negative - num_replace_head)
+            )
+            assert len(item['head']) == self.k_negative + 1
+            item['tail'] = (
+                [tail]
+                + [tail] * (num_replace_head)
+                + self.sample_neighbors([head_tail_neighbors, head_neighbors, tail_neighbors], [self.k_negative - num_replace_head, 0, 0])
+            )
+            assert len(item['tail']) == self.k_negative + 1
             item['target'] = 0
-            item['replace_heads'] = replace_heads
+            item['replace_heads'] = [1] * num_replace_head + [0] * (self.k_negative - num_replace_head)
 
         return item
 
