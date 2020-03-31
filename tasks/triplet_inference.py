@@ -63,6 +63,7 @@ class TripletInferenceTask(RelationInferenceTask):
             n_entities=len(self.entity_dictionary),
             seed=self.args.seed,
             dictionary=self.dictionary,
+            same_replace_heads_for_all_negatives=self.args.arch.startswith('encoder_dual'),
         )
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text')
 

@@ -1,3 +1,4 @@
+import numpy as np
 import numpy.random as rd
 import torch
 
@@ -16,6 +17,7 @@ class RelInfDataset(FairseqDataset):
         k_negative,
         n_entities,
         seed,
+        same_replace_heads_for_all_negatives,
     ):
         self.annotated_text = annotated_text
         self.k_negative = k_negative
@@ -23,6 +25,7 @@ class RelInfDataset(FairseqDataset):
         self.graph = graph
         self.seed = seed
         self.epoch = None
+        self.same_replace_heads_for_all_negatives = same_replace_heads_for_all_negatives
 
     def set_epoch(self, epoch):
         self.graph.set_epoch(epoch)
@@ -39,7 +42,10 @@ class RelInfDataset(FairseqDataset):
             item['nsentences'] = 1
             item['ntokens'] = len(item['text'])
 
-            replace_heads = rd.randint(2, size=self.k_negative)
+            if self.same_replace_heads_for_all_negatives:
+                replace_heads = np.repeat(rd.randint(2, size=1), self.k_negative)
+            else:
+                replace_heads = rd.randint(2, size=self.k_negative)
 
             head_neighbors = self.graph.get_neighbors(head)
             tail_neighbors = self.graph.get_neighbors(tail)
@@ -63,6 +69,7 @@ class RelInfDataset(FairseqDataset):
             item['head'] = [head] + [head if not replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
             item['tail'] = [tail] + [tail if replace_heads[i] else replacement_entities[i] for i in range(self.k_negative)]
             item['target'] = 0
+            item['replace_heads'] = replace_heads
 
         return item
 

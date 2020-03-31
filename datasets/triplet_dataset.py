@@ -19,6 +19,7 @@ class TripletDataset(RelInfDataset):
         heads = []
         tails = []
         targets = []
+        replace_heads = []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
@@ -26,6 +27,7 @@ class TripletDataset(RelInfDataset):
             heads.append(instance['head'])
             tails.append(instance['tail'])
             targets.append(instance['target'])
+            replace_heads.append(instance['replace_heads'])
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
 
@@ -36,6 +38,7 @@ class TripletDataset(RelInfDataset):
             'head':  torch.LongTensor(heads),
             'tail': torch.LongTensor(tails),
             'target':  torch.LongTensor(targets),
+            'replace_heads':  torch.LongTensor(replace_heads),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': nsentences

@@ -1,0 +1,13 @@
+{
+    "eval_downstream": true,
+    "eval_kwargs": {
+        "task": "fewrel",
+        "arch": "encoder_fewrel__roberta_small",
+        "data_path": "../data/fewrel/bin-v2",
+        "n_way": 5,
+        "n_shot": 1,
+        "max_sentences": 10,
+        "max_tokens": 2000,
+        "criterion": "cross_entropy_custom"
+    }
+}

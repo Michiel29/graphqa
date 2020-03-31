@@ -28,7 +28,7 @@ class RelationInferenceTask(BaseTask):
                             help='number of negative samples per mention')
         parser.add_argument('--mask-type', default='head_tail', type=str,
                             help='method for masking entities in a sentence')
-        parser.add_argument('--alpha', default=1.0, type=float,
+        parser.add_argument('--non-mask-rate', default=1.0, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):

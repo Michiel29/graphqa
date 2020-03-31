@@ -39,7 +39,7 @@ class RobertaWrapper(RobertaModel):
         masked_tokens=None,
         use_lm_head=False,
         annotation=None,
-        **unused,
+        **kwargs,
     ):
         """
         Args:
@@ -70,6 +70,7 @@ class RobertaWrapper(RobertaModel):
                 src_tokens=src_tokens,
                 masked_tokens=masked_tokens,
                 annotation=annotation,
+                **kwargs,
             )
         return x, extra
 
