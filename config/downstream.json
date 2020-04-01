@@ -8,6 +8,7 @@
         "n_shot": 1,
         "max_sentences": 10,
         "max_tokens": 2000,
+        "n_valid_examples": null,
         "criterion": "cross_entropy_custom"
     }
 }
