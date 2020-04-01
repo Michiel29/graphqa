@@ -6,9 +6,9 @@
     "seed": 0,
 
     "arch": "encoder_tacred__roberta_large",
-    // "entity_dim": 256,
+    "entity_dim": 256,
     // "entity_dim": 512,
-    "entity_dim": 768,
+    // "entity_dim": 768,
     "mask_type": "start_end",
     "non_mask_rate": 1,
     "encoder_output_layer_type": "entity_start_linear",
@@ -16,7 +16,7 @@
     "max_epoch": 10,
     // "warmup_updates": 2580, // bsz=16, max_epoch=10
     // "warmup_updates": 1290, // bsz=32, max_epoch=10
-    "warmup_updates": 645, // bsz=64, max_epoch=10
+    "warmup_updates": 650, // bsz=64, max_epoch=10
     // "warmup_updates": 322, // bsz=128, max_epoch=10
     // "warmup_updates": 161, // bsz=256, max_epoch=10
     // "lr": [5e-6],
@@ -32,11 +32,13 @@
     "update_freq": [4],
     // "update_freq": [8],
     // "update_freq": [16],
-    "max_tokens": 1.75e3,
+    "max_tokens": 1.5e3,
     "max_positions": 512,
 
     "num_workers": 2,
-    "load_component_prefix": "encoder",
+    // "load_component_prefix": "encoder",
+
+    // "restore_file": "../save/task_tacred/arch_encoder_tacred__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_02h_42m/checkpoints/checkpoint_best.pt",
 
     "no_epoch_checkpoints": true
 

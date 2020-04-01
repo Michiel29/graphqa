@@ -61,7 +61,7 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
-        criterion.__class__.reduce_metrics(logging_outputs, self.split)
+        criterion.__class__.reduce_metrics(logging_outputs, self)
 
     def get_batch_iterator(
         self, dataset, max_tokens=None, max_sentences=None, max_positions=None,

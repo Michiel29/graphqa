@@ -1,0 +1,16 @@
+{
+    "add_configs": ["semeval2010task8.json", "../roberta/large.json", "../base.json"],
+
+    "seed": 0,
+
+    "arch": "encoder_semeval2010task8__roberta_large",
+    "entity_dim": null,
+    "mask_type": "start_end",
+    "non_mask_rate": 1,
+    "encoder_output_layer_type": "entity_start_layer_norm",
+
+    "max_sentences": 16,
+    "max_tokens": 1.75e3,
+
+    "num_workers": 0
+}

@@ -174,6 +174,8 @@ def main(args):
     texts = [x.split('\t')[1][1:-1] for x in data[0::2]]
     relation_types = [x.replace(' ', '') for x in data[1::2]]
     unique_relation_types = sorted(list(set(relation_types)))
+    unique_relation_types.remove('no_relation')
+    unique_relation_types.append('no_relation')
     print('-- Loaded data from %s' % data_path)
 
     processor = KBP37Processor(

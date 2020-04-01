@@ -191,6 +191,8 @@ def main(args):
     texts = [x.split('\t')[1][1:-1] for x in data[0::3]]
     relation_types = [x.replace(' ', '') for x in data[1::3]]
     unique_relation_types = sorted(list(set(relation_types)))
+    unique_relation_types.remove('Other')
+    unique_relation_types.append('Other')
 
     # if args.split == 'train':
     #     texts = list(itemgetter(*train_indices)(texts))

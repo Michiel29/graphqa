@@ -1,0 +1,17 @@
+{
+    "add_configs": ["kbp37.json", "../roberta/large.json", "../base.json"],
+
+    "seed": 0,
+
+    "arch": "encoder_kbp37__roberta_large",
+    "entity_dim": 256,
+    "mask_type": "start_end",
+    "non_mask_rate": 1,
+    "encoder_output_layer_type": "entity_start_linear",
+
+    "max_sentences": 16,
+    "max_tokens": 1.75e3,
+    "max_positions": 512,
+
+    "num_workers": 2
+}

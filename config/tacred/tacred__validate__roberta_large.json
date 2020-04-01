@@ -1,0 +1,23 @@
+{
+    "add_configs": ["tacred.json", "../roberta/large.json", "../base.json"],
+
+    "seed": 0,
+
+    "arch": "encoder_tacred__roberta_large",
+    "entity_dim": 256,
+    // "entity_dim": 512,
+    // "entity_dim": 768,
+    "mask_type": "start_end",
+    "non_mask_rate": 1,
+    "encoder_output_layer_type": "entity_start_linear",
+
+    "max_sentences": 16,
+    "max_tokens": 1.5e3,
+    "max_positions": 512,
+
+    // "load_checkpoint": "../save/task_tacred/arch_encoder_tacred__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_02h_42m/checkpoints/checkpoint_best.pt",
+
+    "num_workers": 1
+
+
+}

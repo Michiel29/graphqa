@@ -155,6 +155,8 @@ def main(args):
     with open(relations_path, 'r') as f:
         relation_types = f.read().splitlines()
     unique_relation_types = sorted(list(set(relation_types)))
+    unique_relation_types.remove('no_relation')
+    unique_relation_types.append('no_relation')
 
     processor = TACREDProcessor(
         args.roberta_dir,
@@ -192,6 +194,9 @@ def main(args):
             2: {'start': sample['obj_start'], 'end': sample['obj_end']+1}
         }]
         relation_type_id = unique_relation_types.index(sample['relation'])
+        # relation_type_id = unique_relation_types.index(sample['relation']) - 1
+        # if relation_type_id == -1:
+        #     continue
         for ids_tensor, _annotations_list in map(processor, tokens, annot):
             dataset_builder.add_item(ids_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))

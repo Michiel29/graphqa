@@ -14,8 +14,8 @@
     "max_epoch": 10,
     // "warmup_updates": 300, // bsz=16, max_epoch=10
     // "warmup_updates": 150, // bsz=32, max_epoch=10
-    // "warmup_updates": 75, // bsz=64, max_epoch=10
-    "warmup_updates": 38, // bsz=128, max_epoch=10
+    "warmup_updates": 75, // bsz=64, max_epoch=10
+    // "warmup_updates": 38, // bsz=128, max_epoch=10
     // "warmup_updates": 19, // bsz=256, max_epoch=10
     // "lr": [1e-5],
     "lr": [2e-5],
@@ -25,13 +25,13 @@
     "max_sentences": 16,
     // "update_freq": [1],
     // "update_freq": [2],
-    // "update_freq": [4],
-    "update_freq": [8],
+    "update_freq": [4],
+    // "update_freq": [8],
     // "update_freq": [16],
     "max_tokens": 1.75e3,
 
     "num_workers": 2,
-    "load_component_prefix": "encoder",
+    // "load_component_prefix": "encoder",
 
     "no_epoch_checkpoints": true
 
