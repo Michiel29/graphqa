@@ -40,11 +40,7 @@ class EncoderDualModel(BaseFairseqModel):
 
         head_or_tail = torch.unsqueeze(replace_heads, -1) * head_emb + (1 - torch.unsqueeze(replace_heads, -1)) * tail_emb
 
-        multiply_view = [-1] * len(head_emb.shape)
-        multiply_view[-2] = head_emb.shape[-2]
-        text_enc = text_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
-
-        return (text_enc * head_or_tail).sum(-1)
+        return torch.bmm(head_or_tail, text_enc.unsqueeze(-1)).squeeze(-1)
 
     @staticmethod
     def add_args(parser):
