@@ -13,8 +13,6 @@ class CrossEntropy(FairseqCriterion):
         super().__init__(task)
         self.args = args
         self.task = task
-        self.num_classes = args.num_classes
-        self.eval_metric = args.eval_metric
 
     @staticmethod
     def add_args(parser):

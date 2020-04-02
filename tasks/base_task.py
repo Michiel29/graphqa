@@ -186,3 +186,6 @@ class BaseTask(FairseqTask):
     @property
     def target_dictionary(self):
         return self.dictionary
+
+    def reporter(self, pred, target, logging_output):
+        return logging_output
