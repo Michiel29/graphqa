@@ -15,7 +15,7 @@
     "max_tokens": 1.5e3,
     "max_positions": 512,
 
-    // "load_checkpoint": "../save/task_tacred/arch_encoder_tacred__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_02h_42m/checkpoints/checkpoint_best.pt",
+    // "load_checkpoint": "/data1/aarchan/self_inference/save/task_tacred/arch_encoder_tacred__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_02h_42m/checkpoints/checkpoint_best.pt",
 
     "num_workers": 1
 

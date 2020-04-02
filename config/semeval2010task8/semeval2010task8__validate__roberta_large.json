@@ -12,5 +12,7 @@
     "max_sentences": 16,
     "max_tokens": 1.75e3,
 
+    // "load_checkpoint": "/data1/aarchan/self_inference/save/task_semeval2010task8/arch_encoder_semeval2010task8__roberta_large/encoder_output_layer_type_entity_start_layer_norm/entity_dim_None/lr_2e-05/max_sentences_16/update_freq_4/04m_01d_12h_30m/checkpoints/checkpoint_best.pt",
+
     "num_workers": 0
 }

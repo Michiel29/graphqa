@@ -139,7 +139,7 @@ class MicroF1Meter(AverageMeter):
             val = safe_round(val, self.round)
         return val
 
-def compute_confusion_matrix(target, pred, avg, num_classes=None, task=None):
+def compute_confusion_matrix(target, pred, avg, num_classes, ignore_classes=[]):
     mcm = multilabel_confusion_matrix(target, pred, labels=list(range(num_classes)))
     if avg == 'macro':
         fn = collections.defaultdict(int)
@@ -149,10 +149,8 @@ def compute_confusion_matrix(target, pred, avg, num_classes=None, task=None):
             cur_mcm = mcm[i]
             fn[i], tp[i], fp[i] = cur_mcm[1, 0], cur_mcm[1, 1], cur_mcm[0, 1]
     elif avg == 'micro':
-        if task == 'tacred':
-            micro_mcm = np.sum(mcm[:-1], axis=0)
-        else:
-            micro_mcm = np.sum(mcm, axis=0)
+        mcm = np.delete(mcm, ignore_classes, axis=0)
+        micro_mcm = np.sum(mcm, axis=0)
         fn, tp, fp = micro_mcm[1, 0], micro_mcm[1, 1], micro_mcm[0, 1]
     return fn, tp, fp
 
@@ -162,7 +160,7 @@ def compute_f1(fn, tp, fp):
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     return f1
 
-def compute_macro_f1(fn, tp, fp, task):
+def compute_macro_f1(fn, tp, fp, task=None):
     f1_sum = 0
     if task in ['kbp37', 'semeval2010task8']:
         rel_indices = range(0, len(fn)-1, 2)

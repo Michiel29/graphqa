@@ -10,6 +10,7 @@ from fairseq.data import (
     iterators,
 )
 from fairseq.tasks import register_task
+from fairseq import metrics
 
 from tasks import BaseTask
 from datasets import (
@@ -24,6 +25,7 @@ from utils.data_utils import (
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary
+from utils.logging_utils import compute_confusion_matrix, MicroF1Meter
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +84,27 @@ class TACREDTask(BaseTask):
             )
 
         self.datasets[split] = dataset
+
+    def reporter(self, pred, target, logging_output):
+        fn, tp, fp = compute_confusion_matrix(
+            target=target.cpu().numpy(), 
+            pred=pred.detach().cpu().numpy(), 
+            avg='micro', 
+            num_classes=self.args.num_classes, 
+            ignore_classes=[self.args.num_classes-1]
+        )
+        logging_output['fn'] = fn
+        logging_output['tp'] = tp
+        logging_output['fp'] = fp
+        return logging_output
+
+    def reduce_metrics(self, logging_outputs, criterion, prefix=''):
+        super().reduce_metrics(logging_outputs, criterion)
+
+        sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
+        weight = 0 if self.split == 'train' else sample_size
+
+        fn = sum(log.get(prefix + 'fn', 0) for log in logging_outputs)
+        tp = sum(log.get(prefix + 'tp', 0) for log in logging_outputs)
+        fp = sum(log.get(prefix + 'fp', 0) for log in logging_outputs)
+        metrics.log_custom(MicroF1Meter, 'micro_f1', fn, tp, fp, self.split, weight)
