@@ -21,5 +21,8 @@
     "restore_file": false,
 
     "ddp_backend": "no_c10d",
-    "no_epoch_checkpoints": false
+    "no_epoch_checkpoints": false,
+
+    "num_classes": null,
+    "eval_metric": null
 }

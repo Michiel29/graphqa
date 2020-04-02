@@ -18,7 +18,7 @@ from fairseq.tasks import register_task
 from datasets import (
     AnnotatedText,
     SelectDictionaryDataset,
-    prune_dataset_size,
+    FixedSizeDataset,
     ShuffledDataset,
 )
 from tasks import BaseTask
@@ -82,10 +82,10 @@ class MaskedLMEMTask(BaseTask):
         n_examples = int(getattr(self.args, 'n_' + split + '_examples', None))
         if n_examples is not None:
             dataset = SelectDictionaryDataset(
-                prune_dataset_size(
-                    self.filter_by_max_positions(annotated_text_dataset),
-                    n_examples,
-                    self.seed,
+                FixedSizeDataset(
+                    dataset=self.filter_by_max_positions(annotated_text_dataset),
+                    size=n_examples,
+                    seed=self.seed,
                 ),
                 'text',
             )

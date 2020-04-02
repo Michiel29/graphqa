@@ -5,7 +5,7 @@ from .semeval2010task8_dataset import SemEval2010Task8Dataset
 from .tacred_dataset import TACREDDataset
 from .filtered_dataset import (
     FilteredDataset,
-    prune_dataset_size,
+    FixedSizeDataset,
 )
 from .graph_dataset import GraphDataset
 from .mtb_dataset import MTBDataset

@@ -46,7 +46,7 @@ class CrossEntropy(FairseqCriterion):
             'sample_size': sample_size,
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
-            'acc': utils.item((pred == target).float().sum()),
+            'accuracy': utils.item((pred == target).float().sum()),
         }
 
         logging_output = self.task.reporter(pred, target, logging_output)
@@ -64,8 +64,8 @@ class CrossEntropy(FairseqCriterion):
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
         metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, weight, round=3)
 
-        acc_sum = sum(log.get(prefix + 'acc', 0) for log in logging_outputs)
-        metrics.log_scalar(prefix + 'acc', acc_sum / sample_size, weight, round=3)
+        accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+        metrics.log_scalar(prefix + 'acc', accuracy_sum / sample_size, weight, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

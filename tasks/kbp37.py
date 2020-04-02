@@ -4,12 +4,6 @@ import collections
 
 import numpy as np
 
-from fairseq.data import (
-    data_utils,
-    Dictionary,
-    FairseqDataset,
-    iterators,
-)
 from fairseq.tasks import register_task
 from fairseq import metrics
 
@@ -17,9 +11,8 @@ from tasks import BaseTask
 from datasets import (
     AnnotatedText,
     KBP37Dataset,
-    FilteredDataset,
+    FixedSizeDataset,
     PrependTokenDataset,
-    prune_dataset_size,
 )
 from utils.data_utils import (
     load_annotated_text,
@@ -78,10 +71,10 @@ class KBP37Task(BaseTask):
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:
-            dataset = prune_dataset_size(
-                dataset,
-                n_examples,
-                self.seed,
+            dataset = FixedSizeDataset(
+                dataset=dataset,
+                size=n_examples,
+                seed=self.seed,
             )
 
         self.datasets[split] = dataset

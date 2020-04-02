@@ -4,14 +4,6 @@ from itertools import combinations
 import numpy as np
 import torch
 
-from fairseq.data import (
-    data_utils,
-    iterators,
-    FairseqDataset,
-    PrependDataset,
-    PrependTokenDataset,
-    Dictionary
-)
 from fairseq.tasks import FairseqTask, register_task
 
 from tasks import RelationInferenceTask
@@ -22,14 +14,13 @@ from datasets import (
     MTBTripletsDataset,
     AnnotatedText,
     SelectDictionaryDataset,
-    prune_dataset_size,
+    FixedSizeDataset,
     ShuffledDataset,
 )
 from utils.data_utils import (
     load_annotated_text,
     safe_load_indexed_dataset,
 )
-from utils.dictionary import CustomDictionary, EntityDictionary
 
 
 logger = logging.getLogger(__name__)
@@ -120,9 +111,9 @@ class MTBTask(RelationInferenceTask):
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:
-            dataset = prune_dataset_size(
-                dataset,
-                n_examples,
-                self.seed,
+            dataset = FixedSizeDataset(
+                dataset=dataset,
+                size=n_examples,
+                seed=self.seed,
             )
         self.datasets[split] = dataset

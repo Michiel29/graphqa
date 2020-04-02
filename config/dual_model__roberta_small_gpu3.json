@@ -26,7 +26,6 @@
     "max_sentences": 1336,
     "update_freq": [7],
     "max_tokens": 12000,
-    // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
     "criterion": "cross_entropy_custom"
