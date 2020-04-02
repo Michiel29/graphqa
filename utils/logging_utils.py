@@ -2,7 +2,6 @@ import numpy as np
 import collections
 from fairseq.logging.meters import AverageMeter, safe_round
 from typing import Optional
-# TODO: Uncomment if the class is used
 from sklearn.metrics import multilabel_confusion_matrix
 
 
@@ -22,16 +21,16 @@ class MacroF1Meter(AverageMeter):
         self.batch_f1_sum = 0
         self.epoch_f1 = 0
 
-    def update(self, fn, tp, fp, task, split, avg, n=1):
+    def update(self, fn, tp, fp, split, ignore_classes=[], aggregate_class_pairs=False, n=1):
         for i in fn.keys():
             self.fn[i] += fn[i]
             self.tp[i] += tp[i]
             self.fp[i] += fp[i]
         self.split = split
         self.count += n
-        self.batch_f1 = compute_macro_f1(fn, tp, fp, task)
+        self.batch_f1 = compute_macro_f1(fn, tp, fp, ignore_classes, aggregate_class_pairs)
         self.batch_f1_sum += self.batch_f1 * n
-        self.epoch_f1 = compute_macro_f1(self.fn, self.tp, self.fp, task)
+        self.epoch_f1 = compute_macro_f1(self.fn, self.tp, self.fp, ignore_classes, aggregate_class_pairs)
 
     def state_dict(self):
         return {
@@ -160,16 +159,27 @@ def compute_f1(fn, tp, fp):
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     return f1
 
-def compute_macro_f1(fn, tp, fp, task=None):
+def compute_macro_f1(fn, tp, fp, ignore_classes=[], aggregate_class_pairs=False):
     f1_sum = 0
-    if task in ['kbp37', 'semeval2010task8']:
-        rel_indices = range(0, len(fn)-1, 2)
-        for i in rel_indices:
+    class_indices = np.array(list(fn.keys()))
+    class_indices = np.delete(class_indices, ignore_classes)
+    if aggregate_class_pairs:
+        assert len(class_indices) % 2 == 0
+        class_indices = class_indices[::2]
+        for i in class_indices:
             f1_sum += compute_f1(fn[i]+fn[i+1], tp[i]+tp[i+1], fp[i]+fp[i+1])
-        macro_f1 = f1_sum / len(rel_indices)
     else:
-        for i in fn.keys():
+        for i in class_indices:
             f1_sum += compute_f1(fn[i], tp[i], fp[i])
-        macro_f1 = f1_sum / len(fn)
+    macro_f1 = f1_sum / len(class_indices)
     return macro_f1
 
+def reduce_macro_mcm(logging_outputs, num_classes, prefix):
+    fn = collections.defaultdict(int)
+    tp = collections.defaultdict(int)
+    fp = collections.defaultdict(int)
+    for i in range(num_classes):
+        fn[i] = sum(log.get(prefix + 'fn_' + str(i), 0) for log in logging_outputs)
+        tp[i] = sum(log.get(prefix + 'tp_' + str(i), 0) for log in logging_outputs)
+        fp[i] = sum(log.get(prefix + 'fp_' + str(i), 0) for log in logging_outputs)
+    return fn, tp, fp

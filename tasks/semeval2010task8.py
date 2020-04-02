@@ -26,7 +26,7 @@ from utils.data_utils import (
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary
-from utils.logging_utils import compute_confusion_matrix, MacroF1Meter
+from utils.logging_utils import compute_confusion_matrix, reduce_macro_mcm, MacroF1Meter
 
 logger = logging.getLogger(__name__)
 
@@ -102,14 +102,8 @@ class SemEval2010Task8Task(BaseTask):
     def reduce_metrics(self, logging_outputs, criterion, prefix=''):
         super().reduce_metrics(logging_outputs, criterion)
 
+        fn, tp, fp = reduce_macro_mcm(logging_outputs, self.args.num_classes, prefix)
         sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
         weight = 0 if self.split == 'train' else sample_size
 
-        fn = collections.defaultdict(int)
-        tp = collections.defaultdict(int)
-        fp = collections.defaultdict(int)
-        for i in range(self.args.num_classes):
-            fn[i] = sum(log.get(prefix + 'fn_' + str(i), 0) for log in logging_outputs)
-            tp[i] = sum(log.get(prefix + 'tp_' + str(i), 0) for log in logging_outputs)
-            fp[i] = sum(log.get(prefix + 'fp_' + str(i), 0) for log in logging_outputs)
-        metrics.log_custom(MacroF1Meter, 'macro_f1', fn, tp, fp, self.args.task, self.split, weight)
+        metrics.log_custom(MacroF1Meter, 'macro_f1', fn, tp, fp, self.split, [self.args.num_classes-1], True, weight)
