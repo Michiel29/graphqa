@@ -46,7 +46,7 @@ class FixedSizeDataset(BaseWrapperDataset):
     def set_epoch(self, epoch):
         self.dataset.set_epoch(epoch)
         with numpy_seed('FixedSizeDataset', self.seed):
-            if len(self.dataset) <= size:
+            if len(self.dataset) <= self._size:
                 self.data_indices = np.arange(len(self.dataset))
             else:
                 self.data_indices = np.random.choice(
