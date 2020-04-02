@@ -61,7 +61,8 @@ def main(args, init_distributed=False):
     task = tasks.setup_task(args)
 
     # Load valid datasets (we load training data below, based on the latest checkpoint)
-    for valid_sub_split in args.valid_subset.split(','):
+    valid_subsets = args.valid_subset.split(',')
+    for valid_sub_split in valid_subsets:
         task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
     # Build models
@@ -86,21 +87,34 @@ def main(args, init_distributed=False):
     ))
 
     if args.eval_downstream:
-        # Create eval_args, by overwriting a copy of args with args.eval_kwargs
-        eval_args = copy.deepcopy(args)
-        update_namespace(eval_args, args.eval_kwargs, override=True)
+        # Create downstream_args, by overwriting a copy of args with downstream args
+        downstream_arg_dict = {}
+        downstream_task_dict = {}
+        downstream_model_dict = {}
+        downstream_criterion_dict = {}
+        downstream_trainer_dict = {}
+        downstream_valid_subset_dict = {}
+        for downstream_name, downstream_kwargs in args.downstream_dict.items():
 
-        # Set up eval_task
-        eval_task = tasks.setup_task(eval_args)
+            downstream_args = copy.deepcopy(args)
+            update_namespace(downstream_args, downstream_kwargs, override=True)
+            downstream_arg_dict[downstream_name] = downstream_args
 
-        # Load eval dataset
-        for valid_sub_split in args.valid_subset.split(','):
-            eval_task.load_dataset(valid_sub_split, combine=False, epoch=0)
+            downstream_task_dict[downstream_name] = tasks.setup_task(downstream_args)
 
-        # Set up eval model, criterion, and trainer
-        eval_model = ARCH_MODEL_REGISTRY[eval_args.arch].build_model(eval_args, eval_task, model.encoder)
-        eval_criterion = eval_task.build_criterion(eval_args)
-        eval_trainer = Trainer(eval_args, eval_task, eval_model, eval_criterion)
+            downstream_valid_subset_dict[downstream_name] = downstream_args.valid_subset.split(',')
+
+            # Load downstream datasets
+            for valid_sub_split in downstream_valid_subset_dict[downstream_name]:
+                downstream_task_dict[downstream_name].load_dataset(valid_sub_split, combine=False, epoch=0)
+
+            # Set up eval model, criterion, and trainer
+            downstream_model_dict[downstream_name] = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task_dict[downstream_name], model.encoder)
+
+            downstream_criterion_dict[downstream_name] = downstream_task_dict[downstream_name].build_criterion(downstream_args)
+
+            downstream_trainer_dict[downstream_name] = Trainer(downstream_args, downstream_task_dict[downstream_name], downstream_model_dict[downstream_name], downstream_criterion_dict[downstream_name])
+
 
     # Add F1 meters
     if args.eval_metric == 'macro_f1':
@@ -121,7 +135,6 @@ def main(args, init_distributed=False):
     lr = trainer.get_lr()
     train_meter = StopwatchMeter()
     train_meter.start()
-    valid_subsets = args.valid_subset.split(',')
     while (
         lr > args.min_lr
         and epoch_itr.next_epoch_idx <= max_epoch
@@ -137,11 +150,12 @@ def main(args, init_distributed=False):
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
 
             if args.eval_downstream:
-                # set num_updates for eval_trainer
-                eval_trainer.set_num_updates(trainer.get_num_updates())
+                for downstream_name in downstream_task_dict:
+                    # set num_updates for eval_trainer
+                    downstream_trainer_dict[downstream_name].set_num_updates(trainer.get_num_updates())
 
-                # validate on eval_task validation set
-                validate(args, eval_trainer, eval_task, epoch_itr, valid_subsets, eval_args.task)
+                    # validate on eval_task validation set
+                    validate(args, downstream_trainer_dict[downstream_name], downstream_task_dict[downstream_name], epoch_itr, downstream_valid_subset_dict[downstream_name], downstream_name)
         else:
             valid_losses = [None]
 
