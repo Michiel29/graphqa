@@ -22,7 +22,7 @@
     "total_num_updates": 10000000,
     "lr": [5e-5],
 
-    "num_workers": 3,
+    "num_workers": 4,
     "max_sentences": 1336,
     "update_freq": [7],
     "max_tokens": 12000,
