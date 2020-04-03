@@ -323,4 +323,4 @@ class AnnotatedText(object):
 
     @property
     def sizes(self):
-        return self.text_data.sizesannta
+        return self.text_data.sizes
