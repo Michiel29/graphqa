@@ -35,10 +35,10 @@ class TripletDataset(RelInfDataset):
 
         return {
             'text': padded_text,
-            'head':  torch.LongTensor(heads),
+            'head': torch.LongTensor(heads),
             'tail': torch.LongTensor(tails),
-            'target':  torch.LongTensor(targets),
-            'replace_heads':  torch.LongTensor(replace_heads),
+            'target': torch.LongTensor(targets),
+            'replace_heads': torch.LongTensor(replace_heads),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': nsentences

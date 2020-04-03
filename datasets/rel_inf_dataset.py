@@ -1,4 +1,5 @@
 import copy
+from functools import lru_cache
 import numpy as np
 import numpy.random as rd
 import torch
@@ -54,6 +55,7 @@ class RelInfDataset(FairseqDataset):
         assert len(result) == sum(n_samples_per_category)
         return result
 
+    @lru_cache(maxsize=8)
     def get_n_samples_per_category(self, num_replace_head):
         n_samples_per_category = [
             int(x * num_replace_head)
@@ -84,30 +86,26 @@ class RelInfDataset(FairseqDataset):
             tail_neighbors = self.graph.get_neighbors(tail)
 
             head_tail_neighbors = np.intersect1d(head_neighbors, tail_neighbors, assume_unique=True)
-            head_only_neighbors = np.setdiff1d(head_neighbors, tail_neighbors, assume_unique=True)
-            tail_only_neighbors = np.setdiff1d(tail_neighbors, head_neighbors, assume_unique=True)
+            head_only_neighbors = np.setdiff1d(head_neighbors, head_tail_neighbors, assume_unique=True)
+            tail_only_neighbors = np.setdiff1d(tail_neighbors, head_tail_neighbors, assume_unique=True)
 
-            item['head'] = (
-                [head]
-                + self.sample_neighbors(
-                    [head_tail_neighbors, tail_only_neighbors, head_only_neighbors],
-                    self.get_n_samples_per_category(num_replace_head),
-                )
-                + [head] * (self.k_negative - num_replace_head)
+            heads = np.full(1 + self.k_negative, fill_value=head, dtype=np.int64)
+            heads[1: 1 + num_replace_head] = self.sample_neighbors(
+                [head_tail_neighbors, tail_only_neighbors, head_only_neighbors],
+                self.get_n_samples_per_category(num_replace_head),
             )
+            item['head'] = heads
 
-            assert len(item['head']) == self.k_negative + 1
-            item['tail'] = (
-                [tail]
-                + [tail] * (num_replace_head)
-                + self.sample_neighbors(
-                    [head_tail_neighbors, head_only_neighbors, tail_only_neighbors],
-                    self.get_n_samples_per_category(self.k_negative - num_replace_head),
-                )
+            tails = np.full(1 + self.k_negative, fill_value=tail, dtype=np.int64)
+            tails[1 + num_replace_head:] = self.sample_neighbors(
+                [head_tail_neighbors, head_only_neighbors, tail_only_neighbors],
+                self.get_n_samples_per_category(self.k_negative - num_replace_head),
             )
-            assert len(item['tail']) == self.k_negative + 1
+            item['tail'] = tails
             item['target'] = 0
-            item['replace_heads'] = [1] * num_replace_head + [0] * (self.k_negative - num_replace_head)
+            replace_heads = np.zeros(self.k_negative, dtype=np.int64)
+            replace_heads[:num_replace_head] = 1
+            item['replace_heads'] = replace_heads
 
         return item
 
