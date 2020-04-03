@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import time
+import torch
 
 from fairseq.data import FairseqDataset
 from utils.plasma_utils import maybe_move_to_plasma
@@ -23,6 +24,8 @@ class GraphDataset(FairseqDataset):
 
     EDGE_CHUNK_SIZE = 3e6
 
+    NEIGHBORS_CACHE_SIZE = 100 * 1024 * 1024 # 100MB
+
     NUM_THREADS = 5
 
     def __init__(
@@ -39,6 +42,7 @@ class GraphDataset(FairseqDataset):
         self.epoch_splits = epoch_splits
         self.epoch_for_generation = None
         self.seed = seed
+        self.neighbors_cache = dict()
 
     def set_epoch(self, epoch):
         self.epoch = epoch
@@ -60,10 +64,26 @@ class GraphDataset(FairseqDataset):
                 # shuffled edges in 176 seconds
                 # shuffle_arrays([indices, sizes])
                 logger.info('shuffled edges in %d seconds' % (time.time() - start_time))
+
                 start_time = time.time()
                 self._generated_indices = maybe_move_to_plasma(indices)
                 self._generated_sizes = maybe_move_to_plasma(sizes)
                 logger.info('prepared plasma_arrays in %d seconds' % (time.time() - start_time))
+
+                start_time = time.time()
+                self.neighbors_cache = dict()
+                entity, total_bytes = 0, 0
+                while entity < len(self.edges) and total_bytes < self.NEIGHBORS_CACHE_SIZE:
+                    neighbors = self.get_neighbors(entity)
+                    total_bytes += neighbors.nelement() * neighbors.element_size()
+                    self.neighbors_cache[entity] = neighbors
+                    entity += 1
+                assert entity == len(self.neighbors_cache)
+                logger.info('cached neighbours for %d top entities (%.3f MB) in %.3f seconds.' % (
+                    entity,
+                    total_bytes / 1024 / 1024,
+                    time.time() - start_time,
+                ))
             self.epoch_for_generation = epoch_for_generation
 
         start_time = time.time()
@@ -101,7 +121,12 @@ class GraphDataset(FairseqDataset):
         return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
 
     def get_neighbors(self, entity):
-        return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
+        if isinstance(entity, torch.Tensor):
+            entity = entity.item()
+        if entity in self.neighbors_cache:
+            return self.neighbors_cache[entity]
+        else:
+            return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
 
     def subsample_graph_by_entity_pairs(self):
         from datasets.graph_dataset_util_fast import (
