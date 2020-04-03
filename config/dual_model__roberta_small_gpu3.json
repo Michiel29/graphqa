@@ -20,7 +20,7 @@
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
-    "lr": [5e-5],
+    "lr": [1e-4],
 
     "num_workers": 4,
     "max_sentences": 1336,

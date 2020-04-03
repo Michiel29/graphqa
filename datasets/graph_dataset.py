@@ -76,7 +76,7 @@ class GraphDataset(FairseqDataset):
                 while entity < len(self.edges) and total_bytes < self.NEIGHBORS_CACHE_SIZE:
                     neighbors = self.get_neighbors(entity)
                     total_bytes += neighbors.nelement() * neighbors.element_size()
-                    self.neighbors_cache[entity] = neighbors
+                    self.neighbors_cache[entity] = neighbors.numpy()
                     entity += 1
                 assert entity == len(self.neighbors_cache)
                 logger.info('cached neighbours for %d top entities (%.3f MB) in %.3f seconds.' % (

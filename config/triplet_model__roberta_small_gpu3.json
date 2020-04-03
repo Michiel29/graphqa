@@ -1,5 +1,5 @@
 {
-    "add_configs": ["roberta/small.json", "base.json"],
+    "add_configs": ["roberta/small.json", "base.json", "downstream.json"],
 
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_small",
@@ -8,35 +8,24 @@
     "encoder_output_layer_type": "entity_start_linear",
     // "data_path": "../data/nki/bin-v5-threshold20-small",
     "data_path": "../data/nki/bin-v5-threshold20",
-    "negative_split_probs": null,
-
-    "eval_downstream": true,
-    "eval_kwargs": {
-        "task": "fewrel",
-        "arch": "encoder_fewrel__roberta_small",
-        "data_path": "../data/fewrel/bin-v2",
-        "n_way": 5,
-        "n_shot": 1,
-        "max_sentences": 10,
-        "max_tokens": 2000,
-        "criterion": "cross_entropy_custom"
-    },
+    "negative_split_probs": [0.25, 0.25, 0.25],
 
     "mask_type": "start_end",
-    "non_mask_rate": 0.7,
+    "non_mask_rate": 0,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
-    "epoch_splits": 100,
+    "epoch_splits": 50,
+    "n_valid_examples": 20000,
 
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
-    "lr": [5e-4],
+    "lr": [1e-4],
 
-    "num_workers": 3,
-    "max_sentences": 1536,
-    "update_freq": [6],
-    "max_tokens": 14000,
+    "num_workers": 4,
+    "max_sentences": 1336,
+    "update_freq": [7],
+    "max_tokens": 12000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
