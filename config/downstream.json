@@ -11,7 +11,7 @@
             "max_tokens": 2000,
             "n_valid_examples": null,
             "mask_type": "start_end",
-            "non_masking_rate": 0,
+            "non_mask_rate": 0,
             "criterion": "cross_entropy_custom"
         },
         "fewrel_1": {
@@ -24,7 +24,7 @@
             "max_tokens": 2000,
             "n_valid_examples": null,
             "mask_type": "start_end",
-            "non_masking_rate": 1,
+            "non_mask_rate": 1,
             "criterion": "cross_entropy_custom"
         }
     }
