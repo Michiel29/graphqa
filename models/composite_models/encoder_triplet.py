@@ -40,15 +40,7 @@ class EncoderTripletModel(BaseFairseqModel):
         head_emb = self.entity_embedder(batch['head']) # [batch_size, (1 + k_negative), ent_dim]
         tail_emb = self.entity_embedder(batch['tail']) # [batch_size, (1 + k_negative), ent_dim]
 
-        multiply_view = [-1] * len(head_emb.shape)
-        multiply_view[-2] = head_emb.shape[-2]
-        text_enc = text_enc.unsqueeze(-2).expand(multiply_view) # [batch_size, (1 + k_negative), ent_dim]
-
         scores = self.triplet_model(text_enc, head_emb, tail_emb) # [batch_size, (1 + k_negative)]
-
-        #diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
-        #diag.inspect_batch(batch, scores=scores)
-
         return scores
 
     @staticmethod

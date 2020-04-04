@@ -125,6 +125,33 @@ class EntityTargetLinear(nn.Module):
             return torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
 
+class EntitySplitLinear(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        if args.mask_type == 'head_tail':
+            self.head_idx = dictionary.head()
+            self.tail_idx = dictionary.tail()
+        elif args.mask_type == 'start_end':
+            self.head_idx = dictionary.e1_start()
+            self.tail_idx = dictionary.e2_start()
+        else:
+            raise Exception('EntitySplitLinear is unsupported for the mask type %s' % str(args.mask_type))
+
+        self.linear = nn.Linear(args.encoder_embed_dim, args.entity_dim)
+
+    def forward(self, x, src_tokens, **unused):
+        # x: [batch_size, length, enc_dim]
+        head_mask = (src_tokens == self.head_idx) # [batch_size, length]
+        tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
+
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True)
+        head_sum = self.linear(head_sum)
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True)
+        tail_sum = self.linear(tail_sum)
+        return torch.cat((head_sum, tail_sum), dim=-1)
+
+
 class EntityStartLayerNorm(nn.Module):
 
     def __init__(self, args, dictionary):
@@ -136,7 +163,7 @@ class EntityStartLayerNorm(nn.Module):
             self.head_idx = dictionary.e1_start()
             self.tail_idx = dictionary.e2_start()
         else:
-            raise Exception('EntityStartLinear is unsupported for the mask type %s' % str(args.mask_type))
+            raise Exception('EntityStartLayerNorm is unsupported for the mask type %s' % str(args.mask_type))
 
         self.layer_norm = nn.LayerNorm(2*args.encoder_embed_dim)
 
@@ -239,6 +266,7 @@ encoder_head_dict = {
     'entity_start_linear': EntityStartLinear,
     'entity_start_mlp': EntityStartMLP,
     'entity_start_layer_norm': EntityStartLayerNorm,
+    'entity_split_linear': EntitySplitLinear,
     'entity_target_linear': EntityTargetLinear,
     'entity_pooling_first_token': EntityPoolingFirstToken,
     'cls_token_linear': CLSTokenLinear,

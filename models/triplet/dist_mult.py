@@ -8,9 +8,7 @@ class DistMult(nn.Module):
         super().__init__()
 
     def forward(self, mention, head, tail):
-        score = head * (mention * tail)
-        score = score.sum(dim = -1)
-        return score
+        return torch.bmm(head * tail, mention.unsqueeze(-1)).squeeze(-1)
 
 
 class DistMultEntityOnly(nn.Module):
@@ -26,6 +24,13 @@ class RotatE(nn.Module):
         super().__init__()
 
     def forward(self, mention, head, tail):
-        score = head * mention - tail
-        score = (score ** 2).sum(dim = -1)
-        return score
+        return ((mention.unsqueeze(-2) * head - tail) ** 2).sum(dim=-1)
+
+
+class ConcatDot(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+
+    def forward(self, mention, head, tail):
+        head_tail_emb = torch.cat([head, tail], axis=-1)
+        return torch.bmm(head_tail_emb, mention.unsqueeze(-1)).squeeze(-1)
