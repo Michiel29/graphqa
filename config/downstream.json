@@ -1,7 +1,7 @@
 {
     "eval_downstream": true,
     "downstream_dict": {
-            "fewrel": {
+        "fewrel": {
             "task": "fewrel",
             "arch": "encoder_fewrel__roberta_small",
             "data_path": "../data/fewrel/bin-v2",
@@ -10,6 +10,21 @@
             "max_sentences": 10,
             "max_tokens": 2000,
             "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_masking_rate": 0,
+            "criterion": "cross_entropy_custom"
+        },
+        "fewrel_1": {
+            "task": "fewrel",
+            "arch": "encoder_fewrel__roberta_small",
+            "data_path": "../data/fewrel/bin-v2",
+            "n_way": 5,
+            "n_shot": 1,
+            "max_sentences": 10,
+            "max_tokens": 2000,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_masking_rate": 1,
             "criterion": "cross_entropy_custom"
         }
     }
