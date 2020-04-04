@@ -22,9 +22,9 @@
     "lr": [1e-4],
 
     "num_workers": 3,
-    "max_sentences": 421,
-    "update_freq": [9],
-    "max_tokens": 2835,
+    "max_sentences": 350,
+    "update_freq": [10],
+    "max_tokens": 2600,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
