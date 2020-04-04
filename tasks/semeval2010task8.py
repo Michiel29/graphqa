@@ -2,8 +2,6 @@ import logging
 import os
 import collections
 
-import numpy as np
-
 from fairseq.tasks import register_task
 from fairseq import metrics
 
@@ -20,6 +18,7 @@ from utils.data_utils import (
 )
 from utils.dictionary import CustomDictionary
 from utils.logging_utils import compute_confusion_matrix, reduce_macro_mcm, MacroF1Meter
+from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +45,8 @@ class SemEval2010Task8Task(BaseTask):
         text_data = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
-        annotation_data = np.load(
+        annotation_data = MMapNumpyArray(
             os.path.join(self.args.data_path, split + '.annotations.npy'),
-            mmap_mode='r',
         )
         annotated_text = AnnotatedText(
             text_data=text_data,
@@ -81,9 +79,9 @@ class SemEval2010Task8Task(BaseTask):
 
     def reporter(self, pred, target, logging_output):
         fn, tp, fp = compute_confusion_matrix(
-            target=target.cpu().numpy(), 
-            pred=pred.detach().cpu().numpy(), 
-            avg='macro', 
+            target=target.cpu().numpy(),
+            pred=pred.detach().cpu().numpy(),
+            avg='macro',
             num_classes=self.args.num_classes
         )
         for i in fn.keys():

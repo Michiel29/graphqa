@@ -1,8 +1,6 @@
 import logging
 import os
 
-import numpy as np
-
 from fairseq.tasks import register_task
 
 from tasks import BaseTask
@@ -16,6 +14,7 @@ from utils.data_utils import (
     load_annotated_text,
     safe_load_indexed_dataset,
 )
+from utils.numpy_utils import MMapNumpyArray
 from utils.dictionary import CustomDictionary
 
 
@@ -46,9 +45,8 @@ class FewRelTask(BaseTask):
         text_data = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
-        annotation_data = np.load(
+        annotation_data = MMapNumpyArray(
             os.path.join(self.args.data_path, split + '.annotations.npy'),
-            mmap_mode='r',
         )
         annotated_text = AnnotatedText(
             text_data=text_data,

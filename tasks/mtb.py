@@ -21,6 +21,7 @@ from utils.data_utils import (
     load_annotated_text,
     safe_load_indexed_dataset,
 )
+from utils.numpy_utils import MMapNumpyArray
 
 
 logger = logging.getLogger(__name__)

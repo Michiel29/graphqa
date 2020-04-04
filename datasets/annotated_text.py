@@ -37,7 +37,7 @@ class AnnotatedText(object):
         self.sentence_offsets = maybe_move_to_plasma(offsets)
         logger.info('set up annotated text [n_sentences=%d, n_annotations=%d, mask_type=%s] in %.3f seconds' % (
             len(self.text_data),
-            len(self.annotation_data),
+            len(self.annotation_data.array),
             self.mask_type,
             time.time() - start_time,
         ))
@@ -128,8 +128,8 @@ class AnnotatedText(object):
 
     def annotations_block(self, start_block, end_block):
         # From http://sociograph.blogspot.com/2011/12/gotcha-with-numpys-searchsorted.html
-        start_block = self.annotation_data.dtype.type(start_block)
-        end_block = self.annotation_data.dtype.type(end_block)
+        start_block = self.annotation_data.array.dtype.type(start_block)
+        end_block = self.annotation_data.array.dtype.type(end_block)
 
         # We are interested in all annotations that INTERSECT [start_block; end_block)
         # Recall that the [start_pos; end_pos) interval for the annotation s is defined as
@@ -142,18 +142,18 @@ class AnnotatedText(object):
         #
         # First, we need to find an index s such that
         # annotations[s - 1].end_pos <= start_block < annotations[s].end_pos
-        s = np.searchsorted(self.annotation_data[:, 1], start_block, side='right')
+        s = np.searchsorted(self.annotation_data.array[:, 1], start_block, side='right')
 
         # It's possible that if start_block is so large that s for which
         # start_block < annotations[s].end_pos does not exist.
         # In this case, searchsorted will return len(self.annotation_data)
         # and we need to return an empty list
-        if s == len(self.annotation_data):
+        if s == len(self.annotation_data.array):
             return []
 
         # Second, we need to find an index e such that
         # annotations[e - 1].start_pos < end_block <= annotations[e].start_pos
-        e = np.searchsorted(self.annotation_data[:, 0], end_block, side='left')
+        e = np.searchsorted(self.annotation_data.array[:, 0], end_block, side='left')
 
         # It's possible that if start_block is so small that e for which
         # annotations[e - 1].start_pos < end_block does not exists.
@@ -162,7 +162,7 @@ class AnnotatedText(object):
         if e == 0:
             return []
 
-        return self.annotation_data[slice(s, e)]
+        return self.annotation_data.array[slice(s, e)]
 
     def filter_by_entities(self, annotations, entity_set):
         annotations_new = list()

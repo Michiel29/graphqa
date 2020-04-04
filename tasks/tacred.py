@@ -1,8 +1,6 @@
 import logging
 import os
 
-import numpy as np
-
 from fairseq.tasks import register_task
 from fairseq import metrics
 
@@ -19,6 +17,7 @@ from utils.data_utils import (
 )
 from utils.dictionary import CustomDictionary
 from utils.logging_utils import compute_confusion_matrix, MicroF1Meter
+from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +44,8 @@ class TACREDTask(BaseTask):
         text_data = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
-        annotation_data = np.load(
+        annotation_data = MMapNumpyArray(
             os.path.join(self.args.data_path, split + '.annotations.npy'),
-            mmap_mode='r',
         )
         annotated_text = AnnotatedText(
             text_data=text_data,
@@ -80,10 +78,10 @@ class TACREDTask(BaseTask):
 
     def reporter(self, pred, target, logging_output):
         fn, tp, fp = compute_confusion_matrix(
-            target=target.cpu().numpy(), 
-            pred=pred.detach().cpu().numpy(), 
-            avg='micro', 
-            num_classes=self.args.num_classes, 
+            target=target.cpu().numpy(),
+            pred=pred.detach().cpu().numpy(),
+            avg='micro',
+            num_classes=self.args.num_classes,
             ignore_classes=[self.args.num_classes-1]
         )
         logging_output['fn'] = fn

@@ -1,5 +1,4 @@
 import logging
-import numpy as np
 import os
 
 from fairseq.data import (
@@ -27,6 +26,7 @@ from utils.data_utils import (
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary, EntityDictionary
+from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)
 

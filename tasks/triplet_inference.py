@@ -1,8 +1,6 @@
 from fairseq.tasks import register_task
 import logging
-import numpy as np
 import os
-import time
 
 from datasets import (
     AnnotatedText,
@@ -12,6 +10,7 @@ from datasets import (
     TripletDataset,
 )
 from utils.data_utils import safe_load_indexed_dataset
+from utils.numpy_utils import MMapNumpyArray
 from tasks import RelationInferenceTask
 
 logger = logging.getLogger(__name__)
@@ -25,18 +24,9 @@ class TripletInferenceTask(RelationInferenceTask):
         text_data = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
-        start_time = time.time()
-        annotation_path = os.path.join(self.args.data_path, split + '.annotations.npy')
-        annotation_data = np.load(
-            annotation_path,
-            mmap_mode='r',
+        annotation_data = MMapNumpyArray(
+            os.path.join(self.args.data_path, split + '.annotations.npy')
         )
-        logger.info('loaded annotations %s from %s in %.3f seconds' % (
-            str(annotation_data.shape),
-            annotation_path,
-            time.time() - start_time,
-        ))
-
         annotated_text = AnnotatedText(
             text_data=text_data,
             annotation_data=annotation_data,
