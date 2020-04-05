@@ -24,11 +24,12 @@ def generate_save_dir(args):
         new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_string)
 
     if restore_file:
-        sub_dirs = [sub_dir[0] for sub_dir in os.walk(new_save_base) if sub_dir[0] != new_save_base]
+        sub_dirs = next(os.walk(os.path.join(new_save_base,'.')))[1]
+
         assert len(sub_dirs) > 0
-        time_stamps = [''.join(filter(str.isdigit, os.path.split(dirname)[1])) for dirname in sub_dirs]
+        time_stamps = [''.join(filter(str.isdigit, dirname)) for dirname in sub_dirs]
         latest_dir_idx = np.argsort(time_stamps)[-1]
-        new_save_dir = sub_dirs[latest_dir_idx]
+        new_save_dir = os.path.join(new_save_base, sub_dirs[latest_dir_idx])
     else:
         dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm")
         new_save_dir = os.path.join(new_save_base, dt_string)
