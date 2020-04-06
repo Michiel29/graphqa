@@ -19,7 +19,7 @@ import numpy as np
 import torch
 
 from fairseq import (
-    checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils, meters
+    checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
 )
 from fairseq.data import iterators
 from fairseq.trainer import Trainer
@@ -114,15 +114,6 @@ def main(args, init_distributed=False):
             downstream_criterion_dict[downstream_name] = downstream_task_dict[downstream_name].build_criterion(downstream_args)
 
             downstream_trainer_dict[downstream_name] = Trainer(downstream_args, downstream_task_dict[downstream_name], downstream_model_dict[downstream_name], downstream_criterion_dict[downstream_name])
-
-
-    # Add F1 meters
-    if args.eval_metric == 'macro_f1':
-        from utils.logging_utils import MacroF1Meter
-        meters.__dict__['MacroF1Meter'] = MacroF1Meter
-    elif args.eval_metric == 'micro_f1':
-        from utils.logging_utils import MicroF1Meter
-        meters.__dict__['MicroF1Meter'] = MicroF1Meter
 
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator

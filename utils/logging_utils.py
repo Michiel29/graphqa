@@ -1,5 +1,6 @@
 import numpy as np
 import collections
+from fairseq import meters
 from fairseq.logging.meters import AverageMeter, safe_round
 from typing import Optional
 from sklearn.metrics import multilabel_confusion_matrix
@@ -183,3 +184,6 @@ def reduce_macro_mcm(logging_outputs, num_classes, prefix):
         tp[i] = sum(log.get(prefix + 'tp_' + str(i), 0) for log in logging_outputs)
         fp[i] = sum(log.get(prefix + 'fp_' + str(i), 0) for log in logging_outputs)
     return fn, tp, fp
+
+meters.__dict__['MacroF1Meter'] = MacroF1Meter
+meters.__dict__['MicroF1Meter'] = MicroF1Meter
