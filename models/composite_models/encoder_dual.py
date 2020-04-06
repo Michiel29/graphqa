@@ -25,6 +25,7 @@ class EncoderDualModel(BaseFairseqModel):
 
         self.encoder = encoder
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
+        self.scaling = self.entity_dim ** -0.5
 
         self._max_positions = args.max_positions
 
@@ -40,7 +41,7 @@ class EncoderDualModel(BaseFairseqModel):
 
         head_or_tail = torch.unsqueeze(replace_heads, -1) * head_emb + (1 - torch.unsqueeze(replace_heads, -1)) * tail_emb
 
-        return torch.bmm(head_or_tail, text_enc.unsqueeze(-1)).squeeze(-1)
+        return self.scaling * torch.bmm(head_or_tail, text_enc.unsqueeze(-1)).squeeze(-1)
 
     @staticmethod
     def add_args(parser):
