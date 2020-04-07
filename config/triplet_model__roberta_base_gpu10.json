@@ -2,11 +2,11 @@
     "add_configs": ["roberta/base.json", "base.json", "downstream.json"],
 
     "task": "triplet_inference",
-    "arch": "encoder_triplet__roberta_small",
+    "arch": "encoder_triplet__roberta_base",
     "triplet_type": "concat_linear_dot",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
-    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    //"data_path": "../data/nki/bin-v5-threshold20-small",
     "data_path": "../data/nki/bin-v5-threshold20",
     "k_negative": 100,
     "negative_split_probs": [0.25, 0.25, 0.25],

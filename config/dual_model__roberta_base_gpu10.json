@@ -2,7 +2,7 @@
     "add_configs": ["roberta/base.json", "base.json", "downstream.json"],
 
     "task": "triplet_inference",
-    "arch": "encoder_dual__roberta_small",
+    "arch": "encoder_dual__roberta_base",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_target_linear",
     //"data_path": "../data/nki/bin-v5-threshold20-small",
