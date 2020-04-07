@@ -97,16 +97,10 @@ class FewRelDataset(FairseqDataset):
             return None
 
         text, annotation = [], []
-        exemplars, exemplars_annotations = [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
-            if 'annotation' in instance:
-                annotation.append(instance['annotation'])
-            exemplars += instance['exemplars']
-            if 'exemplars_annotations' in instance:
-                exemplars_annotations += instance['exemplars_annotations']
             ntokens += len(instance['text']) + sum([len(s) for s in instance['exemplars']])
             nsentences += 1 + len(instance['exemplars'])
 
@@ -122,17 +116,6 @@ class FewRelDataset(FairseqDataset):
             'nsentences': nsentences,
             'size': batch_size,
         }
-
-        if len(annotation) > 0:
-            import pdb; pdb.set_trace()
-            assert len(annotation) == len(text)
-            padded_annotation = pad_sequence(annotation, batch_first=True, padding_value=self.dictionary.pad())
-            item['annotation'] = padded_annotation
-        if len(exemplars_annotations) > 0:
-            assert len(exemplars_annotations) == len(exemplars)
-            padded_exemplars_annotations = pad_sequence(exemplars_annotations, batch_first=True, padding_value=self.dictionary.pad())
-            item['exemplars_annotations'] = padded_exemplars_annotations
-
         return item
 
     @property
