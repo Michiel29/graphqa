@@ -13,7 +13,6 @@ from datasets import (
     PrependTokenDataset,
 )
 from utils.data_utils import (
-    load_annotated_text,
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary
