@@ -4,18 +4,29 @@
     "task": "mtb",
     "arch": "encoder_mtb__roberta_small",
     //"arch": "encoder_mtb__roberta_base",
-    //"data_path": "../data/nki/bin_sample",
-    "data_path": "../data/nki/bin-v3-threshold20-small",
-    //"data_path": "../data/nki/bin-v3-threshold20",
+    "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
 
     "eval_downstream": true,
     "eval_kwargs": {
-        "task": "fewrel",
-        "arch": "encoder_fewrel__roberta_small",
-        "data_path": "../data/fewrel/bin",
-        "n_way": 5,
-        "n_shot": 1,
-        "criterion": "cross_entropy_custom"
+        "task": "semeval2010task8",
+        "arch": "encoder_semeval2010task8__roberta_small",
+        "entity_dim": null,
+        "mask_type": "start_end",
+        "non_mask_rate": 1,
+        "encoder_output_layer_type": "entity_start_layer_norm",
+
+        "max_epoch": 10,
+        "warmup_updates": 75, // bsz=64, max_epoch=10,
+        "lr": [5e-5],
+
+        "data_path": "../data/SemEval2010_task8_all_data/bin",
+        "criterion": "cross_entropy_custom",
+        "num_classes": 19,
+        "eval_metric": "macro_f1",
+        "max_sentences": 16,
+        "update_freq": [4],
+        "max_tokens": 1.75e3
     },
 
     "mask_type": "start_end",

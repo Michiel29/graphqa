@@ -212,9 +212,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Construction of IndexedDatasets for graph neighbors and edges')
     parser.add_argument('--data-path', type=str, help='Data directory', default='../data/bin_sample')
     parser.add_argument('--prefix', type=str)
-    parser.add_argument('--document-sep-len', type=int)
-    parser.add_argument('--max-positions', type=int)
-    parser.add_argument('--max-entity-pair-distance', type=int)
+    parser.add_argument('--document-sep-len', type=int, default=1)
+    parser.add_argument('--max-positions', type=int, default=123)
+    parser.add_argument('--max-entity-pair-distance', type=int, default=40)
 
     args = parser.parse_args()
     main(args)

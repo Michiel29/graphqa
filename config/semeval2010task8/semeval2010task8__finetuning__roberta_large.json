@@ -20,6 +20,7 @@
     // "lr": [1e-5],
     "lr": [2e-5],
     // "lr": [3e-5],
+    // "lr": [5e-5],
     // "lr_scheduler": "fixed",
 
     "max_sentences": 16,
