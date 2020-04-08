@@ -8,13 +8,23 @@ def select_component_state(model_state_dict, prefix):
     component_state_dict = {key: value for key, value in model_state_dict.items() if key.startswith(prefix)}
     return component_state_dict
 
-def generate_save_dir(args):
+def generate_save_dir(args, system_args):
     """For new experiments, generate checkpointing directory of form task/architecture/lr/datetime. When restoring from a checkpoint, return the path with the latest datetime in task/architecture/lr."""
 
     restore_file = getattr(args, 'restore_file', False)
 
     new_save_base = args.save_dir
-    for attribute_name in args.path_attributes:
+
+    save_attribute_names = args.path_attributes + [
+        arg_name.strip('-').replace('-', '_') for arg_name in system_args
+    if
+        arg_name.startswith('-')
+        and arg_name not in args.path_attributes
+        and not arg_name == '--config'
+    ]
+
+
+    for attribute_name in save_attribute_names:
         attribute_value = getattr(args, attribute_name)
         if isinstance(attribute_value, list):
             attribute_string = '__'.join([str(val) for val in attribute_value])

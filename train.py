@@ -95,8 +95,10 @@ def main(args, init_distributed=False):
         downstream_trainer_dict = {}
         downstream_valid_subset_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
-
             downstream_args = copy.deepcopy(args)
+            if 'add_configs' in downstream_kwargs:
+                for config_path in downstream_kwargs['add_configs']:
+                    downstream_kwargs = update_config(downstream_kwargs, compose_configs(os.path.join('config', config_path)))
             update_namespace(downstream_args, downstream_kwargs, override=True)
             downstream_arg_dict[downstream_name] = downstream_args
 
