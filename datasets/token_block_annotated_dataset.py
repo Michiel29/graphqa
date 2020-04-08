@@ -64,7 +64,10 @@ class TokenBlockAnnotatedDataset(TokenBlockDataset):
             end_block = start_block + length
 
             annotations = self.dataset.annotations_block(start_block, end_block)
-            entities = np.unique(annotations[:, AnnotatedText.INDEX_ANNOTATION_ENTITY])
+            if len(annotations) > 0:
+                entities = np.unique(annotations[:, AnnotatedText.INDEX_ANNOTATION_ENTITY])
+            else:
+                entities = []
             head_entity, tail_entity = self.sample_entities(entities)
             head_start_pos, head_end_pos = self.sample_annotation(annotations, head_entity)
             tail_start_pos, tail_end_pos = self.sample_annotation(annotations, tail_entity)
@@ -80,14 +83,9 @@ class TokenBlockAnnotatedDataset(TokenBlockDataset):
                 end_block=end_block,
                 annotations=annotations,
             )
-
-            if len(text) >= 128:
-                print('BAD')
-                pass
-
             return text
 
     @property
     def sizes(self):
-        # TODO: Note, this is an overestimation of actual number of tokens
+        # TODO: Note, this is an overestimation of the actual number of tokens
         return np.minimum(self._sizes.array, self.max_positions + 4)
