@@ -259,7 +259,7 @@ class AnnotatedText(object):
                         replacements.append((
                             annotation_start_pos,
                             annotation_end_pos,
-                            [marker_start] + text[annotation_start_pos:annotation_end_pos] + [marker_end],
+                            np.concatenate(([marker_start], text[annotation_start_pos:annotation_end_pos], [marker_end]))
                         ))
                 else:
                     if mask_decision:
