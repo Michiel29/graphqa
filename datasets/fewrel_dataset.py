@@ -96,11 +96,13 @@ class FewRelDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        text, annotation = [], []
+        text = []
+        exemplars = []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
+            exemplars += instance['exemplars']
             ntokens += len(instance['text']) + sum([len(s) for s in instance['exemplars']])
             nsentences += 1 + len(instance['exemplars'])
 
