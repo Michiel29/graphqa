@@ -177,21 +177,6 @@ class AnnotatedText(object):
         index = np.random.randint(len(annotations))
         return annotations[index]
 
-    def mask_annotations(self, text, annotations, entity_id, replacement, target_annotation_start):
-        for annotation in annotations:
-            annotation_start_pos = annotation[self.INDEX_ANNOTATION_START]
-            if (
-                annotation[self.INDEX_ANNOTATION_ENTITY] == entity_id
-                and annotation_start_pos != target_annotation_start
-            ):
-                annotation_pos_slice = slice(
-                    annotation_start_pos,
-                    annotation[self.INDEX_ANNOTATION_END],
-                )
-                text[annotation_pos_slice] = -1
-                text[annotation_start_pos] = replacement
-        return text
-
     def head_tail_mask(
         self,
         text,
@@ -231,6 +216,52 @@ class AnnotatedText(object):
         )
         return text
 
+    def prepare_replacements(
+        self,
+        text,
+        annotations,
+        entity_id,
+        target_annotation_start,
+        marker_start,
+        marker_end,
+        blank_other,
+    ):
+        if entity_id is None:
+            return []
+        # For each entity, randomly decide whether to mask it with a [BLANK] token
+        #   - NO, with probability non_mask_rate
+        #   - YES, with probability 1-non_mask_rate
+        mask_decision = np.random.choice(2, 1, p=[self.non_mask_rate, 1 - self.non_mask_rate])[0]
+        replacements = []
+
+        for annotation in annotations:
+            annotation_start_pos = annotation[self.INDEX_ANNOTATION_START]
+            annotation_end_pos = annotation[self.INDEX_ANNOTATION_END]
+            if annotation[self.INDEX_ANNOTATION_ENTITY] == entity_id:
+                is_target_annotation = (annotation_start_pos == target_annotation_start)
+                if is_target_annotation:
+                    if mask_decision:
+                        replacements.append((
+                            annotation_start_pos,
+                            annotation_end_pos,
+                            [marker_start, self.dictionary.blank(), marker_end],
+                        ))
+                    else:
+                        replacements.append((
+                            annotation_start_pos,
+                            annotation_end_pos,
+                            [marker_start] + text[annotation_start_pos:annotation_end_pos] + [marker_end],
+                        ))
+                else:
+                    if mask_decision:
+                        replacements.append((
+                            annotation_start_pos,
+                            annotation_end_pos,
+                            [blank_other],
+                        ))
+        assert len(replacements) >= 1
+        return replacements
+
     def start_end_mask(
         self,
         text,
@@ -242,73 +273,39 @@ class AnnotatedText(object):
         tail_start_pos,
         tail_end_pos,
     ):
-        # For each entity, randomly decide whether to mask it with a [BLANK] token
-        #   - NO, with probability non_mask_rate
-        #   - YES, with probability 1-non_mask_rate
-        mask_decision = np.random.choice(2, 2, p=[self.non_mask_rate, 1 - self.non_mask_rate])
+        replacements = self.prepare_replacements(
+            text,
+            annotations,
+            head_entity,
+            head_start_pos,
+            self.dictionary.e1_start(),
+            self.dictionary.e1_end(),
+            self.dictionary.blank_head_other(),
+        ) + self.prepare_replacements(
+            text,
+            annotations,
+            tail_entity,
+            tail_start_pos,
+            self.dictionary.e2_start(),
+            self.dictionary.e2_end(),
+            self.dictionary.blank_tail_other(),
+        )
+        replacements.sort()
+        replacements = reversed(replacements)
 
-        if mask_decision[0]:
-            text = self.mask_annotations(
-                text,
-                annotations,
-                head_entity,
-                self.dictionary.blank_head_other(),
-                target_annotation_start=head_start_pos,
-            )
-        if mask_decision[1]:
-            text = self.mask_annotations(
-                text,
-                annotations,
-                tail_entity,
-                self.dictionary.blank_tail_other(),
-                target_annotation_start=tail_start_pos,
-            )
+        for start_pos, end_pos, replacement_tokens in replacements:
+            text = np.concatenate([
+                text[:start_pos],
+                replacement_tokens,
+                text[end_pos:],
+            ])
 
-        head_dict = {
-            'text': np.concatenate([
-                [self.dictionary.e1_start()],
-                [self.dictionary.blank()] if mask_decision[0] else text[head_start_pos:head_end_pos],
-                [self.dictionary.e1_end()],
-            ]),
-            'start': head_start_pos,
-            'end': head_end_pos,
-        }
-        tail_dict = {
-            'text': np.concatenate([
-                [self.dictionary.e2_start()],
-                [self.dictionary.blank()] if mask_decision[1] else text[tail_start_pos:tail_end_pos],
-                [self.dictionary.e2_end()],
-            ]),
-            'start': tail_start_pos,
-            'end': tail_end_pos,
-        }
-        if head_start_pos < tail_start_pos:
-            first_dict, second_dict = head_dict, tail_dict
-        else:
-            first_dict, second_dict = tail_dict, head_dict
-
-        text = np.concatenate([
-            text[:first_dict['start']],
-            first_dict['text'],
-            text[first_dict['end']:second_dict['start']],
-            second_dict['text'],
-            text[second_dict['end']:],
-        ])
-
-        text = text[text != -1]
-
-        assert (text == self.dictionary.blank()).sum() == mask_decision.sum()
-        assert self.dictionary.e1_start() in text
-        assert self.dictionary.e1_end() in text
-        assert self.dictionary.e2_start() in text
-        assert self.dictionary.e2_end() in text
-
-        if mask_decision.sum() == 2:
-            assert (
-                (text == self.dictionary.blank_head_other()).sum()
-                + (text == self.dictionary.blank_tail_other()).sum()
-                == len(annotations) - 2
-            )
+        if head_entity is not None:
+            assert (text == self.dictionary.e1_start()).sum() == 1
+            assert (text == self.dictionary.e1_end()).sum() == 1
+        if tail_entity is not None:
+            assert (text == self.dictionary.e2_start()).sum() == 1
+            assert (text == self.dictionary.e2_end()).sum() == 1
 
         return text
 
