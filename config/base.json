@@ -17,6 +17,7 @@
     "n_test_examples": null,
 
     "num_workers": 2,
+    "path_attributes": ["task", "lr"],
     "save_dir": "../save/",
     "restore_file": false,
 

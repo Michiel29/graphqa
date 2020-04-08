@@ -331,7 +331,7 @@ def cli_main():
 
     update_namespace(args, config_dict)
 
-    base_save_dir = generate_save_dir(args)
+    base_save_dir = generate_save_dir(args, sys.argv[1:])
     setattr(args, 'save_dir', os.path.join(base_save_dir, 'checkpoints'))
     setattr(args, 'tensorboard_logdir', os.path.join(base_save_dir, 'tensorboard'))
 
