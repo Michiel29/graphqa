@@ -6,7 +6,7 @@ from fairseq.data import BaseWrapperDataset
 
 class PrependTokenDataset(BaseWrapperDataset):
 
-    def __init__(self, dataset, token, keys):
+    def __init__(self, dataset, token, keys=None):
         super().__init__(dataset)
         self.token = token
         if not isinstance(keys, list):
@@ -17,18 +17,21 @@ class PrependTokenDataset(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
-        ntokens = item.get('ntokens', 0)
+        ntokens = item.get['ntokens'] if hasattr(item, 'ntokens') else 0
 
         for key in self.keys:
             if isinstance(item[key], list):
                 for i in range(len(item[key])):
                     item[key][i] = torch.cat([item[key][i].new([self.token]), item[key][i]])
                     ntokens += 1
-            else:
+            elif key is not None:
                 item[key] = torch.cat([item[key].new([self.token]), item[key]])
                 ntokens += 1
+            else:
+                item = torch.cat([item.new([self.token]), item])
+                ntokens += 1
 
-        if 'ntokens' in item:
+        if hasattr(item, 'ntokens'):
             item['ntokens'] = ntokens
         return item
 

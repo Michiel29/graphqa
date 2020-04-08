@@ -16,16 +16,13 @@ from fairseq.tasks import register_task
 
 from datasets import (
     AnnotatedText,
-    SelectDictionaryDataset,
     FixedSizeDataset,
+    PrependTokenDataset,
     ShuffledDataset,
+    TokenBlockAnnotatedDataset,
 )
 from tasks import BaseTask
-from utils.data_utils import (
-    load_annotated_text,
-    safe_load_indexed_dataset,
-)
-from utils.dictionary import CustomDictionary, EntityDictionary
+from utils.data_utils import safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)
@@ -50,45 +47,29 @@ class MaskedLMEMTask(BaseTask):
         parser.add_argument('--mask-whole-words', default=True, action='store_true',
                             help='mask whole words; you may also want to set --bpe')
 
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
-
-        logger.info('dictionary: {} types'.format(len(dictionary)))
-
-        task = cls(args, dictionary, None)
-        return task
-
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        text_data, annotation_data = load_annotated_text(
-            self.args.data_path,
-            split,
-            self.dictionary.bos(),
+        text_data = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.text'),
         )
-        annotated_text_dataset = AnnotatedTextDataset(
+        annotation_data = MMapNumpyArray(
+            os.path.join(self.args.data_path, split + '.annotations.npy'),
+        )
+        annotated_text = AnnotatedText(
             text_data=text_data,
             annotation_data=annotation_data,
             dictionary=self.dictionary,
-            entity_dictionary=self.entity_dictionary,
-            shift_annotations=1,
             mask_type=self.args.mask_type,
-            assign_head_tail='random',
-            seed=self.seed,
-            alpha=self.args.alpha,
+            non_mask_rate=self.args.non_mask_rate,
         )
-
-        n_examples = int(getattr(self.args, 'n_' + split + '_examples', None))
-        if n_examples is not None:
-            dataset = SelectDictionaryDataset(
-                FixedSizeDataset(
-                    dataset=self.filter_by_max_positions(annotated_text_dataset),
-                    size=n_examples,
-                    seed=self.seed,
-                ),
-                'text',
-            )
+        dataset = TokenBlockAnnotatedDataset(
+            annotated_text=annotated_text,
+            max_positions=self.max_positions() - 5, # <cls>, e1/e2 start/end
+            pad=self.dictionary.pad(),
+            eos=self.dictionary.eos(),
+            seed=self.seed,
+            document_sep_len=1,
+        )
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos())
 
         # create masked input and targets
         mask_whole_words = get_whole_word_mask(self.args, self.source_dictionary) \
@@ -107,7 +88,7 @@ class MaskedLMEMTask(BaseTask):
             mask_whole_words=mask_whole_words,
         )
 
-        self.datasets[split] = ShuffledDataset(
+        dataset = ShuffledDataset(
                 NestedDictionaryDataset(
                 {
                     'id': IdDataset(),
@@ -131,3 +112,13 @@ class MaskedLMEMTask(BaseTask):
             ),
             sizes=src_dataset.sizes,
         )
+
+        n_examples = getattr(self.args, 'n_' + split + '_examples', None)
+        if n_examples is not None:
+            dataset = FixedSizeDataset(
+                dataset=dataset,
+                size=n_examples,
+                seed=self.seed,
+            )
+
+        self.datasets[split] = dataset

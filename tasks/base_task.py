@@ -25,6 +25,7 @@ class BaseTask(FairseqTask):
         self.dictionary = dictionary
         self.entity_dictionary = entity_dictionary
         self.mask_type = args.mask_type
+        self._max_positions = args.max_positions
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -189,3 +190,6 @@ class BaseTask(FairseqTask):
 
     def reporter(self, pred, target, logging_output):
         return logging_output
+
+    def max_positions(self):
+        return self._max_positions

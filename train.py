@@ -110,8 +110,16 @@ def main(args, init_distributed=False):
             for valid_sub_split in downstream_valid_subset_dict[downstream_name]:
                 downstream_task_dict[downstream_name].load_dataset(valid_sub_split, combine=False, epoch=0)
 
+            if hasattr(model, 'encoder'):
+                encoder = model.encoder
+            else:
+                encoder = model
             # Set up eval model, criterion, and trainer
-            downstream_model_dict[downstream_name] = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task_dict[downstream_name], model.encoder)
+            downstream_model_dict[downstream_name] = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(
+                downstream_args,
+                downstream_task_dict[downstream_name],
+                encoder,
+            )
 
             downstream_criterion_dict[downstream_name] = downstream_task_dict[downstream_name].build_criterion(downstream_args)
 

@@ -69,6 +69,7 @@ class AnnotatedText(object):
         tail_end_pos,
         start_block,
         end_block,
+        annotations=None,
     ):
         text = np.frombuffer(
             self.text_data._bin_buffer,
@@ -81,22 +82,27 @@ class AnnotatedText(object):
         if self.mask_type is None:
             return torch.tensor(text)
 
-        annotations = self.annotations_block(start_block, end_block)
+        if annotations is None:
+            annotations = self.annotations_block(start_block, end_block)
+
         annotations = self.filter_by_entities(annotations, {head_entity, tail_entity})
         # both head and tail should be in annotations
-        assert len(annotations) >= 2
-        annotations[:, self.INDEX_ANNOTATION_START] = np.maximum(
-            annotations[:, self.INDEX_ANNOTATION_START] - start_block,
-            0,
-        )
-        annotations[:, self.INDEX_ANNOTATION_END] = np.minimum(
-            annotations[:, self.INDEX_ANNOTATION_END] - start_block,
-            len(text),
-        )
-        head_start_pos -= start_block
-        head_end_pos -= start_block
-        tail_start_pos -= start_block
-        tail_end_pos -= start_block
+        assert len(annotations) >= int(head_entity is not None) + int(tail_entity is not None)
+        if len(annotations) > 0:
+            annotations[:, self.INDEX_ANNOTATION_START] = np.maximum(
+                annotations[:, self.INDEX_ANNOTATION_START] - start_block,
+                0,
+            )
+            annotations[:, self.INDEX_ANNOTATION_END] = np.minimum(
+                annotations[:, self.INDEX_ANNOTATION_END] - start_block,
+                len(text),
+            )
+        if head_entity is not None:
+            head_start_pos -= start_block
+            head_end_pos -= start_block
+        if tail_entity is not None:
+            tail_start_pos -= start_block
+            tail_end_pos -= start_block
 
         if self.mask_type == 'head_tail':
             text = self.head_tail_mask(
@@ -169,7 +175,10 @@ class AnnotatedText(object):
         for annotation in annotations:
             if annotation[self.INDEX_ANNOTATION_ENTITY] in entity_set:
                 annotations_new.append(annotation)
-        return np.stack(annotations_new)
+        if len(annotations_new) > 0:
+            return np.stack(annotations_new)
+        else:
+            return np.array([], dtype=np.int64)
 
     def sample_annotation(self, annotations, entity):
         annotations = self.filter_by_entities(annotations, {entity})
