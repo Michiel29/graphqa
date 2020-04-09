@@ -144,14 +144,17 @@ def main(args, init_distributed=False):
     lr = trainer.get_lr()
     train_meter = StopwatchMeter()
     train_meter.start()
+    if args.validate_before_training and extra_state is None:
+        assert epoch_itr.epoch == 1
+        epoch_itr.epoch = 0
     while (
         lr > args.min_lr
         and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):
-
-        # train for one epoch
-        train(args, trainer, task, epoch_itr)
+        if epoch_itr.epoch > 0:
+            # train for one epoch
+            train(args, trainer, task, epoch_itr)
 
         if not args.disable_validation and epoch_itr.epoch % args.validate_interval == 0:
 
@@ -183,21 +186,26 @@ def main(args, init_distributed=False):
         else:
             valid_losses = [None]
 
-        # only use first validation loss to update the learning rate
-        lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
+        if epoch_itr.epoch > 0:
+            # only use first validation loss to update the learning rate
+            lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
 
-        # save checkpoint
-        if epoch_itr.epoch % args.save_interval == 0:
-            checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+            # save checkpoint
+            if epoch_itr.epoch % args.save_interval == 0:
+                checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
-        # early stop
-        if should_stop_early(args, valid_losses[0]):
-            logger.info('early stop since valid performance hasn\'t improved for last {} runs'.format(args.patience))
-            break
+            # early stop
+            if should_stop_early(args, valid_losses[0]):
+                logger.info('early stop since valid performance hasn\'t improved for last {} runs'.format(args.patience))
+                break
 
-        reload_dataset = getattr(args, 'reload', False)
-        # sharded data: get train iterator for next epoch
-        epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
+            reload_dataset = getattr(args, 'reload', False)
+            # sharded data: get train iterator for next epoch
+            epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
+
+        else:
+            epoch_itr.epoch = 1
+
     train_meter.stop()
     logger.info('done training in {:.1f} seconds'.format(train_meter.sum))
 

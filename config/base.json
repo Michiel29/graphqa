@@ -25,5 +25,7 @@
     "no_epoch_checkpoints": false,
 
     "num_classes": null,
-    "eval_metric": null
+    "eval_metric": null,
+
+    "validate_before_training": true
 }
