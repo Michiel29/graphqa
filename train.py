@@ -165,7 +165,6 @@ def main(args, init_distributed=False):
                     downstream_task = downstream_task_dict[downstream_name]
                     downstream_trainer = downstream_trainer_dict[downstream_name]
                     downstream_valid_subset = downstream_valid_subset_dict[downstream_name]
-                    # downstream_epoch_itr = downstream_epoch_itr_dict[downstream_name]
 
                     # set num_updates for downstream_trainer
                     downstream_trainer.set_num_updates(trainer.get_num_updates())
@@ -179,11 +178,7 @@ def main(args, init_distributed=False):
 
                     elif downstream_args.task_type != 'supervised':
                         # validate on downstream_task validation set (zero-shot and few-shot)
-                        # validate(args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
                         validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
-
-                    else:
-                        pass
 
         else:
             valid_losses = [None]
@@ -383,7 +378,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
 
     if args.use_sklearn_classifier:
         # Load downstream train data
-        features, targets = load_downstream_data(progress, trainer)
+        features, targets = load_downstream_data(progress, trainer, args.scaler)
 
         # Train classifier
         logger.info('fine-tuning LogisticRegression classifier on \'{}\''.format(task_name))
@@ -396,6 +391,9 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
             ).fit(features, targets)
         else:
             classifier = LogisticRegression(
+                solver=args.solver,
+                multi_class=args.multi_class,
+                # n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
                 random_state=args.seed, 
                 max_iter=args.max_iter,
                 verbose=args.verbose
