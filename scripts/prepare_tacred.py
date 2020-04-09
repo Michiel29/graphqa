@@ -20,11 +20,13 @@ TRAINING_TQDM_BAD_FORMAT = (
 
 
 class TACREDProcessor(object):
-    def __init__(self, roberta_dir, dataset_impl, append_eos):
+    def __init__(self, roberta_dir, dataset_impl, append_eos, max_positions):
         self.dataset_impl = dataset_impl
         self.append_eos = append_eos
         self.roberta_dir = roberta_dir
         assert os.path.isdir(self.roberta_dir)
+
+        self.max_positions = max_positions
 
         self.ent_tokens = {
             1: {'start': '<e1>', 'end': '</e1>'},
@@ -129,12 +131,56 @@ class TACREDProcessor(object):
 
         return annotations
 
+    def truncate_text(self, text, annotations):
+        full_text_len = len(text)
+
+        start_words, end_words = [], []
+        for a in annotations:
+            start_words.append(a['start_word'])
+            end_words.append(a['end_word'])
+        
+        text_start = min(start_words)
+        text_end = max(end_words)
+        text_len = text_end - text_start
+        if text_len > self.max_positions-1:
+            return None, None
+        assert text_len <= self.max_positions-1
+
+        if text_len == self.max_positions-1:
+            for ent_id in range(len(annotations)):
+                annotations[ent_id]['start_word'] -= text_start
+                annotations[ent_id]['end_word'] -= text_start
+            return text[text_start:text_end], annotations
+
+        while text_len < self.max_positions-1:
+            if text_start > 0 and text_len < self.max_positions-1:
+                text_start -= 1
+                text_len += 1
+            if text_end < full_text_len-1 and text_len < self.max_positions-1:
+                text_end += 1
+                text_len += 1
+        
+        truncated_text = text[text_start:text_end]
+        assert len(truncated_text) <= self.max_positions-1
+
+        for ent_id in range(len(annotations)):
+            annotations[ent_id]['start_word'] -= text_start
+            annotations[ent_id]['end_word'] -= text_start
+
+        return truncated_text, annotations
+
     def __call__(self, tokens, annot):
         global vocab
         annotations = self.build_annotations(tokens, annot)
         annotations.sort(key=lambda x: x['start_word'])
         words, annotations = self.strip_empty_words(tokens, annotations)
         ids, annotations = self.apply_gt2_bpe(' '.join(words), annotations)
+
+        if len(ids) >= self.max_positions:
+            ids, annotations = self.truncate_text(ids, annotations)
+            if ids is None:
+                return None, None
+
         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
 
         assert len(ids_tensor) == len(ids) + int(self.append_eos)
@@ -162,6 +208,7 @@ def main(args):
         args.roberta_dir,
         args.dataset_impl,
         args.append_eos,
+        args.max_positions
     )
     pbar = tqdm.tqdm(
         total=len(data),
@@ -198,6 +245,8 @@ def main(args):
         # if relation_type_id == -1:
         #     continue
         for ids_tensor, _annotations_list in map(processor, tokens, annot):
+            if ids_tensor is None:
+                continue
             dataset_builder.add_item(ids_tensor)
             relations_builder.add_item(torch.IntTensor([relation_type_id]))
             _annotations_list[:, 0] += total_length
@@ -229,5 +278,6 @@ if __name__ == '__main__':
         default='mmap',
         choices=indexed_dataset.get_available_dataset_impl(),
         help='output dataset implementation')
+    parser.add_argument('--max-positions', type=int, default=123)
     args = parser.parse_args()
     main(args)
