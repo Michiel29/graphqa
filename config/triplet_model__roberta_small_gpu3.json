@@ -1,5 +1,5 @@
 {
-    "add_configs": ["roberta/small.json", "base.json", "downstream.json"],
+    "add_configs": ["roberta/small.json", "base.json", "downstream/downstream_small.json"],
 
     "task": "triplet_inference",
     "arch": "encoder_triplet__roberta_small",
