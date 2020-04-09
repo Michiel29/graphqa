@@ -28,7 +28,6 @@
     "max_tokens": 2600,
     // batch size ~ 2300
     "required_batch_size_multiple": 1,
-    "max_positions": 512,
 
     "criterion": "cross_entropy_custom"
 }

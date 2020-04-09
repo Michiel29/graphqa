@@ -35,7 +35,7 @@
             "multi_class": "ovr",
             "solver": "liblinear",
             "scaler": null,
-            // "n_jobs": 30,
+            "n_jobs": 30,
             "max_iter": 1e5,
             "verbose": 0,
             "cross_validation": false
@@ -54,7 +54,7 @@
             "multi_class": "ovr",
             "solver": "liblinear",
             "scaler": null,
-            // "n_jobs": 30,
+            "n_jobs": 30,
             "max_iter": 1e5,
             "verbose": 0,
             "cross_validation": false
@@ -73,7 +73,7 @@
             "multi_class": "ovr",
             "solver": "liblinear",
             "scaler": null,
-            // "n_jobs": 30,
+            "n_jobs": 30,
             "max_iter": 1e5,
             "verbose": 0,
             "cross_validation": false

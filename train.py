@@ -404,7 +404,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
             classifier = LogisticRegression(
                 solver=args.solver,
                 multi_class=args.multi_class,
-                # n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
+                n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
                 random_state=args.seed, 
                 max_iter=args.max_iter,
                 verbose=args.verbose
