@@ -1,0 +1,74 @@
+{
+    "eval_downstream": true,
+    "downstream_dict": {
+        "fewrel_0": {
+            "add_configs": ["fewrel/5_way_1_shot.json"],
+            "task_type": "zero_shot",
+            "arch": "encoder_fewrel__roberta_base",
+            "max_sentences": 10,
+            "max_tokens": 2000,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_mask_rate": 0
+        },
+
+        "fewrel_1": {
+            "add_configs": ["fewrel/5_way_1_shot.json"],
+            "task_type": "few_shot",
+            "arch": "encoder_fewrel__roberta_base",
+            "max_sentences": 10,
+            "max_tokens": 2000,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_mask_rate": 1
+        },
+
+        "semeval2010task8": {
+            "add_configs": ["semeval2010task8/semeval2010task8.json"],
+            "task_type": "supervised",
+            "arch": "encoder_semeval2010task8__roberta_base",
+            "max_sentences": 64,
+            "max_tokens": 6e3,
+            "n_train_examples": null,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_mask_rate": 1,
+            "use_sklearn_classifier": true,
+            "max_iter": 1e5,
+            "verbose": 0,
+            "cross_validation": false
+        },
+
+        "kbp37": {
+            "add_configs": ["kbp37/kbp37.json"],
+            "task_type": "supervised",
+            "arch": "encoder_kbp37__roberta_base",
+            "max_sentences": 64,
+            "max_tokens": 6e3,
+            "n_train_examples": null,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_mask_rate": 1,
+            "use_sklearn_classifier": true,
+            "max_iter": 1e5,
+            "verbose": 0,
+            "cross_validation": false
+        },
+
+        "tacred": {
+            "add_configs": ["tacred/tacred.json"],
+            "task_type": "supervised",
+            "arch": "encoder_tacred__roberta_base",
+            "max_sentences": 64,
+            "max_tokens": 6e3,
+            "n_train_examples": null,
+            "n_valid_examples": null,
+            "mask_type": "start_end",
+            "non_mask_rate": 1,
+            "use_sklearn_classifier": true,
+            "max_iter": 1e5,
+            "verbose": 0,
+            "cross_validation": false
+        }
+    }
+}

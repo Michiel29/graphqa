@@ -16,7 +16,11 @@ from utils.data_utils import (
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary
-from utils.logging_utils import compute_confusion_matrix, reduce_macro_mcm, MacroF1Meter
+from utils.logging_utils import (
+    compute_confusion_matrix, 
+    reduce_macro_mcm, 
+    MacroF1Meter
+)
 from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)

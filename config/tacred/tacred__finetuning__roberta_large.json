@@ -12,6 +12,7 @@
     "mask_type": "start_end",
     "non_mask_rate": 1,
     "encoder_output_layer_type": "entity_start_linear",
+    "use_sklearn_classifier": false,
 
     "max_epoch": 10,
     // "warmup_updates": 2580, // bsz=16, max_epoch=10

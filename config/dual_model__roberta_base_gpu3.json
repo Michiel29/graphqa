@@ -1,0 +1,34 @@
+{
+    "add_configs": ["roberta/base.json", "base.json", "downstream_base.json"],
+
+    "task": "triplet_inference",
+    "arch": "encoder_dual__roberta_base",
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_target_linear",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+    "k_negative": 100,
+    "negative_split_probs": [0.25, 0.25, 0.25],
+
+    "mask_type": "start_end",
+    "non_mask_rate": 0,
+    "subsampling_strategy": "by_entity_pair",
+    "subsampling_cap": 100,
+    "epoch_splits": 50,
+    "n_valid_examples": 20000,
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    "max_sentences": 350,
+    "update_freq": [3],
+    "max_tokens": 2600,
+    // batch size ~ 2300
+    "required_batch_size_multiple": 1,
+    "max_positions": 512,
+
+    "criterion": "cross_entropy_custom"
+}

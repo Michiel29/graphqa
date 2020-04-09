@@ -47,7 +47,7 @@ class CrossEntropy(FairseqCriterion):
             'accuracy': utils.item((pred == target).float().sum()),
         }
 
-        logging_output = self.task.reporter(pred, target, logging_output)
+        logging_output = self.task.reporter(target, pred, logging_output)
 
         return loss, sample_size, logging_output
 

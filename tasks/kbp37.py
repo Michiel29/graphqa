@@ -16,7 +16,11 @@ from utils.data_utils import (
     safe_load_indexed_dataset,
 )
 from utils.dictionary import CustomDictionary
-from utils.logging_utils import compute_confusion_matrix, reduce_macro_mcm, MacroF1Meter
+from utils.logging_utils import (
+    compute_confusion_matrix, 
+    reduce_macro_mcm, 
+    MacroF1Meter
+)
 from utils.numpy_utils import MMapNumpyArray
 
 logger = logging.getLogger(__name__)
@@ -76,7 +80,7 @@ class KBP37Task(BaseTask):
 
         self.datasets[split] = dataset
 
-    def reporter(self, pred, target, logging_output):
+    def reporter(self, target, pred, logging_output):
         fn, tp, fp = compute_confusion_matrix(
             target=target.cpu().numpy(),
             pred=pred.detach().cpu().numpy(),

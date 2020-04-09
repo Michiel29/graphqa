@@ -75,7 +75,7 @@ class TACREDTask(BaseTask):
 
         self.datasets[split] = dataset
 
-    def reporter(self, pred, target, logging_output):
+    def reporter(self, target, pred, logging_output):
         fn, tp, fp = compute_confusion_matrix(
             target=target.cpu().numpy(),
             pred=pred.detach().cpu().numpy(),

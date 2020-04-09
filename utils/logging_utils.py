@@ -3,7 +3,7 @@ import collections
 from fairseq import meters
 from fairseq.logging.meters import AverageMeter, safe_round
 from typing import Optional
-from sklearn.metrics import multilabel_confusion_matrix
+from sklearn.metrics import multilabel_confusion_matrix, log_loss, accuracy_score
 
 
 class MacroF1Meter(AverageMeter):
@@ -184,6 +184,33 @@ def reduce_macro_mcm(logging_outputs, num_classes, prefix):
         tp[i] = sum(log.get(prefix + 'tp_' + str(i), 0) for log in logging_outputs)
         fp[i] = sum(log.get(prefix + 'fp_' + str(i), 0) for log in logging_outputs)
     return fn, tp, fp
+
+def compute_sklearn_stats(target, pred, prob, num_classes, eval_metric):
+    stats = {
+        'loss': log_loss(target, prob, labels=list(range(num_classes))),
+        'acc': accuracy_score(target, pred)
+    } 
+
+    if eval_metric == 'macro_f1':
+        fn, tp, fp = compute_confusion_matrix(
+            target=target,
+            pred=pred,
+            avg='macro',
+            num_classes=num_classes
+        )
+        stats['micro_f1'] = compute_macro_f1(fn, tp, fp, [num_classes-1], True)
+
+    elif eval_metric == 'micro_f1':
+        fn, tp, fp = compute_confusion_matrix(
+            target=target,
+            pred=pred,
+            avg='micro',
+            num_classes=num_classes,
+            ignore_classes=[num_classes-1]
+        )
+        stats['macro_f1'] = compute_f1(fn, tp, fp)
+
+    return stats
 
 meters.__dict__['MacroF1Meter'] = MacroF1Meter
 meters.__dict__['MicroF1Meter'] = MicroF1Meter

@@ -16,13 +16,16 @@ class EncoderKBP37Model(BaseFairseqModel):
     def __init__(self, args, encoder, task):
         super().__init__()
 
+        self.args = args
+
         self.encoder = encoder
-        if args.encoder_output_layer_type in ['entity_start', 'entity_pooling_first_token']:
-            self.classifier = nn.Linear(2 * args.encoder_embed_dim, args.num_classes)
-        elif args.encoder_output_layer_type in ['entity_start_linear']:
-            self.classifier = nn.Linear(args.entity_dim, args.num_classes)
-        else:
-            self.classifier = nn.Linear(args.encoder_embed_dim, args.num_classes)
+        if not args.use_sklearn_classifier:
+            if args.encoder_output_layer_type in ['entity_start', 'entity_pooling_first_token']:
+                self.classifier = nn.Linear(2 * args.encoder_embed_dim, args.num_classes)
+            elif args.encoder_output_layer_type in ['entity_start_linear']:
+                self.classifier = nn.Linear(args.entity_dim, args.num_classes)
+            else:
+                self.classifier = nn.Linear(args.encoder_embed_dim, args.num_classes)
 
         self.task = task
 
@@ -31,12 +34,18 @@ class EncoderKBP37Model(BaseFairseqModel):
         text = batch['text'] # [batch_size, n_tokens]
 
         text_enc, _ = self.encoder(text, annotation=batch.get('annotation'))
-        scores = self.classifier(text_enc)
 
-        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
-        # diag.inspect_batch(batch, scores=scores)
+        if self.args.use_sklearn_classifier:
+            features = text_enc.cpu().detach().numpy()
+            targets = batch['target'].cpu().detach().numpy()
+            return features, targets
+        else:
+            scores = self.classifier(text_enc)
 
-        return scores
+            # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+            # diag.inspect_batch(batch, scores=scores)
+
+            return scores
 
     @classmethod
     def build_model(cls, args, task, encoder=None):

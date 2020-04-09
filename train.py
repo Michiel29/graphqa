@@ -14,9 +14,11 @@ import os
 import sys
 import argparse
 import copy
+from timeit import default_timer as timer
 
 import numpy as np
 import torch
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 
 from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
@@ -31,6 +33,9 @@ import tasks as custom_tasks
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import generate_save_dir
+
+from utils.logging_utils import compute_sklearn_stats
+from utils.downstream_utils import load_downstream_data
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -86,6 +91,10 @@ def main(args, init_distributed=False):
         args.max_sentences,
     ))
 
+    # Load the latest checkpoint if one is available and restore the
+    # corresponding train iterator
+    extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
+
     if args.eval_downstream:
         # Create downstream_args, by overwriting a copy of args with downstream args
         downstream_arg_dict = {}
@@ -94,6 +103,7 @@ def main(args, init_distributed=False):
         downstream_criterion_dict = {}
         downstream_trainer_dict = {}
         downstream_valid_subset_dict = {}
+        downstream_epoch_itr_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
             downstream_args = copy.deepcopy(args)
             if 'add_configs' in downstream_kwargs:
@@ -125,9 +135,7 @@ def main(args, init_distributed=False):
 
             downstream_trainer_dict[downstream_name] = Trainer(downstream_args, downstream_task_dict[downstream_name], downstream_model_dict[downstream_name], downstream_criterion_dict[downstream_name])
 
-    # Load the latest checkpoint if one is available and restore the
-    # corresponding train iterator
-    extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
+            _, downstream_epoch_itr_dict[downstream_name] = checkpoint_utils.load_checkpoint(downstream_args, downstream_trainer_dict[downstream_name])
 
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
@@ -152,11 +160,31 @@ def main(args, init_distributed=False):
 
             if args.eval_downstream:
                 for downstream_name in downstream_task_dict:
-                    # set num_updates for eval_trainer
-                    downstream_trainer_dict[downstream_name].set_num_updates(trainer.get_num_updates())
 
-                    # validate on eval_task validation set
-                    validate(args, downstream_trainer_dict[downstream_name], downstream_task_dict[downstream_name], epoch_itr, downstream_valid_subset_dict[downstream_name], downstream_name)
+                    downstream_args = downstream_arg_dict[downstream_name]
+                    downstream_task = downstream_task_dict[downstream_name]
+                    downstream_trainer = downstream_trainer_dict[downstream_name]
+                    downstream_valid_subset = downstream_valid_subset_dict[downstream_name]
+                    # downstream_epoch_itr = downstream_epoch_itr_dict[downstream_name]
+
+                    # set num_updates for downstream_trainer
+                    downstream_trainer.set_num_updates(trainer.get_num_updates())
+
+                    if downstream_args.task_type == 'supervised' and args.distributed_rank == 0:
+                        # fine-tune classifier on downstream_task training set (supervised)
+                        downstream_classifier = downstream_train(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name)
+
+                        # evaluate classifier on downstream_task validation set (supervised)
+                        downstream_validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name, downstream_classifier)
+
+                    elif downstream_args.task_type != 'supervised':
+                        # validate on downstream_task validation set (zero-shot and few-shot)
+                        # validate(args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
+                        validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
+
+                    else:
+                        pass
+
         else:
             valid_losses = [None]
 
@@ -316,6 +344,138 @@ def get_valid_stats(args, trainer, stats):
             stats[args.best_checkpoint_metric],
         )
     return stats
+
+def downstream_train(args, trainer, task, epoch_itr, task_name):
+    """Fine-tune classifier on downstream training set"""
+
+    if args.fixed_validation_seed is not None:
+        # set fixed seed for every validation
+        utils.set_torch_seed(args.fixed_validation_seed)
+
+    # Initialize data iterator
+    itr = task.get_batch_iterator(
+        dataset=task.dataset('train'),
+        max_tokens=args.max_tokens,
+        max_sentences=args.max_sentences,
+        max_positions=utils.resolve_max_positions(
+            task.max_positions(),
+            trainer.get_model().max_positions(),
+        ),
+        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+        required_batch_size_multiple=args.required_batch_size_multiple,
+        seed=args.seed,
+        num_shards=1,
+        shard_id=0,
+        num_workers=args.num_workers,
+    ).next_epoch_itr(shuffle=False)
+    progress = progress_bar.build_progress_bar(
+        args, itr, epoch_itr.epoch,
+        prefix='fine-tune on \'{}\''.format(task_name),
+        no_progress_bar='simple'
+    )
+
+    # Reset meters
+    metrics.reset_meters(task_name)
+
+    # Set model to eval mode
+    with torch.no_grad():
+        trainer.model.eval()
+
+    if args.use_sklearn_classifier:
+        # Load downstream train data
+        features, targets = load_downstream_data(progress, trainer)
+
+        # Train classifier
+        logger.info('fine-tuning LogisticRegression classifier on \'{}\''.format(task_name))
+        timer_start = timer()
+        if args.cross_validation:
+            classifier = LogisticRegressionCV(
+                random_state=args.seed, 
+                max_iter=args.max_iter,
+                verbose=args.verbose
+            ).fit(features, targets)
+        else:
+            classifier = LogisticRegression(
+                random_state=args.seed, 
+                max_iter=args.max_iter,
+                verbose=args.verbose
+            ).fit(features, targets)
+        timer_end = timer()
+        logger.info('finished fine-tuning in {:.2f} seconds'.format(timer_end-timer_start))
+
+        # Compute class predictions and probabilities
+        class_predictions = classifier.predict(features)
+        class_probabilities = classifier.predict_proba(features)
+
+        # Compute and log downstream training stats
+        stats = compute_sklearn_stats(targets, class_predictions, class_probabilities, args.num_classes, args.eval_metric)
+        stats = get_downstream_stats(trainer, stats)
+        progress.print(stats, tag=task_name+'_train', step=trainer.get_num_updates())
+
+    else:
+        raise NotImplementedError
+
+    return classifier
+
+
+def downstream_validate(args, trainer, task, epoch_itr, task_name, classifier):
+    """Evaluate classifier on downstream validation set"""
+
+    if args.fixed_validation_seed is not None:
+        # set fixed seed for every validation
+        utils.set_torch_seed(args.fixed_validation_seed)
+
+    # Initialize data iterator
+    itr = task.get_batch_iterator(
+        dataset=task.dataset('valid'),
+        max_tokens=args.max_tokens,
+        max_sentences=args.max_sentences,
+        max_positions=utils.resolve_max_positions(
+            task.max_positions(),
+            trainer.get_model().max_positions(),
+        ),
+        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+        required_batch_size_multiple=args.required_batch_size_multiple,
+        seed=args.seed,
+        num_shards=1,
+        shard_id=0,
+        num_workers=args.num_workers,
+    ).next_epoch_itr(shuffle=False)
+    progress = progress_bar.build_progress_bar(
+        args, itr, epoch_itr.epoch,
+        prefix='valid on \'{}\''.format(task_name),
+        no_progress_bar='simple'
+    )
+
+    # Reset validation meters
+    metrics.reset_meters(task_name)
+
+    # Set model to eval mode
+    with torch.no_grad():
+        trainer.model.eval()
+
+    if args.use_sklearn_classifier:
+        # Load downstream validation data
+        features, targets = load_downstream_data(progress, trainer)
+
+        # Compute class predictions and probabilities
+        class_predictions = classifier.predict(features)
+        class_probabilities = classifier.predict_proba(features)
+
+        # Compute and log downstream validation stats
+        stats = compute_sklearn_stats(targets, class_predictions, class_probabilities, args.num_classes, args.eval_metric)
+        stats = get_downstream_stats(trainer, stats)
+        progress.print(stats, tag=task_name+'_valid', step=trainer.get_num_updates())
+    
+    else:
+        raise NotImplementedError
+
+
+def get_downstream_stats(trainer, stats):
+    stats['wall'] = round(metrics.get_meter('default', 'wall').elapsed_time, 0)
+    stats['num_updates'] = trainer.get_num_updates()
+    return stats
+
 
 def distributed_main(i, args, start_rank=0):
     args.device_id = i

@@ -188,7 +188,7 @@ class BaseTask(FairseqTask):
     def target_dictionary(self):
         return self.dictionary
 
-    def reporter(self, pred, target, logging_output):
+    def reporter(self, target, pred, logging_output):
         return logging_output
 
     def max_positions(self):
