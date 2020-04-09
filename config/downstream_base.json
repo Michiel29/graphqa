@@ -3,7 +3,7 @@
     "downstream_dict": {
         // "fewrel_0": {
         //     "add_configs": ["fewrel/5_way_1_shot.json"],
-        //     "task_type": "zero_shot",
+        //     "task_type": "few_shot",
         //     "arch": "encoder_fewrel__roberta_base",
         //     "max_sentences": 10,
         //     "max_tokens": 2000,
