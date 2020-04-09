@@ -198,7 +198,7 @@ def compute_sklearn_stats(target, pred, prob, num_classes, eval_metric):
             avg='macro',
             num_classes=num_classes
         )
-        stats['micro_f1'] = compute_macro_f1(fn, tp, fp, [num_classes-1], True)
+        stats['macro_f1'] = compute_macro_f1(fn, tp, fp, [num_classes-1], True)
 
     elif eval_metric == 'micro_f1':
         fn, tp, fp = compute_confusion_matrix(
@@ -208,7 +208,7 @@ def compute_sklearn_stats(target, pred, prob, num_classes, eval_metric):
             num_classes=num_classes,
             ignore_classes=[num_classes-1]
         )
-        stats['macro_f1'] = compute_f1(fn, tp, fp)
+        stats['micro_f1'] = compute_f1(fn, tp, fp)
 
     return stats
 
