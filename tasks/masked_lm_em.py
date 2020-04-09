@@ -122,3 +122,6 @@ class MaskedLMEMTask(BaseTask):
             )
 
         self.datasets[split] = dataset
+
+    def get_sample_size(self, batch, sizes):
+        return int(self.args.mask_prob * sum(sizes))

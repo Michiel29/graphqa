@@ -193,3 +193,6 @@ class BaseTask(FairseqTask):
 
     def max_positions(self):
         return self._max_positions
+
+    def get_sample_size(self, batch, sizes):
+        return len(batch)

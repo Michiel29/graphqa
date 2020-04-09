@@ -46,7 +46,8 @@ class ListTaskIterator(object):
             with data_utils.numpy_seed(self.seed, self.epoch):
                 np.random.shuffle(l)
                 epoch_iterator.frozen_batches = tuple(l)
-        batch_sizes = [len(x) for x in l]
+        sizes = epoch_iterator.dataset.sizes
+        batch_sizes = [self.tasks[task_name].get_sample_size(x, sizes[x]) for x in l]
         while len(batch_sizes) % (self.num_shards * update_freq) != 0:
             batch_sizes.append(0)
         new_sample_sizes = np.array(batch_sizes).reshape([-1, self.num_shards * update_freq]).sum(axis=-1)
