@@ -28,5 +28,5 @@
     "eval_metric": null,
 
     "validate_before_training": true,
-    "disable_training": true
+    "disable_training": false
 }
