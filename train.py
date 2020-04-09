@@ -204,6 +204,9 @@ def main(args, init_distributed=False):
             epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
 
         else:
+            if args.disable_training:
+                train_meter.stop()
+                break
             epoch_itr.epoch = 1
 
     train_meter.stop()
