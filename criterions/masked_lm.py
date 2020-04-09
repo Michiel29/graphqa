@@ -83,10 +83,8 @@ class MaskedLmCustomLoss(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, task, prefix='') -> None:
-        """Aggregate logging outputs from data parallel training."""
-        split = task.split
-
+    def reduce_metrics(logging_outputs, split, prefix='') -> None:
+        """Aggregate logging outputs from data parallel training and update_freq."""
         sample_size = utils.item(sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs))
         sample_size_s = utils.item(sum(log.get(prefix + 'sample_size_s', 0) for log in logging_outputs))
         sample_size_w = utils.item(sum(log.get(prefix + 'sample_size_w', 0) for log in logging_outputs))

@@ -1,0 +1,65 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream.json"],
+
+    "tasks": {
+        "triplet_inference": {
+            "task": "triplet_inference",
+            "k_negative": 100,
+            "negative_split_probs": [0.25, 0.25, 0.25],
+            "non_mask_rate": 0,
+            "subsampling_strategy": "by_entity_pair",
+            "subsampling_cap": 100,
+            "epoch_splits": 50,
+            "n_valid_examples": 20000,
+            "n_train_examples": 40000,
+
+            "max_sentences": 1000,
+            "max_tokens": 8500,
+
+            "criterion": "cross_entropy_custom",
+            "weight": 1
+        }
+        ,
+        "masked_lm_em": {
+            "task": "masked_lm_em",
+            "non_mask_rate": 0.5,
+
+            "mask_prob": 0.15,
+            "leave_unmasked_prob": 0.1,
+            "random_token_prob": 0.1,
+            "freq_weighted_replacement": false,
+            "mask_whole_words": true,
+
+            "n_valid_examples": 20000,
+            "n_train_examples": 40000,
+
+            "max_sentences": 1000,
+            "max_tokens": 8500,
+
+            "criterion": "masked_lm_custom",
+            "weight": 1
+        }
+    },
+
+    "task": "multi_task",
+    "arch": "encoder_triplet__roberta_small",
+
+    "entity_dim": 256,
+    "triplet_type": "concat_linear_dot",
+    "encoder_output_layer_type": "entity_start_linear",
+
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+
+    "mask_type": "start_end",
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    "max_sentences": 1336,
+    "update_freq": [1],
+    "max_tokens": 12000
+}

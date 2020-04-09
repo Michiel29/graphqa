@@ -11,10 +11,11 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 @register_criterion('multi_criterion')
 class MultiCriterion(FairseqCriterion):
 
-    def __init__(self, criterion_dict, weight_dict, task):
+    def __init__(self, criterion_dict, weight_dict, sample_size, task):
         super().__init__(task)
         self.criterion_dict = nn.ModuleDict(criterion_dict)
         self.weight_dict = weight_dict
+        self.sample_size = sample_size
 
     @classmethod
     def build_criterion(cls, args, task):
@@ -31,11 +32,14 @@ class MultiCriterion(FairseqCriterion):
                 for k, v in logging_output.items():
                     total_logging_output[task_name + '_' + k] = v
         total_logging_output['loss'] = total_loss
-        return total_loss, 1, total_logging_output
+        return total_loss, self.sample_size, total_logging_output
 
     def reduce_metrics(self, logging_outputs, split) -> None:
-        assert len(logging_outputs) == 1
-        metrics.log_scalar('loss', logging_outputs[0]['loss'], round=1)
+        """Aggregate logging outputs from data parallel training and update_freq."""
+        weight = 0 if split == 'train' else len(logging_outputs)
+        loss = utils.item(sum(log.get('loss', 0) for log in logging_outputs))
+        metrics.log_scalar('loss', loss, weight, round=1)
+
         for task_name, criterion in self.criterion_dict.items():
             criterion.reduce_metrics(logging_outputs, split=split, prefix=task_name + '_')
 

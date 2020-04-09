@@ -52,10 +52,8 @@ class CrossEntropy(FairseqCriterion):
         return loss, sample_size, logging_output
 
     @staticmethod
-    def reduce_metrics(logging_outputs, task, prefix='') -> None:
-        """Aggregate logging outputs from data parallel training."""
-        split = task.split
-
+    def reduce_metrics(logging_outputs, split, prefix='') -> None:
+        """Aggregate logging outputs from data parallel training and update_freq."""
         sample_size = sum(log.get(prefix + 'sample_size', 0) for log in logging_outputs)
         weight = 0 if split == 'train' else sample_size
 

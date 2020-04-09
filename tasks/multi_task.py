@@ -38,15 +38,19 @@ class ListTaskIterator(object):
             num_workers=self.num_workers,
             epoch=self.epoch,
         )
+        update_freq = self.args.update_freq
+        assert len(update_freq) == 1
+        update_freq = update_freq[0]
         l = list(epoch_iterator.frozen_batches)
         if self.shuffle:
             with data_utils.numpy_seed(self.seed, self.epoch):
                 np.random.shuffle(l)
                 epoch_iterator.frozen_batches = tuple(l)
         batch_sizes = [len(x) for x in l]
-        while len(batch_sizes) % self.num_shards != 0:
+        while len(batch_sizes) % (self.num_shards * update_freq) != 0:
             batch_sizes.append(0)
-        new_sample_sizes = np.array(batch_sizes).reshape([-1, self.num_shards]).sum(axis=-1)
+        new_sample_sizes = np.array(batch_sizes).reshape([-1, self.num_shards * update_freq]).sum(axis=-1)
+        new_sample_sizes = np.repeat(new_sample_sizes, update_freq)
         if task_name not in self.sample_sizes:
             self.sample_sizes[task_name] = new_sample_sizes
         else:
@@ -159,6 +163,9 @@ class MultiTask(BaseTask):
         super().__init__(args, dictionary, entity_dictionary)
         self.tasks = tasks
         self.datasets = {}
+        self.distributed_world_size = args.distributed_world_size
+        assert len(args.update_freq) == 1
+        self.update_freq = args.update_freq[0]
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -218,17 +225,23 @@ class MultiTask(BaseTask):
         for task_name, task_args in args.tasks.items():
             cc[task_name] = CRITERION_REGISTRY[task_args['criterion']].build_criterion(args, self.tasks[task_name])
             cc_weights[task_name] = task_args['weight']
-        return criterions.MultiCriterion(cc, cc_weights, self)
+        return criterions.MultiCriterion(cc, cc_weights, 1 / (self.update_freq * self.distributed_world_size), self)
 
     def reduce_metrics(self, logging_outputs, criterion):
-        assert len(logging_outputs) == 1
-        for k, v in logging_outputs[0].items():
-            if k.endswith('ntokens'):
-                metrics.log_scalar(k[:-len('ntokens')] + 'wpb', v, priority=180, round=1)
-                # TODO(urikz): Latest version of fairseq also has additional argument "ignore_first"
-                metrics.log_speed(k[:-len('ntokens')] + 'wps', v, priority=90, round=1)
-            elif k.endswith('nsentences'):
-                metrics.log_scalar(k[:-len('nsentences')] + 'ns', v, priority=190, round=1)
-            elif k.endswith('sample_size'):
-                metrics.log_scalar(k[:-len('sample_size')] + 'bsz', v, priority=190, round=1)
-        criterion.reduce_metrics(logging_outputs)
+        # keys = set([k for logging_output in logging_outputs for k in logging_output.keys()])
+        # for key in keys:
+        #     if key.endswith('ntokens'):
+        #         prefix = key[:-len('ntokens')]
+        #         ntokens = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+        #         metrics.log_scalar(prefix + 'wpb', ntokens, priority=180, round=1)
+        #         metrics.log_speed(prefix + 'wps', ntokens, priority=90, round=1)
+        #     elif key.endswith('nsentences'):
+        #         prefix = key[:-len('nsentences')]
+        #         nsentences = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+        #         metrics.log_scalar(prefix + 'ns', nsentences, priority=190, round=1)
+        #     elif key.endswith('sample_size'):
+        #         prefix = key[:-len('sample_size')]
+        #         sample_size = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+        #         metrics.log_scalar(prefix + 'bsz', sample_size, priority=190, round=1)
+
+        criterion.reduce_metrics(logging_outputs, self.split)
