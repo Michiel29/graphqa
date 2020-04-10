@@ -1,0 +1,42 @@
+{
+    "add_configs": ["semeval2010task8.json", "../roberta/small.json", "../base.json"],
+
+    "eval_downstream": false,
+
+    "seed": 0,
+
+    "arch": "encoder_semeval2010task8__roberta_small",
+    "entity_dim": null,
+    "mask_type": "start_end",
+    "non_mask_rate": 1,
+    "encoder_output_layer_type": "entity_start_layer_norm",
+    "use_sklearn_classifier": false,
+
+    "max_epoch": 10,
+    "warmup_updates": 300, // bsz=16, max_epoch=10
+    // "warmup_updates": 150, // bsz=32, max_epoch=10
+    // "warmup_updates": 75, // bsz=64, max_epoch=10
+    // "warmup_updates": 38, // bsz=128, max_epoch=10
+    // "warmup_updates": 19, // bsz=256, max_epoch=10
+    "lr": [1e-5],
+    // "lr": [2e-5],
+    // "lr": [3e-5],
+    // "lr": [5e-5],
+    // "lr_scheduler": "fixed",
+
+    "max_sentences": 16,
+    "update_freq": [1],
+    // "update_freq": [2],
+    // "update_freq": [4],
+    // "update_freq": [8],
+    // "update_freq": [16],
+    "max_tokens": 2e4,
+
+    "num_workers": 2,
+    // "load_component_prefix": "encoder",
+
+    // "restore_file": "/data1/aarchan/self_inference/save/task_semeval2010task8/arch_encoder_semeval2010task8__roberta_large/encoder_output_layer_type_entity_start_layer_norm/entity_dim_None/lr_2e-05/max_sentences_16/update_freq_4/04m_01d_12h_30m/checkpoints/checkpoint_best.pt",
+
+    "no_epoch_checkpoints": true
+
+}

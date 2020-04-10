@@ -11,7 +11,6 @@
 
     "max_sentences": 16,
     "max_tokens": 1.75e3,
-    "max_positions": 512,
 
     // "load_checkpoint": "/data1/aarchan/self_inference/save/task_kbp37/arch_encoder_kbp37__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_11h_11m/checkpoints/checkpoint_best.pt",
 
