@@ -49,7 +49,7 @@ class CrossEntropy(FairseqCriterion):
 
         logging_output = self.task.reporter(target, pred, logging_output)
 
-        return loss, sample_size, logging_output
+        return loss, sample_size, logging_output    
 
     @staticmethod
     def reduce_metrics(logging_outputs, split, prefix='') -> None:
@@ -62,6 +62,8 @@ class CrossEntropy(FairseqCriterion):
 
         accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
         metrics.log_scalar(prefix + 'acc', accuracy_sum / sample_size, weight, round=3)
+        if split == 'train':
+            metrics.log_scalar(prefix + 'acc_avg', accuracy_sum / sample_size, sample_size, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

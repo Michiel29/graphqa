@@ -98,3 +98,5 @@ class TACREDTask(BaseTask):
         tp = sum(log.get(prefix + 'tp', 0) for log in logging_outputs)
         fp = sum(log.get(prefix + 'fp', 0) for log in logging_outputs)
         metrics.log_custom(MicroF1Meter, 'micro_f1', fn, tp, fp, self.split, weight)
+        if self.split == 'train':
+            metrics.log_custom(MicroF1Meter, 'micro_f1_avg', fn, tp, fp, self.split, sample_size)

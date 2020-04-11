@@ -101,3 +101,5 @@ class KBP37Task(BaseTask):
         weight = 0 if self.split == 'train' else sample_size
 
         metrics.log_custom(MacroF1Meter, 'macro_f1', fn, tp, fp, self.split, [self.args.num_classes-1], True, weight)
+        if self.split == 'train':
+            metrics.log_custom(MacroF1Meter, 'macro_f1_avg', fn, tp, fp, self.split, [self.args.num_classes-1], True, sample_size)
