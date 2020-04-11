@@ -1,0 +1,18 @@
+{
+    "mask_type": "start_end",
+
+    "n_train_examples": null,
+    "n_valid_examples": null,
+
+    "use_sklearn_classifier": true,
+    "multi_class": "ovr",
+    "solver": "liblinear",
+    "n_jobs": 1,
+    "scaler": null,
+    "max_iter": 1e5,
+    
+    "verbose": 0,
+    "cross_validation": false,
+    
+    "eval_interval": 1000
+}

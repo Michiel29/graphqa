@@ -96,46 +96,47 @@ def main(args, init_distributed=False):
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
 
     if args.eval_downstream:
-        # Create downstream_args, by overwriting a copy of args with downstream args
-        downstream_arg_dict = {}
-        downstream_task_dict = {}
-        downstream_model_dict = {}
-        downstream_criterion_dict = {}
-        downstream_trainer_dict = {}
-        downstream_valid_subset_dict = {}
-        downstream_epoch_itr_dict = {}
+        downstream_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
+
+            # Create downstream_args, by overwriting a copy of args with downstream args
             downstream_args = copy.deepcopy(args)
             if 'add_configs' in downstream_kwargs:
                 for config_path in downstream_kwargs['add_configs']:
                     downstream_kwargs = update_config(downstream_kwargs, compose_configs(os.path.join('config', config_path)))
             update_namespace(downstream_args, downstream_kwargs, override=True)
-            downstream_arg_dict[downstream_name] = downstream_args
 
-            downstream_task_dict[downstream_name] = tasks.setup_task(downstream_args)
-
-            downstream_valid_subset_dict[downstream_name] = downstream_args.valid_subset.split(',')
+            # Set up downstream task
+            downstream_task = tasks.setup_task(downstream_args)
 
             # Load downstream datasets
-            for valid_sub_split in downstream_valid_subset_dict[downstream_name]:
-                downstream_task_dict[downstream_name].load_dataset(valid_sub_split, combine=False, epoch=0)
+            downstream_valid_subset = downstream_args.valid_subset.split(',')
+            for valid_sub_split in downstream_valid_subset:
+                downstream_task.load_dataset(valid_sub_split, combine=False, epoch=0)
 
-            if hasattr(model, 'encoder'):
-                encoder = model.encoder
-            else:
-                encoder = model
-            # Set up eval model, criterion, and trainer
-            downstream_model_dict[downstream_name] = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(
-                downstream_args,
-                downstream_task_dict[downstream_name],
-                encoder,
-            )
+            # Set up downstream eval model
+            encoder = model.encoder if hasattr(model, 'encoder') else model
+            downstream_model = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task, encoder)
 
-            downstream_criterion_dict[downstream_name] = downstream_task_dict[downstream_name].build_criterion(downstream_args)
+            # Set up downstream eval criterion
+            downstream_criterion = downstream_task.build_criterion(downstream_args)
 
-            downstream_trainer_dict[downstream_name] = Trainer(downstream_args, downstream_task_dict[downstream_name], downstream_model_dict[downstream_name], downstream_criterion_dict[downstream_name])
+            # Set up downstream eval trainer
+            downstream_trainer = Trainer(downstream_args, downstream_task, downstream_model, downstream_criterion)
 
-            _, downstream_epoch_itr_dict[downstream_name] = checkpoint_utils.load_checkpoint(downstream_args, downstream_trainer_dict[downstream_name])
+            # Set up downstream eval epoch iterator
+            _, downstream_epoch_itr = checkpoint_utils.load_checkpoint(downstream_args, downstream_trainer)
+
+            # Insert current downstream task's dict into downstream_dict
+            downstream_dict[downstream_name] = {
+                'args': downstream_args,
+                'task': downstream_task,
+                'model': downstream_model,
+                'criterion': downstream_criterion,
+                'trainer': downstream_trainer,
+                'epoch_itr': downstream_epoch_itr,
+                'valid_subset': downstream_valid_subset
+            }
 
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
@@ -152,8 +153,10 @@ def main(args, init_distributed=False):
         and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):
-        if epoch_itr.epoch > 0:
-            # train for one epoch
+        # train for one epoch
+        if epoch_itr.epoch > 0 and args.eval_downstream:
+            train(args, trainer, task, epoch_itr, downstream_dict)
+        elif epoch_itr.epoch > 0:
             train(args, trainer, task, epoch_itr)
 
         if not args.disable_validation and epoch_itr.epoch % args.validate_interval == 0:
@@ -161,28 +164,9 @@ def main(args, init_distributed=False):
             # validate on task validation set
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
 
+            # evaluate on downstream tasks
             if args.eval_downstream:
-                for downstream_name in downstream_task_dict:
-
-                    downstream_args = downstream_arg_dict[downstream_name]
-                    downstream_task = downstream_task_dict[downstream_name]
-                    downstream_trainer = downstream_trainer_dict[downstream_name]
-                    downstream_valid_subset = downstream_valid_subset_dict[downstream_name]
-
-                    # set num_updates for downstream_trainer
-                    downstream_trainer.set_num_updates(trainer.get_num_updates())
-
-                    if downstream_args.task_type == 'supervised' and args.distributed_rank == 0:
-                        # fine-tune classifier on downstream_task training set (supervised)
-                        downstream_classifier = downstream_train(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name)
-
-                        # evaluate classifier on downstream_task validation set (supervised)
-                        downstream_validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name, downstream_classifier)
-
-                    elif downstream_args.task_type != 'supervised':
-                        # validate on downstream_task validation set (zero-shot and few-shot)
-                        validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
-
+                run_downstream(args, trainer, epoch_itr, downstream_dict, False)
         else:
             valid_losses = [None]
 
@@ -229,9 +213,10 @@ def should_stop_early(args, valid_loss):
         should_stop_early.num_runs += 1
         return should_stop_early.num_runs > args.patience
 
-def train(args, trainer, task, epoch_itr):
+def train(args, trainer, task, epoch_itr, downstream_dict=None):
     """Train the model for one epoch."""
     task.split = 'train'
+
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
         fix_batches_to_gpus=args.fix_batches_to_gpus,
@@ -271,6 +256,9 @@ def train(args, trainer, task, epoch_itr):
             ):
                 valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
                 checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+
+            if not args.disable_validation and num_updates > 0 and args.eval_downstream:
+                run_downstream(args, trainer, epoch_itr, downstream_dict, True)
 
             if num_updates >= max_update:
                 break
@@ -351,6 +339,32 @@ def get_valid_stats(args, trainer, stats):
         )
     return stats
 
+
+def run_downstream(args, trainer, epoch_itr, downstream_dict, check_eval_interval=False):
+    num_updates = trainer.get_num_updates()
+    for downstream_name in downstream_dict:
+        downstream_args = downstream_dict[downstream_name]['args']
+        if check_eval_interval and num_updates % downstream_args.eval_interval != 0:
+            continue
+        downstream_task = downstream_dict[downstream_name]['task']
+        downstream_trainer = downstream_dict[downstream_name]['trainer']
+        downstream_valid_subset = downstream_dict[downstream_name]['valid_subset']
+
+        # set num_updates for downstream_trainer
+        downstream_trainer.set_num_updates(trainer.get_num_updates())
+
+        if downstream_args.task_type == 'supervised' and args.distributed_rank == 0:
+            # fine-tune classifier on downstream_task training set (supervised)
+            downstream_classifier = downstream_train(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name)
+
+            # evaluate classifier on downstream_task validation set (supervised)
+            downstream_validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name, downstream_classifier)
+
+        elif downstream_args.task_type != 'supervised':
+            # validate on downstream_task validation set (zero-shot and few-shot)
+            validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
+
+
 def downstream_train(args, trainer, task, epoch_itr, task_name):
     """Fine-tune classifier on downstream training set"""
 
@@ -402,8 +416,8 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
             ).fit(features, targets)
         else:
             classifier = LogisticRegression(
-                solver=args.solver,
                 multi_class=args.multi_class,
+                solver=args.solver,
                 n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
                 random_state=args.seed, 
                 max_iter=args.max_iter,
