@@ -410,6 +410,9 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
         timer_start = timer()
         if args.cross_validation:
             classifier = LogisticRegressionCV(
+                multi_class=args.multi_class,
+                solver=args.solver,
+                n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
                 random_state=args.seed, 
                 max_iter=args.max_iter,
                 verbose=args.verbose
