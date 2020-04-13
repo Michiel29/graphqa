@@ -229,20 +229,20 @@ class MultiTask(BaseTask):
         return criterions.MultiCriterion(cc, cc_weights, 1 / (self.update_freq * self.distributed_world_size), self)
 
     def reduce_metrics(self, logging_outputs, criterion):
-        # keys = set([k for logging_output in logging_outputs for k in logging_output.keys()])
-        # for key in keys:
-        #     if key.endswith('ntokens'):
-        #         prefix = key[:-len('ntokens')]
-        #         ntokens = utils.item(sum(log.get(key, 0) for log in logging_outputs))
-        #         metrics.log_scalar(prefix + 'wpb', ntokens, priority=180, round=1)
-        #         metrics.log_speed(prefix + 'wps', ntokens, priority=90, round=1)
-        #     elif key.endswith('nsentences'):
-        #         prefix = key[:-len('nsentences')]
-        #         nsentences = utils.item(sum(log.get(key, 0) for log in logging_outputs))
-        #         metrics.log_scalar(prefix + 'ns', nsentences, priority=190, round=1)
-        #     elif key.endswith('sample_size'):
-        #         prefix = key[:-len('sample_size')]
-        #         sample_size = utils.item(sum(log.get(key, 0) for log in logging_outputs))
-        #         metrics.log_scalar(prefix + 'bsz', sample_size, priority=190, round=1)
+        keys = set([k for logging_output in logging_outputs for k in logging_output.keys()])
+        for key in keys:
+            if key.endswith('ntokens'):
+                prefix = key[:-len('ntokens')]
+                ntokens = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+                metrics.log_scalar(prefix + 'wpb', ntokens, priority=180, round=1)
+                metrics.log_speed(prefix + 'wps', ntokens, priority=90, round=1)
+            elif key.endswith('nsentences'):
+                prefix = key[:-len('nsentences')]
+                nsentences = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+                metrics.log_scalar(prefix + 'ns', nsentences, priority=190, round=1)
+            elif key.endswith('sample_size'):
+                prefix = key[:-len('sample_size')]
+                sample_size = utils.item(sum(log.get(key, 0) for log in logging_outputs))
+                metrics.log_scalar(prefix + 'bsz', sample_size, priority=190, round=1)
 
         criterion.reduce_metrics(logging_outputs, self.split)
