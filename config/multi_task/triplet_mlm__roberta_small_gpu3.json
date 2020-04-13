@@ -1,5 +1,7 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream.json"],
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json"],
+    // "eval_downstream": false,
 
     "tasks": {
         "triplet_inference": {
@@ -9,11 +11,12 @@
             "non_mask_rate": 0,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
-            "epoch_splits": 50,
             "n_valid_examples": 20000,
 
-            "max_sentences": 1000,
-            "max_tokens": 8000,
+            "update_freq": 7,
+            "epoch_size": 4e6,
+            "max_sentences": 1336,
+            "max_tokens": 12000,
 
             "criterion": "cross_entropy_custom",
             "weight": 1
@@ -29,11 +32,12 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
+            "update_freq": 7,
+            "epoch_size": 4e6,
             "n_valid_examples": 20000,
-            "n_train_examples": 40000,
 
-            "max_sentences": 1000,
-            "max_tokens": 8000,
+            "max_sentences": 1336,
+            "max_tokens": 12000,
 
             "criterion": "masked_lm_custom",
             "weight": 1
@@ -57,8 +61,8 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 4,
+    "num_workers": 0,
     "max_sentences": 1336,
-    "update_freq": [10],
+    "update_freq": null,
     "max_tokens": 12000
 }

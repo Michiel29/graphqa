@@ -1,5 +1,7 @@
 {
     "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json"],
+    // "eval_downstream": false,
 
     "task": "masked_lm_em",
     "arch": "roberta_small",
@@ -7,7 +9,7 @@
     "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
-    "non_mask_rate": 0,
+    "non_mask_rate": 0.5,
 
     "mask_prob": 0.15,
     "leave_unmasked_prob": 0.1,
@@ -24,9 +26,9 @@
     "lr": [1e-5],
 
     "num_workers": 4,
-    "max_sentences": 1536,
-    "update_freq": [5],
-    "max_tokens": 14000,
+    "max_sentences": 1336,
+    "update_freq": [7],
+    "max_tokens": 12000,
     "required_batch_size_multiple": 1,
 
     "criterion": "masked_lm_custom"

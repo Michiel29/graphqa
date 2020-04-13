@@ -38,9 +38,7 @@ class ListTaskIterator(object):
             num_workers=self.num_workers,
             epoch=self.epoch,
         )
-        update_freq = self.args.update_freq
-        assert len(update_freq) == 1
-        update_freq = update_freq[0]
+        update_freq = self.update_freq[task_name]
         l = list(epoch_iterator.frozen_batches)
         if self.shuffle:
             with data_utils.numpy_seed(self.seed, self.epoch):
@@ -73,8 +71,10 @@ class ListTaskIterator(object):
         num_workers,
         epoch,
         shuffle,
+        update_freq,
         start=0,
     ):
+        assert start == 0
         self.args = args
         self.tasks = tasks
         self.datasets = datasets
@@ -87,34 +87,57 @@ class ListTaskIterator(object):
         self.num_workers = num_workers
         self.epoch = epoch
         self.shuffle = shuffle
+
+        self.total_update_freq = update_freq
+        self.update_freq = {
+            task_name: self.args.tasks[task_name]['update_freq']
+            for task_name in self.tasks.keys()
+        }
         self.sample_sizes = {}
 
         self.iterators = {
             task_name: self._start_task_iterator(task_name)
             for task_name in self.tasks.keys()
         }
-        self.count = start
-        self.length = max([len(iterator) for iterator in self.iterators.values()])
+        self.count = 0
+        self.counters = {task_name: 0 for task_name in self.tasks.keys()}
+        self.length = min([
+            int(len(iterator) / self.update_freq[task_name])
+            for task_name, iterator in self.iterators.items()
+        ])
         self.itr = iter(self)
 
     def __iter__(self):
         while self.count < self.length:
-            result = {}
-            at_least_one_task_non_empty = False
             for task_name in self.iterators.keys():
-                if not self.iterators[task_name].has_next():
-                    self.iterators[task_name] = self._start_task_iterator(task_name)
-                result[task_name] = next(self.iterators[task_name])
-                if result[task_name] is not None and len(result[task_name]) > 0:
-                    result[task_name]['sample_size'] = self.sample_sizes[task_name][self.count]
-                    at_least_one_task_non_empty = True
-                else:
-                    result[task_name] = None
+                for _ in range(self.update_freq[task_name]):
+                    assert self.iterators[task_name].has_next()
+                    batch = next(self.iterators[task_name])
+
+                    if batch is not None and len(batch) > 0:
+                        counter_index = self.counters[task_name]
+                        self.counters[task_name] += 1
+                        batch['sample_size'] = self.sample_sizes[task_name][counter_index]
+                        yield {task_name: batch}
+                    else:
+                        yield None
             self.count += 1
-            if at_least_one_task_non_empty:
-                yield result
-            else:
-                yield None
+
+        for task_name in self.iterators.keys():
+            counter = 0
+            while True:
+                try:
+                    _ = next(self.iterators[task_name])
+                    counter += 1
+                except StopIteration:
+                    break
+            if counter > 0:
+                logger.warn(
+                    'There were %d left-over samples for the %s after the multi-task epoch' % (
+                        counter,
+                        task_name,
+                    )
+                )
 
     def __next__(self):
         return next(self.itr)
@@ -123,7 +146,7 @@ class ListTaskIterator(object):
         return self.count < len(self)
 
     def __len__(self):
-        return self.length
+        return self.length * self.total_update_freq
 
 
 class ListTaskIteratorFactory(object):
@@ -165,8 +188,13 @@ class MultiTask(BaseTask):
         self.tasks = tasks
         self.datasets = {}
         self.distributed_world_size = args.distributed_world_size
-        assert len(args.update_freq) == 1
-        self.update_freq = args.update_freq[0]
+
+        self.update_freq = 0
+        for task_name in self.tasks.keys():
+            self.update_freq += self.args.tasks[task_name]['update_freq']
+        logger.info('update frequence has been determined automatically: %d' % self.update_freq)
+        assert args.update_freq is None
+        args.update_freq = [self.update_freq]
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -217,6 +245,7 @@ class MultiTask(BaseTask):
             shard_id=shard_id,
             num_workers=num_workers,
             epoch=epoch,
+            update_freq=self.update_freq,
         )
 
     def build_criterion(self, args):
