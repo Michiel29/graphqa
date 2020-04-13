@@ -15,7 +15,7 @@
     "freq_weighted_replacement": false,
     "mask_whole_words": true,
 
-    "encoder_output_layer_type": "lm_head",
+    "encoder_output_layer_type": "entity_start_layer_norm",
 
     "epoch_size": 4e6,
     "max_epoch": 200,

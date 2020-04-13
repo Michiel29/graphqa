@@ -36,7 +36,6 @@ class TokenBlockAnnotatedDataset(TokenBlockDataset):
 
     def set_epoch(self, epoch):
         self.epoch = epoch
-        logger.info('Set epoch for TokenBlockAnnotatedDataset equal to %d' % self.epoch)
 
     def sample_entities(self, entities):
         if len(entities) == 0:
@@ -89,3 +88,11 @@ class TokenBlockAnnotatedDataset(TokenBlockDataset):
     def sizes(self):
         # TODO: Note, this is an overestimation of the actual number of tokens
         return np.minimum(self._sizes.array, self.max_positions + 4)
+
+    def num_tokens(self, index):
+        # TODO: Note, this is an overestimation of the actual number of tokens
+        return min(self._sizes.array[index], self.max_positions + 4)
+
+    def size(self, index):
+        # TODO: Note, this is an overestimation of the actual number of tokens
+        return min(self._sizes.array[index], self.max_positions + 4)
