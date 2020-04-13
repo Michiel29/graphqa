@@ -133,7 +133,7 @@ class ListTaskIterator(object):
                     break
             if counter > 0:
                 logger.warn(
-                    'There were %d left-over samples for the %s after the multi-task epoch' % (
+                    'there were %d left-over samples for the %s after the multi-task epoch' % (
                         counter,
                         task_name,
                     )

@@ -19,14 +19,18 @@ class EpochSplitDataset(BaseWrapperDataset):
         self.seed = seed
         assert self.epoch_size is not None and self.epoch_size > 0
         self.epoch_splits = None
+        self.epoch = None
 
     def set_dataset_epoch(self, dataset_epoch):
         if dataset_epoch != self.dataset.epoch:
             self.dataset.set_epoch(dataset_epoch)
 
     def set_epoch(self, epoch):
-        self.epoch = epoch
+        if epoch == self.epoch:
+            return
+
         assert epoch >= 1
+        self.epoch = epoch
 
         if self.epoch_splits is None:
             self.set_dataset_epoch(1)
