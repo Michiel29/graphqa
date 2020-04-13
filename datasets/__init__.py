@@ -1,4 +1,5 @@
 from .annotated_text import AnnotatedText
+from .epoch_split_dataset import EpochSplitDataset
 from .fewrel_dataset import FewRelDataset
 from .kbp37_dataset import KBP37Dataset
 from .semeval2010task8_dataset import SemEval2010Task8Dataset

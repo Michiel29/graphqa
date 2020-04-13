@@ -5,8 +5,7 @@ import torch
 
 from fairseq.data import FairseqDataset
 from utils.plasma_utils import maybe_move_to_plasma
-from fairseq.data import data_utils
-from utils.data_utils import shuffle_arrays
+from utils.data_utils import numpy_seed
 
 
 logger = logging.getLogger(__name__)
@@ -33,71 +32,38 @@ class GraphDataset(FairseqDataset):
         edges,
         subsampling_strategy,
         subsampling_cap,
-        epoch_splits,
         seed,
     ):
         self.edges = edges
         self.subsampling_strategy = subsampling_strategy
         self.subsampling_cap = subsampling_cap
-        self.epoch_splits = epoch_splits
-        self.epoch_for_generation = None
         self.seed = seed
-        self.neighbors_cache = dict()
+        self.epoch = None
+        self.precompute_neighbors_cache()
 
-    def set_epoch(self, epoch):
-        self.epoch = epoch
-        if self.epoch_splits is not None:
-            assert epoch >= 1
-            epoch_for_generation = (epoch - 1) // self.epoch_splits
-            epoch_offset = (epoch - 1) % self.epoch_splits
-        else:
-            epoch_for_generation = epoch
-            epoch_offset = 0
-
-        if epoch_for_generation != self.epoch_for_generation:
-            with data_utils.numpy_seed(271828, self.seed, epoch_for_generation):
-                indices, sizes = self.subsample_graph_by_entity_pairs()
-                start_time = time.time()
-                random_permutation = np.random.permutation(len(indices))
-                indices = indices[random_permutation]
-                sizes = sizes[random_permutation]
-                # shuffled edges in 176 seconds
-                # shuffle_arrays([indices, sizes])
-                logger.info('shuffled edges in %d seconds' % (time.time() - start_time))
-
-                start_time = time.time()
-                self._generated_indices = maybe_move_to_plasma(indices)
-                self._generated_sizes = maybe_move_to_plasma(sizes)
-                logger.info('prepared plasma_arrays in %d seconds' % (time.time() - start_time))
-
-                start_time = time.time()
-                self.neighbors_cache = dict()
-                entity, total_bytes = 0, 0
-                while entity < len(self.edges) and total_bytes < self.NEIGHBORS_CACHE_SIZE:
-                    neighbors = self.get_neighbors(entity)
-                    total_bytes += neighbors.nelement() * neighbors.element_size()
-                    self.neighbors_cache[entity] = neighbors.numpy()
-                    entity += 1
-                assert entity == len(self.neighbors_cache)
-                logger.info('cached neighbours for %d top entities (%.3f MB) in %.3f seconds.' % (
-                    entity,
-                    total_bytes / 1024 / 1024,
-                    time.time() - start_time,
-                ))
-            self.epoch_for_generation = epoch_for_generation
-
+    def precompute_neighbors_cache(self):
         start_time = time.time()
-        data_per_epoch = len(self._generated_indices.array) // (self.epoch_splits or 1)
-        data_start = data_per_epoch * epoch_offset
-        data_end = min(len(self._generated_indices.array), data_per_epoch * (epoch_offset + 1))
-        self._indices = maybe_move_to_plasma(self._generated_indices.array[data_start:data_end])
-        self._sizes = maybe_move_to_plasma(self._generated_sizes.array[data_start:data_end])
-        logger.info('selected %d samples from generation epoch %d and epoch offset %d in %d seconds' % (
-            data_end - data_start,
-            self.epoch_for_generation,
-            epoch_offset,
+        self.neighbors_cache = dict()
+        entity, total_bytes = 0, 0
+        while entity < len(self.edges) and total_bytes < self.NEIGHBORS_CACHE_SIZE:
+            neighbors = self.get_neighbors(entity)
+            total_bytes += neighbors.nelement() * neighbors.element_size()
+            self.neighbors_cache[entity] = neighbors.numpy()
+            entity += 1
+        assert entity == len(self.neighbors_cache)
+        logger.info('cached neighbours for %d top entities (%.3f MB) in %.3f seconds.' % (
+            entity,
+            total_bytes / 1024 / 1024,
             time.time() - start_time,
         ))
+
+    def set_epoch(self, epoch):
+        if epoch != self.epoch:
+            with numpy_seed('GraphDataset', self.seed, epoch):
+                self._indices, self._sizes = self.subsample_graph_by_entity_pairs()
+            self._indices = maybe_move_to_plasma(self._indices)
+            self._sizes = maybe_move_to_plasma(self._sizes)
+            self.epoch = epoch
 
     def __getitem__(self, index):
         source_entity, local_index = self._indices.array[index]

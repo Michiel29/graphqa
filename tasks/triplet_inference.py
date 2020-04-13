@@ -4,9 +4,10 @@ import os
 
 from datasets import (
     AnnotatedText,
+    EpochSplitDataset,
+    FixedSizeDataset,
     GraphDataset,
     PrependTokenDataset,
-    FixedSizeDataset,
     TripletDataset,
 )
 from utils.data_utils import safe_load_indexed_dataset
@@ -42,7 +43,6 @@ class TripletInferenceTask(RelationInferenceTask):
             edges=graph_data,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
-            epoch_splits=self.args.epoch_splits if split == 'train' else None,
             seed=self.args.seed,
         )
 
@@ -56,6 +56,13 @@ class TripletInferenceTask(RelationInferenceTask):
             same_replace_heads_for_all_negatives=self.args.arch.startswith('encoder_dual'),
             negative_split_probs=self.args.negative_split_probs or [1, 0, 0],
         )
+        if split == 'train' and self.args.epoch_size is not None:
+            dataset = EpochSplitDataset(
+                dataset=dataset,
+                epoch_size=self.args.epoch_size,
+                seed=self.args.seed,
+            )
+
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text')
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)

@@ -304,6 +304,7 @@ def validate(args, trainer, task, epoch_itr, subsets, valid_name=None):
             num_shards=args.distributed_world_size,
             shard_id=args.distributed_rank,
             num_workers=args.num_workers,
+            epoch=1,
         ).next_epoch_itr(shuffle=False)
         progress = progress_bar.build_progress_bar(
             args, itr, epoch_itr.epoch,
@@ -413,7 +414,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
                 multi_class=args.multi_class,
                 solver=args.solver,
                 n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-                random_state=args.seed, 
+                random_state=args.seed,
                 max_iter=args.max_iter,
                 verbose=args.verbose
             ).fit(features, targets)
@@ -422,7 +423,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
                 multi_class=args.multi_class,
                 solver=args.solver,
                 n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-                random_state=args.seed, 
+                random_state=args.seed,
                 max_iter=args.max_iter,
                 verbose=args.verbose
             ).fit(features, targets)
@@ -492,7 +493,7 @@ def downstream_validate(args, trainer, task, epoch_itr, task_name, classifier):
         stats = compute_sklearn_stats(targets, class_predictions, class_probabilities, args.num_classes, args.eval_metric)
         stats = get_downstream_stats(trainer, stats)
         progress.print(stats, tag=task_name+'_valid', step=trainer.get_num_updates())
-    
+
     else:
         raise NotImplementedError
 

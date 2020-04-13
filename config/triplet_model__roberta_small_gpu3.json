@@ -15,7 +15,7 @@
     "non_mask_rate": 0,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
-    "epoch_splits": 50,
+    "epoch_size": 4e6,
     "n_valid_examples": 20000,
 
     "max_epoch": 200,
