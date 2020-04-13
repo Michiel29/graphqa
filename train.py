@@ -254,9 +254,6 @@ def train(args, trainer, task, epoch_itr, downstream_dict=None):
                 valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
                 checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
-            if not args.disable_validation and num_updates > 0 and args.eval_downstream:
-                run_downstream(args, trainer, epoch_itr, downstream_dict, True)
-
             if num_updates >= max_update:
                 break
 
