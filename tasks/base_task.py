@@ -101,30 +101,16 @@ class BaseTask(FairseqTask):
         """
         assert isinstance(dataset, FairseqDataset)
 
-        logger.info('get batch iterator: START (seed=%d, epoch=%d, num_shards=%d)' % (
-            seed,
-            epoch,
-            num_shards,
-        ))
-
         # initialize the dataset with the correct starting epoch
-        start_time = time.time()
+        global_start_time = time.time()
         dataset.set_epoch(epoch)
-        logger.info('get batch iterator: set epoch (seed=%d, epoch=%d) is done in %.3f seconds' % (
-            seed,
-            epoch,
-            time.time() - start_time,
-        ))
+        set_epoch_time = time.time() - global_start_time
 
         # get indices ordered by example size
         start_time = time.time()
         with data_utils.numpy_seed(seed, epoch):
             indices = dataset.ordered_indices()
-        logger.info('get batch iterator: sorting (seed=%d, epoch=%d) is done in %.3f seconds' % (
-            seed,
-            epoch,
-            time.time() - start_time,
-        ))
+        sort_time = time.time() - start_time
 
         # create mini-batches with given size constraints
         start_time = time.time()
@@ -132,8 +118,17 @@ class BaseTask(FairseqTask):
             indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
-        logger.info('get batch iterator: batch by size is done in %.3f seconds' % (
-            time.time() - start_time,
+        batch_by_size_time = time.time() - start_time
+        logger.info(
+            'get batch iterator [seed=%d, epoch=%d, num_shards=%d] is done in %.3f seconds '
+            '(set epoch=%.3f, sorting=%.3f, batch by size=%.3f)' % (
+                seed,
+                epoch,
+                num_shards,
+                time.time() - global_start_time,
+                set_epoch_time,
+                sort_time,
+                batch_by_size_time,
         ))
 
         # return a reusable, sharded iterator
