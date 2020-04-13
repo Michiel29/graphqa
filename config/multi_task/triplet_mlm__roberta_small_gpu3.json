@@ -4,7 +4,7 @@
     // "eval_downstream": false,
 
     "tasks": {
-        "triplet_inference": {
+        "trt": {
             "task": "triplet_inference",
             "k_negative": 100,
             "negative_split_probs": [0.25, 0.25, 0.25],
@@ -22,7 +22,7 @@
             "weight": 1
         }
         ,
-        "masked_lm_em": {
+        "mlm": {
             "task": "masked_lm_em",
             "non_mask_rate": 0.5,
 

@@ -208,7 +208,7 @@ class MultiTask(BaseTask):
         logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
         tasks = {
-            task_name: TASK_REGISTRY[task_name](
+            task_name: TASK_REGISTRY[task_args_override['task']](
                 merge_args(args, task_args_override),
                 dictionary,
                 entity_dictionary,
