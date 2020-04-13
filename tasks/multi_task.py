@@ -263,12 +263,12 @@ class MultiTask(BaseTask):
             if key.endswith('ntokens'):
                 prefix = key[:-len('ntokens')]
                 ntokens = utils.item(sum(log.get(key, 0) for log in logging_outputs))
-                metrics.log_scalar(prefix + 'wpb', ntokens, priority=180, round=1)
-                metrics.log_speed(prefix + 'wps', ntokens, priority=90, round=1)
+                metrics.log_scalar(prefix + 'wpb', ntokens, priority=80, round=1)
+                metrics.log_speed(prefix + 'wps', ntokens, priority=50, round=1)
             elif key.endswith('nsentences'):
                 prefix = key[:-len('nsentences')]
                 nsentences = utils.item(sum(log.get(key, 0) for log in logging_outputs))
-                metrics.log_scalar(prefix + 'ns', nsentences, priority=190, round=1)
+                metrics.log_scalar(prefix + 'ns', nsentences, priority=90, round=1)
             elif key.endswith('sample_size'):
                 prefix = key[:-len('sample_size')]
                 sample_size = utils.item(sum(log.get(key, 0) for log in logging_outputs))

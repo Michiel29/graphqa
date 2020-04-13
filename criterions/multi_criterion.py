@@ -51,7 +51,7 @@ class MultiCriterion(FairseqCriterion):
         """Aggregate logging outputs from data parallel training and update_freq."""
         weight = 0 if split == 'train' else len(logging_outputs)
         loss = utils.item(sum(log.get('loss', 0) for log in logging_outputs))
-        metrics.log_scalar('loss', loss, weight, round=1)
+        metrics.log_scalar('loss', loss, weight, priority=-1, round=1)
 
         for task_name, criterion in self.criterion_dict.items():
             sample_size = utils.item(sum(log.get(task_name + '_sample_size', 0) for log in logging_outputs))

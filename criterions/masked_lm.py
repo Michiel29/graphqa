@@ -100,8 +100,18 @@ class MaskedLmCustomLoss(FairseqCriterion):
 
         loss_sum = utils.item(sum(log.get(prefix + 'loss', 0) for log in logging_outputs))
 
-        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size / math.log(2), weight, round=3)
-        metrics.log_derived(prefix + 'ppl', lambda meters: utils.get_perplexity(meters[prefix + 'loss'].avg))
+        metrics.log_scalar(
+            prefix + 'loss',
+            loss_sum / sample_size / math.log(2),
+            weight,
+            priority=0,
+            round=3,
+        )
+        metrics.log_derived(
+            prefix + 'ppl',
+            lambda meters: utils.get_perplexity(meters[prefix + 'loss'].avg),
+            priority=100,
+        )
 
         accuracy = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
         accuracy_s = sum(log.get(prefix + 'accuracy_s', 0) for log in logging_outputs)
@@ -111,9 +121,9 @@ class MaskedLmCustomLoss(FairseqCriterion):
         accuracy_s = accuracy_s / sample_size_s if sample_size_s > 0 else 0
         accuracy_w = accuracy_w / sample_size_w if sample_size_w > 0 else 0
 
-        metrics.log_scalar(prefix + 'acc', accuracy, weight, round=3)
-        metrics.log_scalar(prefix + 'acc_s', accuracy_s, weight_s, round=3)
-        metrics.log_scalar(prefix + 'acc_w', accuracy_w, weight_w, round=3)
+        metrics.log_scalar(prefix + 'acc', accuracy, weight, priority=100, round=3)
+        metrics.log_scalar(prefix + 'acc_s', accuracy_s, weight_s, priority=10, round=3)
+        metrics.log_scalar(prefix + 'acc_w', accuracy_w, weight_w, priority=10, round=3)
 
         metrics.log_scalar(prefix + 'num_masked', sample_size, weight, round=3, priority=1e9)
         metrics.log_scalar(prefix + 'num_masked_s', sample_size_s, weight_s, round=3, priority=1e9)
