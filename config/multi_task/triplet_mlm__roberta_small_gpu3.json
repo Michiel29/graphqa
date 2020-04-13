@@ -61,7 +61,7 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 0,
+    "num_workers": 4,
     "max_sentences": 1336,
     "update_freq": null,
     "max_tokens": 12000
