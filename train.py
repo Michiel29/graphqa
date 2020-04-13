@@ -146,52 +146,49 @@ def main(args, init_distributed=False):
     train_meter = StopwatchMeter()
     train_meter.start()
     if args.validate_before_training and extra_state is None:
+        # We want to make sure we do validate_before_training
+        # only when we start the trainig from scratch (thus, extra_state is None).
+        # Here, we assert that indeed the training has just started
+        # and training epoch is equal to one.
         assert epoch_itr.epoch == 1
-        epoch_itr.epoch = 0
+        valid_losses = validate(args, trainer, task, 0, valid_subsets)
+        if args.eval_downstream:
+            run_downstream(args, trainer, 0, downstream_dict, False)
+
     while (
-        lr > args.min_lr
+        not args.disable_training
+        and lr > args.min_lr
         and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):
-        # train for one epoch
-        if epoch_itr.epoch > 0 and args.eval_downstream:
-            train(args, trainer, task, epoch_itr, downstream_dict)
-        elif epoch_itr.epoch > 0:
-            train(args, trainer, task, epoch_itr)
+        train(args, trainer, task, epoch_itr)
 
         if not args.disable_validation and epoch_itr.epoch % args.validate_interval == 0:
 
             # validate on task validation set
-            valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
+            valid_losses = validate(args, trainer, task, epoch_itr.epoch, valid_subsets)
 
             # evaluate on downstream tasks
             if args.eval_downstream:
-                run_downstream(args, trainer, epoch_itr, downstream_dict, False)
+                run_downstream(args, trainer, epoch_itr.epoch, downstream_dict, False)
         else:
             valid_losses = [None]
 
-        if epoch_itr.epoch > 0:
-            # only use first validation loss to update the learning rate
-            lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
+        # only use first validation loss to update the learning rate
+        lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
 
-            # save checkpoint
-            if epoch_itr.epoch % args.save_interval == 0:
-                checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+        # save checkpoint
+        if epoch_itr.epoch % args.save_interval == 0:
+            checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
-            # early stop
-            if should_stop_early(args, valid_losses[0]):
-                logger.info('early stop since valid performance hasn\'t improved for last {} runs'.format(args.patience))
-                break
+        # early stop
+        if should_stop_early(args, valid_losses[0]):
+            logger.info('early stop since valid performance hasn\'t improved for last {} runs'.format(args.patience))
+            break
 
-            reload_dataset = getattr(args, 'reload', False)
-            # sharded data: get train iterator for next epoch
-            epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
-
-        else:
-            if args.disable_training:
-                train_meter.stop()
-                break
-            epoch_itr.epoch = 1
+        reload_dataset = getattr(args, 'reload', False)
+        # sharded data: get train iterator for next epoch
+        epoch_itr = trainer.get_train_iterator(epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
 
     train_meter.stop()
     logger.info('done training in {:.1f} seconds'.format(train_meter.sum))
@@ -278,7 +275,7 @@ def get_training_stats(stats):
     return stats
 
 
-def validate(args, trainer, task, epoch_itr, subsets, valid_name=None):
+def validate(args, trainer, task, epoch_for_logging, subsets, valid_name=None):
     """Evaluate the model on the validation set(s) and return the losses."""
     task.split = 'valid'
     valid_name_ = valid_name if valid_name is not None else 'valid'
@@ -307,7 +304,7 @@ def validate(args, trainer, task, epoch_itr, subsets, valid_name=None):
             epoch=1,
         ).next_epoch_itr(shuffle=False)
         progress = progress_bar.build_progress_bar(
-            args, itr, epoch_itr.epoch,
+            args, itr, epoch_for_logging,
             prefix='valid on \'{}\' subset'.format(valid_name_),
             no_progress_bar='simple'
         )
@@ -341,7 +338,7 @@ def get_valid_stats(args, trainer, stats):
     return stats
 
 
-def run_downstream(args, trainer, epoch_itr, downstream_dict, check_eval_interval=False):
+def run_downstream(args, trainer, epoch_for_logging, downstream_dict, check_eval_interval=False):
     num_updates = trainer.get_num_updates()
     for downstream_name in downstream_dict:
         downstream_args = downstream_dict[downstream_name]['args']
@@ -356,17 +353,30 @@ def run_downstream(args, trainer, epoch_itr, downstream_dict, check_eval_interva
 
         if downstream_args.task_type == 'supervised' and args.distributed_rank == 0:
             # fine-tune classifier on downstream_task training set (supervised)
-            downstream_classifier = downstream_train(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name)
+            downstream_classifier = downstream_train(
+                downstream_args,
+                downstream_trainer,
+                downstream_task,
+                epoch_for_logging,
+                downstream_name,
+            )
 
             # evaluate classifier on downstream_task validation set (supervised)
-            downstream_validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_name, downstream_classifier)
+            downstream_validate(
+                downstream_args,
+                downstream_trainer,
+                downstream_task,
+                epoch_for_logging,
+                downstream_name,
+                downstream_classifier,
+            )
 
         elif downstream_args.task_type != 'supervised':
             # validate on downstream_task validation set (zero-shot and few-shot)
-            validate(downstream_args, downstream_trainer, downstream_task, epoch_itr, downstream_valid_subset, downstream_name)
+            validate(downstream_args, downstream_trainer, downstream_task, epoch_for_logging, downstream_valid_subset, downstream_name)
 
 
-def downstream_train(args, trainer, task, epoch_itr, task_name):
+def downstream_train(args, trainer, task, epoch_for_logging, task_name):
     """Fine-tune classifier on downstream training set"""
 
     if args.fixed_validation_seed is not None:
@@ -390,7 +400,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
         num_workers=args.num_workers,
     ).next_epoch_itr(shuffle=False)
     progress = progress_bar.build_progress_bar(
-        args, itr, epoch_itr.epoch,
+        args, itr, epoch_for_logging,
         prefix='fine-tune on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
@@ -445,7 +455,7 @@ def downstream_train(args, trainer, task, epoch_itr, task_name):
     return classifier
 
 
-def downstream_validate(args, trainer, task, epoch_itr, task_name, classifier):
+def downstream_validate(args, trainer, task, epoch_for_logging, task_name, classifier):
     """Evaluate classifier on downstream validation set"""
 
     if args.fixed_validation_seed is not None:
@@ -469,7 +479,7 @@ def downstream_validate(args, trainer, task, epoch_itr, task_name, classifier):
         num_workers=args.num_workers,
     ).next_epoch_itr(shuffle=False)
     progress = progress_bar.build_progress_bar(
-        args, itr, epoch_itr.epoch,
+        args, itr, epoch_for_logging,
         prefix='valid on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
