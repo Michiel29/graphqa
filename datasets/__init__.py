@@ -1,4 +1,6 @@
 from .annotated_text import AnnotatedText
+from .custom_mask_tokens_dataset import CustomMaskTokensDataset
+from .dictionary_dataset import DictionaryDataset
 from .epoch_split_dataset import EpochSplitDataset
 from .fewrel_dataset import FewRelDataset
 from .kbp37_dataset import KBP37Dataset

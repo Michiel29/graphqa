@@ -5,8 +5,6 @@ from fairseq.data import (
     data_utils,
     Dictionary,
     IdDataset,
-    MaskTokensDataset,
-    NestedDictionaryDataset,
     NumelDataset,
     NumSamplesDataset,
     PadDataset,
@@ -16,6 +14,9 @@ from fairseq.tasks import register_task
 
 from datasets import (
     AnnotatedText,
+    CustomMaskTokensDataset,
+    DictionaryDataset,
+    EpochSplitDataset,
     FixedSizeDataset,
     PrependTokenDataset,
     ShuffledDataset,
@@ -69,13 +70,20 @@ class MaskedLMEMTask(BaseTask):
             seed=self.seed,
             document_sep_len=1,
         )
+        if split == 'train' and self.args.epoch_size is not None:
+            dataset = EpochSplitDataset(
+                dataset=dataset,
+                epoch_size=self.args.epoch_size,
+                seed=self.args.seed,
+            )
+
         dataset = PrependTokenDataset(dataset, self.dictionary.bos())
 
         # create masked input and targets
         mask_whole_words = get_whole_word_mask(self.args, self.source_dictionary) \
             if self.args.mask_whole_words else None
 
-        src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
+        src_dataset, tgt_dataset = CustomMaskTokensDataset.apply_mask(
             dataset,
             self.dictionary,
             pad_idx=self.dictionary.pad(),
@@ -88,29 +96,24 @@ class MaskedLMEMTask(BaseTask):
             mask_whole_words=mask_whole_words,
         )
 
-        dataset = ShuffledDataset(
-                NestedDictionaryDataset(
-                {
-                    'id': IdDataset(),
-                    'net_input': {
-                        'src_tokens': PadDataset(
-                            src_dataset,
-                            pad_idx=self.source_dictionary.pad(),
-                            left_pad=False,
-                        ),
-                        'src_lengths': NumelDataset(src_dataset, reduce=False),
-                    },
-                    'target': PadDataset(
-                        tgt_dataset,
-                        pad_idx=self.source_dictionary.pad(),
-                        left_pad=False,
-                    ),
-                    'nsentences': NumSamplesDataset(),
-                    'ntokens': NumelDataset(src_dataset, reduce=True),
-                },
-                sizes=[src_dataset.sizes],
-            ),
-            sizes=src_dataset.sizes,
+        dataset = DictionaryDataset(
+            {
+                'id': IdDataset(),
+                'src_tokens': PadDataset(
+                    src_dataset,
+                    pad_idx=self.source_dictionary.pad(),
+                    left_pad=False,
+                ),
+                'src_lengths': NumelDataset(src_dataset, reduce=False),
+                'target': PadDataset(
+                    tgt_dataset,
+                    pad_idx=self.source_dictionary.pad(),
+                    left_pad=False,
+                ),
+                'nsentences': NumSamplesDataset(),
+                'ntokens': NumelDataset(src_dataset, reduce=True),
+            },
+            main_key='src_tokens',
         )
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)

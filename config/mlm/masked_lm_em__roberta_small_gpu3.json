@@ -1,5 +1,5 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream.json"],
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
 
     "task": "masked_lm_em",
     "arch": "roberta_small",
@@ -17,6 +17,7 @@
 
     "encoder_output_layer_type": "lm_head",
 
+    "epoch_size": 4e6,
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
