@@ -16,9 +16,10 @@ class EncoderTACREDModel(BaseFairseqModel):
         super().__init__()
 
         self.args = args
+        self.cls_mode = 'pytorch'
 
         self.encoder = encoder
-        if not args.use_sklearn_classifier:
+        if args.use_pytorch_classifier:
             if args.encoder_output_layer_type in ['entity_start', 'entity_start_layer_norm', 'entity_pooling_first_token']:
                 self.classifier = nn.Linear(2*args.encoder_embed_dim, args.num_classes)
             elif args.encoder_output_layer_type in ['entity_start_linear']:
@@ -34,7 +35,7 @@ class EncoderTACREDModel(BaseFairseqModel):
 
         text_enc, _ = self.encoder(text, annotation=batch.get('annotation'))
 
-        if self.args.use_sklearn_classifier:
+        if self.cls_mode == 'sklearn':
             features = text_enc.cpu().detach().numpy()
             targets = batch['target'].cpu().detach().numpy()
             return features, targets

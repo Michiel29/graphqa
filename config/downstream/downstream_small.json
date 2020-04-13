@@ -5,6 +5,8 @@
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
             "arch": "encoder_fewrel__roberta_small",
+            "entity_dim": null,
+            "encoder_output_layer_type": "entity_start_layer_norm",
             "max_sentences": 10,
             "max_tokens": 2000,
             "non_mask_rate": 0
@@ -13,34 +15,74 @@
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
             "arch": "encoder_fewrel__roberta_small",
+            "entity_dim": null,
+            "encoder_output_layer_type": "entity_start_layer_norm",
             "max_sentences": 10,
             "max_tokens": 2000,
             "non_mask_rate": 1
+        },
+        "semeval2010task8": {
+            "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_semeval2010task8__roberta_small",
+            "entity_dim": null,
+            "encoder_output_layer_type": "entity_start_layer_norm",
+            "non_mask_rate": 1,
+
+            "max_epoch": 10,
+            "warmup_updates": 300, // bsz=16, max_epoch=10
+            "lr": [1e-5],
+
+            "max_sentences": 16,
+            "max_sentences_sklearn": 64,
+            "update_freq": [1],
+            "max_tokens": 2e4,
+            "max_tokens_sklearn": 2e4,
+
+            "pct_epoch_interval": 1,
+            "sklearn_epoch_interval": 1
+        },
+        "kbp37": {
+            "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_kbp37__roberta_small",
+            "entity_dim": 512,
+            "encoder_output_layer_type": "entity_start_linear",
+            "non_mask_rate": 1,
+
+            "max_epoch": 10,
+            "warmup_updates": 600, // bsz=16, max_epoch=10
+            "lr": [1e-5],
+
+            "max_sentences": 16,
+            "max_sentences_sklearn": 64,
+            "update_freq": [1],
+            "max_tokens": 2e4,
+            "max_tokens_sklearn": 2e4,
+
+            "pct_epoch_interval": 1,
+            "sklearn_epoch_interval": 1
+        },
+        "tacred": {
+            "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_tacred__roberta_small",
+            "entity_dim": 512,
+            "encoder_output_layer_type": "entity_start_linear",
+            "non_mask_rate": 1,
+
+            "max_epoch": 10,
+            "warmup_updates": 2553, // bsz=16, max_epoch=10
+            "lr": [2e-5],
+
+            "max_sentences": 16,
+            "max_sentences_sklearn": 64,
+            "update_freq": [1],
+            "max_tokens": 2e4,
+            "max_tokens_sklearn": 2e4,
+
+            "pct_epoch_interval": 5,
+            "sklearn_epoch_interval": 5
         }
-        // ,
-        // "semeval2010task8": {
-        //     "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_semeval2010task8__roberta_small",
-        //     "max_sentences": 64,
-        //     "max_tokens": 6e3,
-        //     "non_mask_rate": 1
-        // },
-        // "kbp37": {
-        //     "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_kbp37__roberta_small",
-        //     "max_sentences": 64,
-        //     "max_tokens": 6e3,
-        //     "non_mask_rate": 1
-        // },
-        // "tacred": {
-        //     "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_tacred__roberta_small",
-        //     "max_sentences": 64,
-        //     "max_tokens": 6e3,
-        //     "non_mask_rate": 1
-        // }
     }
 }
