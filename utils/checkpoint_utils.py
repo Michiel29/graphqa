@@ -41,7 +41,7 @@ def generate_save_dir(args, system_args):
         latest_dir_idx = np.argsort(time_stamps)[-1]
         new_save_dir = os.path.join(new_save_base, sub_dirs[latest_dir_idx])
     else:
-        dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm")
+        dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm_%Ss")
         new_save_dir = os.path.join(new_save_base, dt_string)
 
     return new_save_dir
