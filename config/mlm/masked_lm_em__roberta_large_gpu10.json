@@ -7,7 +7,7 @@
     "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
-    "non_mask_rate": 0,
+    "non_mask_rate": 0.5,
 
     "mask_prob": 0.15,
     "leave_unmasked_prob": 0.1,
