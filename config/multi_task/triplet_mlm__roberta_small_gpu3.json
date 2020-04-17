@@ -19,7 +19,7 @@
             "max_tokens": 12000,
 
             "criterion": "cross_entropy_custom",
-            "weight": 1
+            "weight": 0.35
         },
         "mlm": {
             "task": "masked_lm_em",
@@ -39,7 +39,7 @@
             "max_tokens": 12000,
 
             "criterion": "masked_lm_custom",
-            "weight": 1
+            "weight": 0.65
         }
     },
 
@@ -58,7 +58,7 @@
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
-    "lr": [1e-4],
+    "lr": [2e-4],
 
     "num_workers": 4,
     "max_sentences": 1336,
