@@ -33,11 +33,16 @@ class TripletDataset(RelInfDataset):
 
         padded_text = pad_sequence(texts, batch_first=True, padding_value=self.dictionary.pad())
 
+        if self.use_sentence_negatives:
+            target = torch.arange(len(instances), dtype=torch.long)
+        else:
+            target = torch.LongTensor(targets)
+
         return {
             'text': padded_text,
             'head': torch.LongTensor(heads),
             'tail': torch.LongTensor(tails),
-            'target': torch.LongTensor(targets),
+            'target': target,
             'replace_heads': torch.LongTensor(replace_heads),
             'ntokens': ntokens,
             'nsentences': nsentences,

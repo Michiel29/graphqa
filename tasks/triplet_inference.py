@@ -55,6 +55,7 @@ class TripletInferenceTask(RelationInferenceTask):
             dictionary=self.dictionary,
             same_replace_heads_for_all_negatives=self.args.arch.startswith('encoder_dual'),
             negative_split_probs=self.args.negative_split_probs or [1, 0, 0],
+            use_sentence_negatives=self.args.use_sentence_negatives,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(

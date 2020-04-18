@@ -21,9 +21,13 @@ class RelInfDataset(FairseqDataset):
         seed,
         same_replace_heads_for_all_negatives,
         negative_split_probs,
+        use_sentence_negatives,
     ):
         self.annotated_text = annotated_text
+        self.use_sentence_negatives = use_sentence_negatives
         self.k_negative = k_negative
+        if self.use_sentence_negatives:
+            assert self.k_negative == 0
         self.n_entities = n_entities
         self.graph = graph
         self.seed = seed
@@ -90,21 +94,24 @@ class RelInfDataset(FairseqDataset):
             tail_only_neighbors = np.setdiff1d(tail_neighbors, head_tail_neighbors, assume_unique=True)
 
             heads = np.full(1 + self.k_negative, fill_value=head, dtype=np.int64)
-            heads[1: 1 + num_replace_head] = self.sample_neighbors(
-                [head_tail_neighbors, tail_only_neighbors, head_only_neighbors],
-                self.get_n_samples_per_category(num_replace_head),
-            )
+            if num_replace_head > 0:
+                heads[1: 1 + num_replace_head] = self.sample_neighbors(
+                    [head_tail_neighbors, tail_only_neighbors, head_only_neighbors],
+                    self.get_n_samples_per_category(num_replace_head),
+                )
             item['head'] = heads
 
             tails = np.full(1 + self.k_negative, fill_value=tail, dtype=np.int64)
-            tails[1 + num_replace_head:] = self.sample_neighbors(
-                [head_tail_neighbors, head_only_neighbors, tail_only_neighbors],
-                self.get_n_samples_per_category(self.k_negative - num_replace_head),
-            )
+            if self.k_negative - num_replace_head > 0:
+                tails[1 + num_replace_head:] = self.sample_neighbors(
+                    [head_tail_neighbors, head_only_neighbors, tail_only_neighbors],
+                    self.get_n_samples_per_category(self.k_negative - num_replace_head),
+                )
             item['tail'] = tails
             item['target'] = 0
             replace_heads = np.zeros(self.k_negative, dtype=np.int64)
-            replace_heads[:num_replace_head] = 1
+            if self.k_negative - num_replace_head > 0:
+                replace_heads[:num_replace_head] = 1
             item['replace_heads'] = replace_heads
 
         return item

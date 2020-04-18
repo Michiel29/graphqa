@@ -42,6 +42,9 @@ class RelationInferenceTask(BaseTask):
                             help='method for masking entities in a sentence')
         parser.add_argument('--non-mask-rate', default=1.0, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
+        parser.add_argument('--use-sentence-negatives', default=False, type=bool,
+                            help='Wether we use other sentences in the batch as negative examples.')
+
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         raise NotImplementedError

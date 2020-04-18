@@ -45,8 +45,12 @@ class ConcatLinearDot(nn.Module):
         super().__init__()
         self.scaling = args.entity_dim ** -0.5
         self.linear = nn.Linear(2 * args.entity_dim, args.entity_dim)
+        self.use_sentence_negatives = args.use_sentence_negatives
 
     def forward(self, mention, head, tail):
         head_tail_emb = torch.cat([head, tail], axis=-1)
         head_tail_emb = self.linear(head_tail_emb)
-        return self.scaling * torch.bmm(head_tail_emb, mention.unsqueeze(-1)).squeeze(-1)
+        if self.use_sentence_negatives:
+            return self.scaling * torch.matmul(head_tail_emb.squeeze(1), mention.t())
+        else:
+            return self.scaling * torch.bmm(head_tail_emb, mention.unsqueeze(-1)).squeeze(-1)
