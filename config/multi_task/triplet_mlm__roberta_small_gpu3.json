@@ -19,7 +19,7 @@
             "max_tokens": 12000,
 
             "criterion": "cross_entropy_custom",
-            "weight": 0.35
+            "weight": 0.01
         },
         "mlm": {
             "task": "masked_lm_em",
@@ -39,13 +39,13 @@
             "max_tokens": 12000,
 
             "criterion": "masked_lm_custom",
-            "weight": 0.65
+            "weight": 0.99
         }
     },
 
     "task": "multi_task",
     "arch": "encoder_triplet__roberta_small",
-
+    "use_sentence_negatives": false,
     "entity_dim": 256,
     "triplet_type": "concat_linear_dot",
     "encoder_output_layer_type": "entity_start_linear",
