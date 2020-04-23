@@ -8,6 +8,7 @@ Train a network across multiple GPUs.
 """
 
 import contextlib
+import copy
 from itertools import chain
 import logging
 import sys
@@ -126,21 +127,38 @@ class Trainer(object):
             self._build_optimizer()  # this will initialize self._lr_scheduler
         return self._lr_scheduler
 
-    def _get_trainable_parameters(self, model):
-        list(
-                filter(
-                    lambda p: p.requires_grad,
-                    chain(self.model.parameters(), self.criterion.parameters()),
-                )
-            )
+    def _get_param_group_index(self, groups, param_name):
+        index = None
+        for i, group in enumerate(groups):
+            if (
+                (len(group['prefix']) == 0 or group['prefix'] in param_name)
+                and (index is None or len(groups[index]['prefix']) < len(group['prefix']))
+            ):
+                index = i
+        return index
+
+    def _get_param_groups(self, params):
+        param_groups = copy.deepcopy(self.args.optimizers)
+        for param_group in param_groups:
+            param_group['params'] = []
+        for param_name, param in params:
+            param_index = self._get_param_group_index(param_groups, param_name)
+            param_groups[param_index]['params'].append(param)
+        for param_group in param_groups:
+            if len(param_group['params']) == 0:
+                logging.warning('Failed to match any parameter for the group %s' % param_group)
+            del param_group['prefix']
+        return param_groups
+
     def _build_optimizer(self):
-        if self.args.optimizer == 'multi_adam':
+        if hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0:
             params = list(
                 filter(
                     lambda np: np[1].requires_grad,
                     chain(self.model.named_parameters(), self.criterion.named_parameters()),
                 )
             )
+            params = self._get_param_groups(params)
         else:
             params = list(
                 filter(
