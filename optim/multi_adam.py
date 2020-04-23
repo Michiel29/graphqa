@@ -14,7 +14,7 @@ def get_param_group_index(groups, param_name):
     index = None
     for i, group in enumerate(groups):
         if (
-            param_name.startswith(group['prefix'])
+            (len(group['prefix']) == 0 or group['prefix'] in param_name)
             and (index is None or len(groups[index]['prefix']) < len(group['prefix']))
         ):
             index = i
@@ -32,7 +32,9 @@ class MultiAdamOptimizer(FairseqOptimizer):
             param_index = get_param_group_index(param_groups, param_name)
             param_groups[param_index]['params'].append(param)
         for param_group in param_groups:
-            assert len(param_group['params']) > 0
+            if len(param_group['params']) == 0:
+                logging.error('Parameters %s' % ','.join([x[0] for x in params]))
+                raise Exception('Failed to match any parameter for the group %s' % param_group)
 
         fused_adam_cls = get_fused_adam_class()
         use_fused_adam = fused_adam_cls is not None and torch.cuda.is_available()
