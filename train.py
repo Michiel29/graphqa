@@ -24,12 +24,13 @@ from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
 )
 from fairseq.data import iterators
-from fairseq.trainer import Trainer
 from fairseq.meters import StopwatchMeter
 from fairseq.models import ARCH_MODEL_REGISTRY
 
 import models, criterions
 import tasks as custom_tasks
+import optim as custom_optim
+from trainer import Trainer
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import generate_save_dir

@@ -15,7 +15,7 @@ class MaskedLmCustomLoss(FairseqCriterion):
         self.task = task
         weights = torch.ones(len(task.dictionary))
         weights[task.dictionary.special_tokens()] = 0
-        self.weights = nn.Parameter(weights)
+        self.weights = nn.Parameter(weights, requires_grad=False)
 
     @classmethod
     def build_criterion(cls, args, task):

@@ -43,6 +43,17 @@
         }
     },
 
+    "optimizer": "multi_adam",
+    "optimizers": [
+        {
+            "prefix": "",
+            "weight_decay": 0.1
+        },
+        {
+            "prefix": "encoder.decoder",
+            "weight_decay": 0.1
+        }
+    ],
     "task": "multi_task",
     "arch": "encoder_triplet__roberta_small",
     "use_sentence_negatives": false,
