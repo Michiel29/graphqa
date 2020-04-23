@@ -34,7 +34,7 @@ class MultiAdamOptimizer(FairseqOptimizer):
         for param_group in param_groups:
             if len(param_group['params']) == 0:
                 logging.error('Parameters %s' % ','.join([x[0] for x in params]))
-                raise Exception('Failed to match any parameter for the group %s' % param_group)
+                logging.warning('Failed to match any parameter for the group %s' % param_group)
 
         fused_adam_cls = get_fused_adam_class()
         use_fused_adam = fused_adam_cls is not None and torch.cuda.is_available()
