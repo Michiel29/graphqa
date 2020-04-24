@@ -158,7 +158,10 @@ def main(args, init_distributed=False):
 
     while (
         not args.disable_training
-        and lr > args.min_lr
+        and (
+            (isinstance(lr, np.ndarray) and all(lr > args.min_lr))
+            or (not isinstance(lr, np.ndarray) and lr > args.min_lr)
+        )
         and epoch_itr.next_epoch_idx <= max_epoch
         and trainer.get_num_updates() < max_update
     ):

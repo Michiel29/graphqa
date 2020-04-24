@@ -11,6 +11,7 @@ import contextlib
 import copy
 from itertools import chain
 import logging
+import numpy as np
 import sys
 from typing import Any, Dict, List
 
@@ -20,10 +21,19 @@ from fairseq import checkpoint_utils, distributed_utils, models, optim, utils
 from fairseq.file_io import PathManager
 from fairseq.logging import meters, metrics
 from fairseq.nan_detector import NanDetector
-from fairseq.optim import lr_scheduler
+from fairseq.optim import FairseqOptimizer, lr_scheduler
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_lr_group(self):
+    return np.array([param_group['lr'] for param_group in self.optimizer.param_groups])
+
+
+def set_lr_group(self, lr):
+    for i, param_group in enumerate(self.optimizer.param_groups):
+        param_group['lr'] = lr[i]
 
 
 class Trainer(object):
@@ -150,8 +160,12 @@ class Trainer(object):
             del param_group['prefix']
         return param_groups
 
+
     def _build_optimizer(self):
-        if hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0:
+        # TODO: Rename 'optimizers' to param_groups
+        use_param_groups = hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0
+
+        if use_param_groups:
             params = list(
                 filter(
                     lambda np: np[1].requires_grad,
@@ -189,7 +203,20 @@ class Trainer(object):
 
         # We should initialize the learning rate scheduler immediately after
         # building the optimizer, so that the initial learning rate is set.
-        self._lr_scheduler = lr_scheduler.build_lr_scheduler(self.args, self.optimizer)
+        if use_param_groups:
+            # HACK: Current implementation of LR schedulers works fine
+            # if we replace LR with numpy arrays of LRs.
+            # However, FairseqOptimizer (the base class for the optimizer here)
+            # always return just a single LR (from the first param group).
+            # We change this behaviour for the optimizer object (so we don't need to change the base class)
+            self.optimizer.set_lr = set_lr_group.__get__(self.optimizer, FairseqOptimizer)
+            self.optimizer.get_lr = get_lr_group.__get__(self.optimizer, FairseqOptimizer)
+            assert len(self.args.lr) == 1
+            args = copy.deepcopy(self.args)
+            args.lr = [np.array([param_group.get('lr', self.args.lr[0]) for param_group in self.args.optimizers])]
+            self._lr_scheduler = lr_scheduler.build_lr_scheduler(args, self.optimizer)
+        else:
+            self._lr_scheduler = lr_scheduler.build_lr_scheduler(self.args, self.optimizer)
         self._lr_scheduler.step_update(0)
 
     def save_checkpoint(self, filename, extra_state):
