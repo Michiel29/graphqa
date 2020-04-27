@@ -57,8 +57,11 @@ is_neptune_initialized = False
 
 
 def maybe_wrap_neptune_logging(progress_bar, args):
-    if distributed_utils.is_master(args) and not args.debug:
-        assert is_neptune_initialized
+    if (
+        distributed_utils.is_master(args)
+        and not args.debug
+        and is_neptune_initialized
+    )
         return NeptuneWrapper(progress_bar)
     else:
         return progress_bar
