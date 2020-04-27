@@ -57,7 +57,8 @@ is_neptune_initialized = False
 
 
 def maybe_wrap_neptune_logging(progress_bar, args):
-    if distributed_utils.is_master(args):
+    if distributed_utils.is_master(args) and not args.debug:
+        assert is_neptune_initialized
         return NeptuneWrapper(progress_bar)
     else:
         return progress_bar
@@ -113,7 +114,7 @@ def main(args, init_distributed=False):
     # corresponding train iterator
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
 
-    if distributed_utils.is_master(args):
+    if distributed_utils.is_master(args) and not args.debug:
         import socket
         neptune.init(NEPTUNE_PROJECT_NAME)
         neptune.create_experiment(
@@ -566,6 +567,12 @@ def cli_main():
         help='paths to JSON files of experiment configurations, from high to low priority',
     )
     parser.add_argument('--exp-name', type=str, default='', help='name of the experiment')
+    parser.add_argument(
+        '--debug',
+        default=False,
+        action='store_true',
+        help='run training in the debugging mode',
+    )
     parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
     pre_parsed_args, unknown = parser.parse_known_args()
 

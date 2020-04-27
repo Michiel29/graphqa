@@ -80,7 +80,7 @@ def generate_save_dir(args, training_name, system_args):
 
     for attribute_name in save_attribute_names:
         attribute_value = get_attribute_value_str(args, attribute_name)
-        new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_string)
+        new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_value)
 
     if restore_file:
         sub_dirs = next(os.walk(os.path.join(new_save_base,'.')))[1]
