@@ -17,7 +17,15 @@
     "n_test_examples": null,
 
     "num_workers": 2,
-    "path_attributes": ["task", "lr"],
+    "tag_attributes": [
+        "task",
+        "arch",
+        "encoder_output_layer_type",
+        "entity_dim",
+        "lr",
+        "triplet_type"
+    ],
+
     "save_dir": "../save/",
     "restore_file": false,
 

@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import regex as re
 
 import numpy as np
 
@@ -8,29 +9,77 @@ def select_component_state(model_state_dict, prefix):
     component_state_dict = {key: value for key, value in model_state_dict.items() if key.startswith(prefix)}
     return component_state_dict
 
-def generate_save_dir(args, system_args):
+
+def get_task_str(args):
+    if args.task != 'multi_task':
+        return args.task
+    else:
+        return '_'.join(args.tasks.keys())
+
+
+ARCH_SUBSTR_TO_SHORT_NAME = {
+    'roberta_small': 'small',
+    'roberta_base': 'base',
+    'roberta_large': 'large',
+}
+
+
+def get_model_str(args):
+    for k, v in ARCH_SUBSTR_TO_SHORT_NAME.items():
+        if k in args.arch:
+            return v
+    else:
+        return args.arch
+
+
+def get_training_name(args):
+    s = [get_task_str(args), get_model_str(args)]
+    if len(args.exp_name) > 0:
+        s.append(args.exp_name)
+    return '/'.join(s)
+
+
+def get_attribute_value_str(args, attribute_name):
+    if not hasattr(args, attribute_name):
+        return None
+    attribute_value = getattr(args, attribute_name)
+    if isinstance(attribute_value, list):
+        attribute_string = '__'.join([str(val) for val in attribute_value])
+    else:
+        attribute_string = str(attribute_value)
+    return attribute_string
+
+
+NEPTUNE_TAG_REGEX = '[^a-zA-Z0-9]'
+
+
+def generate_tags(args):
+    tags = []
+    for attribute_name in args.tag_attributes:
+        attribute_value = get_attribute_value_str(args, attribute_name)
+        if attribute_value is not None:
+            tag = re.sub(NEPTUNE_TAG_REGEX, '-', attribute_name + '-' + attribute_value)
+            tags.append(tag)
+    return tags
+
+
+def generate_save_dir(args, training_name, system_args):
     """For new experiments, generate checkpointing directory of form task/architecture/lr/datetime. When restoring from a checkpoint, return the path with the latest datetime in task/architecture/lr."""
 
     restore_file = getattr(args, 'restore_file', False)
 
-    new_save_base = args.save_dir
+    assert '-' not in training_name
 
-    save_attribute_names = args.path_attributes + [
-        arg_name.strip('-').replace('-', '_') for arg_name in system_args
-    if
-        arg_name.startswith('-')
-        and arg_name not in args.path_attributes
-        and not arg_name == '--config'
+    new_save_base = os.path.join(args.save_dir, training_name)
+
+    save_attribute_names = [
+        arg_name.strip('-').replace('-', '_')
+        for arg_name in system_args
+        if arg_name.startswith('-') and arg_name not in ['--config', '--exp-name']
     ]
 
-
     for attribute_name in save_attribute_names:
-        attribute_value = getattr(args, attribute_name)
-        if isinstance(attribute_value, list):
-            attribute_string = '__'.join([str(val) for val in attribute_value])
-        else:
-            attribute_string = str(attribute_value)
-
+        attribute_value = get_attribute_value_str(args, attribute_name)
         new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_string)
 
     if restore_file:

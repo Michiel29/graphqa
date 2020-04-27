@@ -34,7 +34,11 @@ import optim as custom_optim
 from trainer import Trainer
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
-from utils.checkpoint_utils import generate_save_dir
+from utils.checkpoint_utils import (
+    generate_save_dir,
+    generate_tags,
+    get_training_name,
+)
 
 from utils.logging_utils import compute_sklearn_stats, NeptuneWrapper
 from utils.downstream_utils import load_downstream_data
@@ -110,8 +114,14 @@ def main(args, init_distributed=False):
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
 
     if distributed_utils.is_master(args):
+        import socket
         neptune.init(NEPTUNE_PROJECT_NAME)
-        neptune.create_experiment(name='test', params=vars(args))
+        neptune.create_experiment(
+            name=args.training_name,
+            params=vars(args),
+            tags=generate_tags(args),
+            hostname=socket.gethostname(),
+        )
         is_neptune_initialized = True
 
     if args.eval_downstream:
@@ -549,7 +559,13 @@ def distributed_main(i, args, start_rank=0):
 def cli_main():
 
     parser = options.get_training_parser()
-    parser.add_argument('--config', type=str, nargs='*', help='paths to JSON files of experiment configurations, from high to low priority')
+    parser.add_argument(
+        '--config',
+        type=str,
+        nargs='*',
+        help='paths to JSON files of experiment configurations, from high to low priority',
+    )
+    parser.add_argument('--exp-name', type=str, default='', help='name of the experiment')
     parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
     pre_parsed_args, unknown = parser.parse_known_args()
 
@@ -563,7 +579,9 @@ def cli_main():
 
     update_namespace(args, config_dict)
 
-    base_save_dir = generate_save_dir(args, sys.argv[1:])
+    training_name = get_training_name(args)
+    base_save_dir = generate_save_dir(args, training_name, sys.argv[1:])
+    setattr(args, 'training_name', training_name)
     setattr(args, 'save_dir', os.path.join(base_save_dir, 'checkpoints'))
     setattr(args, 'tensorboard_logdir', os.path.join(base_save_dir, 'tensorboard'))
 
