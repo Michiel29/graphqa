@@ -61,7 +61,7 @@ def maybe_wrap_neptune_logging(progress_bar, args):
         distributed_utils.is_master(args)
         and not args.debug
         and is_neptune_initialized
-    )
+    ):
         return NeptuneWrapper(progress_bar)
     else:
         return progress_bar
