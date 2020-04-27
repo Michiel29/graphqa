@@ -9,6 +9,7 @@ Train a new model on one or across multiple GPUs.
 
 import logging
 import math
+import neptune
 import random
 import os
 import sys
@@ -35,7 +36,7 @@ from trainer import Trainer
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import generate_save_dir
 
-from utils.logging_utils import compute_sklearn_stats
+from utils.logging_utils import compute_sklearn_stats, NeptuneWrapper
 from utils.downstream_utils import load_downstream_data
 
 logging.basicConfig(
@@ -45,6 +46,18 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger('fairseq_cli.train')
+
+
+NEPTUNE_PROJECT_NAME = 'selfinference/sandbox'
+is_neptune_initialized = False
+
+
+def maybe_wrap_neptune_logging(progress_bar, args):
+    if distributed_utils.is_master(args):
+        return NeptuneWrapper(progress_bar)
+    else:
+        return progress_bar
+
 
 def main(args, init_distributed=False):
     utils.import_user_module(args)
@@ -95,6 +108,11 @@ def main(args, init_distributed=False):
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
+
+    if distributed_utils.is_master(args):
+        neptune.init(NEPTUNE_PROJECT_NAME)
+        neptune.create_experiment(name='test', params=vars(args))
+        is_neptune_initialized = True
 
     if args.eval_downstream:
         downstream_dict = {}
@@ -229,8 +247,11 @@ def train(args, trainer, task, epoch_itr, downstream_dict=None):
         else args.update_freq[-1]
     )
     itr = iterators.GroupedIterator(itr, update_freq)
-    progress = progress_bar.build_progress_bar(
-        args, itr, epoch_itr.epoch, no_progress_bar='simple',
+    progress = maybe_wrap_neptune_logging(
+        progress_bar.build_progress_bar(
+            args, itr, epoch_itr.epoch, no_progress_bar='simple',
+        ),
+        args=args,
     )
 
     # task specific setup per epoch
@@ -309,6 +330,7 @@ def validate(args, trainer, task, epoch_for_logging, subsets, valid_name=None):
             prefix='valid on \'{}\' subset'.format(valid_name_),
             no_progress_bar='simple'
         )
+        progress = maybe_wrap_neptune_logging(progress, args)
 
         # reset validation meters
         metrics.reset_meters(valid_name_)
@@ -405,6 +427,7 @@ def downstream_train(args, trainer, task, epoch_for_logging, task_name):
         prefix='fine-tune on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
+    progress = maybe_wrap_neptune_logging(progress, args)
 
     # Reset meters
     metrics.reset_meters(task_name)
@@ -484,6 +507,7 @@ def downstream_validate(args, trainer, task, epoch_for_logging, task_name, class
         prefix='valid on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
+    progress = maybe_wrap_neptune_logging(progress, args)
 
     # Reset validation meters
     metrics.reset_meters(task_name)
@@ -583,4 +607,9 @@ def cli_main():
 
 
 if __name__ == '__main__':
-    cli_main()
+    os.environ['NEPTUNE_API_TOKEN'] = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiMGVlMjhiMTQtZGU0YS00MDFiLWE2NzQtNDk4Y2M1NTQwY2Q4In0="
+    try:
+        cli_main()
+    finally:
+        if is_neptune_initialized:
+            neptune.stop()

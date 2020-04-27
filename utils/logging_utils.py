@@ -1,9 +1,52 @@
-import numpy as np
 import collections
+import neptune
+from numbers import Number
+import numpy as np
+from sklearn.metrics import multilabel_confusion_matrix, log_loss, accuracy_score
+from typing import Optional
+
 from fairseq import meters
 from fairseq.logging.meters import AverageMeter, safe_round
-from typing import Optional
-from sklearn.metrics import multilabel_confusion_matrix, log_loss, accuracy_score
+from fairseq.logging.progress_bar import BaseProgressBar
+
+
+class NeptuneWrapper(BaseProgressBar):
+    def __init__(self, progress_bar):
+        self.progress_bar = progress_bar
+
+    def __iter__(self):
+        return iter(self.progress_bar)
+
+    def log(self, stats, tag=None, step=None):
+        self._log_to_neptune(stats, tag=tag, step=step)
+        self.progress_bar.log(stats, tag=tag, step=step)
+
+    def print(self, stats, tag=None, step=None):
+        self._log_to_neptune(stats, tag=tag, step=step)
+        self.progress_bar.print(stats, tag=tag, step=step)
+
+    def _get_log_name(self, tag, key):
+        if tag is None:
+            return key
+        else:
+            return '%s/%s' % (tag, key)
+
+    def _log_to_neptune(self, stats, tag=None, step=None):
+        if step is None:
+            step = stats['num_updates']
+        for key in stats.keys() - {'num_updates'}:
+            if isinstance(stats[key], AverageMeter):
+                neptune.log_metric(
+                    log_name=self._get_log_name(tag, key),
+                    x=step,
+                    y=stats[key].val,
+                )
+            elif isinstance(stats[key], Number):
+                neptune.log_metric(
+                    log_name=self._get_log_name(tag, key),
+                    x=step,
+                    y=stats[key],
+                )
 
 
 class MacroF1Meter(AverageMeter):
@@ -189,7 +232,7 @@ def compute_sklearn_stats(target, pred, prob, num_classes, eval_metric):
     stats = {
         'loss': log_loss(target, prob, labels=list(range(num_classes))),
         'acc': accuracy_score(target, pred)
-    } 
+    }
 
     if eval_metric == 'macro_f1':
         fn, tp, fp = compute_confusion_matrix(
