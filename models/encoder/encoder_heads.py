@@ -53,8 +53,8 @@ class EntityStart(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
@@ -82,8 +82,8 @@ class EntityStartLinear(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
@@ -113,8 +113,8 @@ class EntityTargetLinear(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         if replace_heads is not None:
             head_or_tail = replace_heads * head_sum + (1 - replace_heads) * tail_sum
@@ -145,9 +145,9 @@ class EntitySplitLinear(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True)
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True)
         head_sum = self.linear(head_sum)
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True)
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True)
         tail_sum = self.linear(tail_sum)
         return torch.cat((head_sum, tail_sum), dim=-1)
 
@@ -173,8 +173,8 @@ class EntityStartLayerNorm(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
@@ -207,8 +207,8 @@ class EntityStartMLP(nn.Module):
         head_mask = (src_tokens == self.head_idx) # [batch_size, length]
         tail_mask = (src_tokens == self.tail_idx) # [batch_size, length]
 
-        head_sum = torch.bmm(head_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
-        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).float(), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        head_sum = torch.bmm(head_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(head_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
+        tail_sum = torch.bmm(tail_mask.unsqueeze(-2).type_as(x), x).squeeze(-2) / torch.sum(tail_mask, dim=-1, keepdim=True) # [batch_size, enc_dim]
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 

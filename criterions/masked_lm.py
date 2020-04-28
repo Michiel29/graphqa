@@ -56,7 +56,7 @@ class MaskedLmCustomLoss(FairseqCriterion):
         special_tokens_mask = 1 - words_mask
 
         predicted_class = torch.argmax(logits, dim=1)
-        accuracy_mask = (predicted_class == targets).float()
+        accuracy_mask = (predicted_class == targets).type_as(logits)
 
         accuracy_s = accuracy_mask.dot(special_tokens_mask)
         accuracy_w = accuracy_mask.dot(words_mask)
