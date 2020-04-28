@@ -30,7 +30,6 @@ from fairseq.models import ARCH_MODEL_REGISTRY
 
 import models, criterions
 import tasks as custom_tasks
-import optim as custom_optim
 from trainer import Trainer
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
