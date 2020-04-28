@@ -24,9 +24,9 @@ import tasks as custom_tasks
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import generate_save_dir
 
-from utils.logging_utils import compute_sklearn_stats
+from utils.logging_utils import compute_sklearn_stats, maybe_wrap_neptune_logging
 from utils.downstream_utils import (
-    load_downstream_data, 
+    load_downstream_data,
     prepare_sample,
     valid_step,
     get_ft_train_stats,
@@ -42,6 +42,7 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger('fairseq_cli.train')
+
 
 def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, pct, global_epoch, valid_subset):
     """Fine-tune PyTorch classifier on downstream training set for one epoch"""
@@ -68,7 +69,9 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, pct, 
         progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.wrapped_bar.prefix), refresh=True)
     except:
         progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.tqdm.desc), refresh=True)
-    
+
+    progress = maybe_wrap_neptune_logging(progress, args)
+
     # Task specific setup per epoch
     task.begin_epoch(epoch_itr.epoch, trainer.get_model())
 
@@ -100,7 +103,7 @@ def downstream_validate_pytorch(args, task, model, criterion, epoch_for_logging,
     """Evaluate the model on the validation set(s) and return the losses."""
     task.split = 'valid'
     valid_name_ = valid_name if valid_name is not None else 'valid'
-    
+
     if args.fixed_validation_seed is not None:
         # Set fixed seed for every validation
         utils.set_torch_seed(args.fixed_validation_seed)
@@ -136,6 +139,8 @@ def downstream_validate_pytorch(args, task, model, criterion, epoch_for_logging,
                 progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, valid_name_, progress.wrapped_bar.prefix), refresh=True)
             except:
                 progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, valid_name_, progress.tqdm.desc), refresh=True)
+
+        progress = maybe_wrap_neptune_logging(progress, args)
 
         # Reset validation meters
         metrics.reset_meters(valid_name_)
@@ -181,6 +186,7 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
         prefix='sklearn fine-tune on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
+    progress = maybe_wrap_neptune_logging(progress, args)
 
     # Reset meters
     metrics.reset_meters(task_name)
@@ -200,7 +206,7 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
             multi_class=args.multi_class,
             solver=args.solver,
             n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-            random_state=args.seed, 
+            random_state=args.seed,
             max_iter=args.max_iter,
             verbose=args.verbose
         ).fit(features, targets)
@@ -209,7 +215,7 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
             multi_class=args.multi_class,
             solver=args.solver,
             n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-            random_state=args.seed, 
+            random_state=args.seed,
             max_iter=args.max_iter,
             verbose=args.verbose
         ).fit(features, targets)
@@ -255,6 +261,7 @@ def downstream_validate_sklearn(args, task, model, epoch_for_logging, task_name,
         prefix='sklearn valid on \'{}\''.format(task_name),
         no_progress_bar='simple'
     )
+    progress = maybe_wrap_neptune_logging(progress, args)
 
     # Reset validation meters
     metrics.reset_meters(task_name)

@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.metrics import multilabel_confusion_matrix, log_loss, accuracy_score
 from typing import Optional
 
-from fairseq import meters
+from fairseq import meters, distributed_utils
 from fairseq.logging.meters import AverageMeter, safe_round
 from fairseq.logging.progress_bar import BaseProgressBar
 
@@ -47,6 +47,13 @@ class NeptuneWrapper(BaseProgressBar):
                     x=step,
                     y=stats[key],
                 )
+
+
+def maybe_wrap_neptune_logging(progress_bar, args):
+    if distributed_utils.is_master(args) and not args.debug:
+        return NeptuneWrapper(progress_bar)
+    else:
+        return progress_bar
 
 
 class MacroF1Meter(AverageMeter):

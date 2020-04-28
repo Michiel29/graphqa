@@ -50,7 +50,12 @@ from utils.downstream_utils import (
     setup_ft_model,
     setup_ft_criterion
 )
-from utils.logging_utils import compute_sklearn_stats, NeptuneWrapper
+from utils.logging_utils import (
+    compute_sklearn_stats,
+    maybe_wrap_neptune_logging,
+    NeptuneWrapper,
+)
+
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -63,13 +68,6 @@ logger = logging.getLogger('fairseq_cli.train')
 
 NEPTUNE_PROJECT_NAME = 'selfinference/sandbox'
 is_neptune_initialized = False
-
-
-def maybe_wrap_neptune_logging(progress_bar, args):
-    if distributed_utils.is_master(args) and not args.debug:
-        return NeptuneWrapper(progress_bar)
-    else:
-        return progress_bar
 
 
 def main(args, init_distributed=False):
