@@ -1,9 +1,28 @@
+import logging
+import os
 import pyarrow.plasma as plasma
 import subprocess
 import tempfile
+import torch
 
+
+logger = logging.getLogger(__name__)
+
+
+statvfs = os.statvfs('/dev/shm')
+TOTAL_SHM_SIZE_B = statvfs.f_frsize * statvfs.f_blocks
+MIN_SHM_SIZE_PER_GPU_B = 12 * 1024 * 1024 * 1024 # 12GB
+MIN_SHM_SIZE_B = MIN_SHM_SIZE_PER_GPU_B * torch.cuda.device_count()
 
 MIN_SIZE_TO_USE_PLASMA_B = 50 * 1024 * 1024 # 50MB
+
+if TOTAL_SHM_SIZE_B < MIN_SHM_SIZE_B:
+    logger.warning('Not enough memory in /dev/shm (%.2fGB vs %.2fGB x %d), using /tmp instead' % (
+        TOTAL_SHM_SIZE_B / (1024 * 1024 * 1024),
+        MIN_SHM_SIZE_PER_GPU_B / (1024 * 1024 * 1024),
+        torch.cuda.device_count(),
+    ))
+    MIN_SIZE_TO_USE_PLASMA_B = 1024 * 1024 * 1024 # 1GB
 
 
 class FakePlasmaArray(object):
@@ -36,11 +55,16 @@ class PlasmaArray(object):
         assert self.path is None
         self._server_tmp = tempfile.NamedTemporaryFile()
         self.path = self._server_tmp.name
-        self._server = subprocess.Popen([
+
+        options = [
             'plasma_store',
             '-m', str(int(1.05 * self.array.nbytes)),
             '-s', self.path,
-        ])
+        ]
+        if TOTAL_SHM_SIZE_B < MIN_SHM_SIZE_B:
+            options.append(['-d', '/tmp'])
+
+        self._server = subprocess.Popen(options)
 
     @property
     def client(self):
