@@ -9,7 +9,9 @@
             "encoder_output_layer_type": "entity_start_layer_norm",
             "max_sentences": 10,
             "max_tokens": 2000,
-            "non_mask_rate": 0
+            "non_mask_rate": 0,
+            "pytorch_finetuning": true,
+            "sklearn_finetuning": false
         },
         "fewrel_1": {
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
@@ -19,7 +21,9 @@
             "encoder_output_layer_type": "entity_start_layer_norm",
             "max_sentences": 10,
             "max_tokens": 2000,
-            "non_mask_rate": 1
+            "non_mask_rate": 1,
+            "pytorch_finetuning": true,
+            "sklearn_finetuning": false
         },
         "semeval2010task8": {
             "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
@@ -39,7 +43,10 @@
             "max_tokens": 2e4,
             "max_tokens_sklearn": 2e4,
 
-            "pct_epoch_interval": 1,
+            "pytorch_finetuning": false,
+            "sklearn_finetuning": true,
+            "pytorch_epoch_interval": 1,
+            "pct_epoch_interval": 2,
             "sklearn_epoch_interval": 1
         },
         "kbp37": {
@@ -60,6 +67,9 @@
             "max_tokens": 2e4,
             "max_tokens_sklearn": 2e4,
 
+            "pytorch_finetuning": false,
+            "sklearn_finetuning": true,
+            "pytorch_epoch_interval": 1,
             "pct_epoch_interval": 1,
             "sklearn_epoch_interval": 1
         },
@@ -81,6 +91,9 @@
             "max_tokens": 2e4,
             "max_tokens_sklearn": 2e4,
 
+            "pytorch_finetuning": false,
+            "sklearn_finetuning": true,
+            "pytorch_epoch_interval": 5,
             "pct_epoch_interval": 5,
             "sklearn_epoch_interval": 5
         }

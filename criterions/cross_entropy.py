@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from fairseq import utils, metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
 
+from utils.diagnostic_utils import Diagnostic
+
 
 @register_criterion('cross_entropy_custom')
 class CrossEntropy(FairseqCriterion):
@@ -34,6 +36,9 @@ class CrossEntropy(FairseqCriterion):
 
         target = sample['target']
         model_output = model(sample)
+
+        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+        # diag.inspect_batch(sample, scores=model_output)
 
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')
         pred = torch.argmax(model_output, dim=1)

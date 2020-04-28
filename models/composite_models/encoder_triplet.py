@@ -10,12 +10,12 @@ from fairseq.models import BaseFairseqModel
 import tasks
 from models.triplet import triplet_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
-from utils.diagnostic_utils import Diagnostic
+
 
 @register_model('encoder_triplet')
 class EncoderTripletModel(BaseFairseqModel):
 
-    def __init__(self, args, encoder, triplet_model, n_entities, task):
+    def __init__(self, args, encoder, triplet_model, n_entities):
         super().__init__()
 
         self.args = args
@@ -27,7 +27,6 @@ class EncoderTripletModel(BaseFairseqModel):
         self.entity_embedder = nn.Embedding(n_entities, args.entity_dim)
         self.triplet_model = triplet_model
 
-        self.task = task
         self._max_positions = args.max_positions
 
     def max_positions(self):
@@ -57,16 +56,18 @@ class EncoderTripletModel(BaseFairseqModel):
         encoder = RobertaWrapper.build_model(args, task)
         triplet_model = triplet_dict[args.triplet_type](args)
         n_entities = len(task.entity_dictionary)
+        return cls(args, encoder, triplet_model, n_entities)
 
-        return cls(args, encoder, triplet_model, n_entities, task)
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_base')
 def triplet_base_architecture(args):
     base_architecture(args)
 
+
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_large')
 def triplet_large_architecture(args):
     large_architecture(args)
+
 
 @register_model_architecture('encoder_triplet', 'encoder_triplet__roberta_small')
 def triplet_small_architecture(args):

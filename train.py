@@ -15,32 +15,42 @@ import os
 import sys
 import argparse
 import copy
-from timeit import default_timer as timer
+import gc
 
 import numpy as np
 import torch
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 
 from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
 )
 from fairseq.data import iterators
 from fairseq.meters import StopwatchMeter
-from fairseq.models import ARCH_MODEL_REGISTRY
 
 import models, criterions
 import tasks as custom_tasks
 from trainer import Trainer
 
+from downstream import (
+    downstream_train_pytorch,
+    downstream_validate_pytorch,
+    downstream_train_sklearn,
+    downstream_validate_sklearn
+)
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import (
     generate_save_dir,
     generate_tags,
     get_training_name,
 )
-
+from utils.downstream_utils import (
+    create_ft_prefixes,
+    create_downstream_dict,
+    setup_ft_args,
+    setup_ft_tasks,
+    setup_ft_model,
+    setup_ft_criterion
+)
 from utils.logging_utils import compute_sklearn_stats, NeptuneWrapper
-from utils.downstream_utils import load_downstream_data
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -126,45 +136,12 @@ def main(args, init_distributed=False):
     if args.eval_downstream:
         downstream_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
+            downstream_dict[downstream_name] = create_downstream_dict(args, downstream_name, downstream_kwargs, model)
 
-            # Create downstream_args, by overwriting a copy of args with downstream args
-            downstream_args = copy.deepcopy(args)
-            if 'add_configs' in downstream_kwargs:
-                for config_path in downstream_kwargs['add_configs']:
-                    downstream_kwargs = update_config(downstream_kwargs, compose_configs(os.path.join('config', config_path)))
-            update_namespace(downstream_args, downstream_kwargs, override=True)
-
-            # Set up downstream task
-            downstream_task = tasks.setup_task(downstream_args)
-
-            # Load downstream datasets
-            downstream_valid_subset = downstream_args.valid_subset.split(',')
-            for valid_sub_split in downstream_valid_subset:
-                downstream_task.load_dataset(valid_sub_split, combine=False, epoch=0)
-
-            # Set up downstream eval model
-            encoder = model.encoder if hasattr(model, 'encoder') else model
-            downstream_model = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task, encoder)
-
-            # Set up downstream eval criterion
-            downstream_criterion = downstream_task.build_criterion(downstream_args)
-
-            # Set up downstream eval trainer
-            downstream_trainer = Trainer(downstream_args, downstream_task, downstream_model, downstream_criterion)
-
-            # Set up downstream eval epoch iterator
-            _, downstream_epoch_itr = checkpoint_utils.load_checkpoint(downstream_args, downstream_trainer)
-
-            # Insert current downstream task's dict into downstream_dict
-            downstream_dict[downstream_name] = {
-                'args': downstream_args,
-                'task': downstream_task,
-                'model': downstream_model,
-                'criterion': downstream_criterion,
-                'trainer': downstream_trainer,
-                'epoch_itr': downstream_epoch_itr,
-                'valid_subset': downstream_valid_subset
-            }
+    # Move model and criterion to gpu
+    if torch.cuda.is_available() and not args.cpu:
+        model.to('cuda:{}'.format(args.device_id))
+        criterion.to('cuda:{}'.format(args.device_id))
 
     # Train until the learning rate gets too small
     max_epoch = args.max_epoch or math.inf
@@ -181,7 +158,7 @@ def main(args, init_distributed=False):
         assert epoch_itr.epoch == 1
         valid_losses = validate(args, trainer, task, 0, valid_subsets)
         if args.eval_downstream:
-            run_downstream(args, trainer, 0, downstream_dict)
+            run_downstream(args, downstream_dict, model, criterion, 0, trainer.get_num_updates())
 
     while (
         not args.disable_training
@@ -201,7 +178,7 @@ def main(args, init_distributed=False):
 
             # evaluate on downstream tasks
             if args.eval_downstream:
-                run_downstream(args, trainer, epoch_itr.epoch, downstream_dict)
+                run_downstream(args, downstream_dict, model, criterion, epoch_itr.epoch, trainer.get_num_updates())
         else:
             valid_losses = [None]
 
@@ -241,7 +218,8 @@ def should_stop_early(args, valid_loss):
         should_stop_early.num_runs += 1
         return should_stop_early.num_runs > args.patience
 
-def train(args, trainer, task, epoch_itr, downstream_dict=None):
+
+def train(args, trainer, task, epoch_itr):
     """Train the model for one epoch."""
     task.split = 'train'
 
@@ -344,7 +322,10 @@ def validate(args, trainer, task, epoch_for_logging, subsets, valid_name=None, n
 
         # Add global epoch to beginning of progress bar description
         if global_epoch is not None:
-            progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, valid_name_, progress.wrapped_bar.prefix), refresh=True)
+            try:
+                progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, valid_name_, progress.wrapped_bar.prefix), refresh=True)
+            except:
+                progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, valid_name_, progress.tqdm.desc), refresh=True)
 
         # Reset validation meters
         metrics.reset_meters(valid_name_)
@@ -375,324 +356,163 @@ def get_valid_stats(args, trainer, stats):
     return stats
 
 
-def run_downstream(args, trainer, global_epoch, downstream_dict):
-
-    num_updates = trainer.get_num_updates()
+def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_updates):
+    use_cuda = torch.cuda.is_available() and not args.cpu
 
     for downstream_name in downstream_dict:
 
-        downstream_args = copy.deepcopy(downstream_dict[downstream_name]['args'])
+        downstream_args = downstream_dict[downstream_name]['args']
         downstream_task = downstream_dict[downstream_name]['task']
-        downstream_valid_subset = downstream_dict[downstream_name]['valid_subset']
-        downstream_model = downstream_dict[downstream_name]['model']
-        downstream_criterion = downstream_dict[downstream_name]['criterion']
-        
-        max_epoch = downstream_args.max_epoch or math.inf
-        max_update = downstream_args.max_update or math.inf
 
-        # Fine-tune and evaluate supervised classifiers
-        if downstream_args.task_type == 'supervised' and args.distributed_rank == 0:
-            
-            if downstream_args.use_sklearn_classifier and global_epoch % downstream_args.sklearn_epoch_interval == 0:
-                sk_trainer = Trainer(downstream_args, downstream_task, downstream_model, downstream_criterion)
-                sk_trainer._model.cls_mode = 'sklearn'
-
+        # Do sklearn fine-tuning
+        if (
+                downstream_args.sklearn_finetuning
+                and downstream_args.task_type == 'supervised'
+                and global_epoch % (downstream_args.sklearn_epoch_interval or 1) == 0
+                and args.distributed_rank == 0
+            ):
                 # Fine-tune sklearn LogisticRegression classifier on downstream_task validation set
                 sk_classifier = downstream_train_sklearn(
-                    downstream_args, 
-                    sk_trainer, 
-                    downstream_task, 
-                    global_epoch, 
-                    downstream_name
+                    downstream_args,
+                    downstream_task,
+                    model,
+                    global_epoch,
+                    downstream_name,
+                    num_updates
                 )
 
                 # Evaluate sklearn LogisticRegression classifier on downstream_task validation set
                 downstream_validate_sklearn(
-                    downstream_args, 
-                    sk_trainer, 
-                    downstream_task, 
-                    global_epoch, 
-                    downstream_name, 
-                    sk_classifier, 
-                    num_updates
+                    downstream_args,
+                    downstream_task,
+                    model,
+                    global_epoch,
+                    downstream_name,
+                    num_updates,
+                    sk_classifier
                 )
 
-            if downstream_args.use_pytorch_classifier:
-                # Set fine-tuning prefixes
-                ft_train_prefix = '_'.join([downstream_name, 'ft', 'train', 'epoch{:03d}'.format(global_epoch)])
-                ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid', 'epoch{:03d}'.format(global_epoch)])
-                global_ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid'])
+        # Do PyTorch fine-tuning (ft)
+        if (
+            downstream_args.pytorch_finetuning
+            and downstream_args.task_type == 'supervised'
+            and global_epoch % downstream_args.pytorch_epoch_interval == 0
+        ):
+            # Get ft trainer, model, criterion, and valid_subset
+            # downstream_trainer = downstream_dict[downstream_name]['trainer']
+            downstream_model = downstream_dict[downstream_name]['model']
+            downstream_criterion = downstream_dict[downstream_name]['criterion']
+            downstream_valid_subset = downstream_dict[downstream_name]['valid_subset']
 
-                # Create dict of args used for validation in downstream_train_pytorch
-                valid_args = {'subset': downstream_valid_subset, 'prefix': ft_valid_prefix}
+            # Get max epoch and max update for ft
+            ft_max_epoch = downstream_args.max_epoch or math.inf
+            ft_max_update = downstream_args.max_update or math.inf
 
-                # Set up list of training subset percentages to use
-                pct_epoch_interval = downstream_args.pct_epoch_interval or math.inf
-                if global_epoch != 0 and global_epoch % pct_epoch_interval == 0:
-                    pct_train_examples = downstream_args.pct_train_examples + [100]  
-                else: 
-                    pct_train_examples = downstream_args.pct_train_examples
-                pct_train_examples = [100] if pct_train_examples is None else [x for x in sorted(list(set(pct_train_examples))) if x <= 100]
-                
-                # Set up fine-tuning trainer and epoch_itr
-                if 100 in pct_train_examples:
-                    ft_trainer = Trainer(downstream_args, downstream_task, downstream_model, downstream_criterion)
-                    ft_epoch_itr = copy.deepcopy(downstream_dict[downstream_name]['epoch_itr'])
-                else:
-                    downstream_args.n_train_examples = round(max(pct_train_examples) / 100 * len(downstream_task.datasets['train']))
-                    downstream_task = tasks.setup_task(downstream_args)
-                    for valid_sub_split in downstream_valid_subset:
-                        downstream_task.load_dataset(valid_sub_split, combine=False, epoch=0)
-                    ft_trainer = Trainer(downstream_args, downstream_task, downstream_model, downstream_criterion)
-                    ft_trainer.lr_scheduler.args.warmup_updates = round(max(pct_train_examples) / 100 * ft_trainer.lr_scheduler.args.warmup_updates)
-                    _, ft_epoch_itr = checkpoint_utils.load_checkpoint(downstream_args, ft_trainer)
-                    
-                ft_trainer._model.cls_mode = 'pytorch'
+            # Set up ft prefixes
+            ft_train_prefix, ft_valid_prefix, global_ft_valid_prefix = create_ft_prefixes(downstream_name, global_epoch)
 
-                # Fine-tune PyTorch classifier on downstream_task validation set
-                while ft_epoch_itr.next_epoch_idx <= max_epoch and ft_trainer.get_num_updates() < max_update:
+            # Set up list of training subset percentages (pct) to use for ft
+            pct_train_examples = downstream_args.pct_train_examples
+            if (
+                global_epoch % downstream_args.pct_epoch_interval == 0
+                and global_epoch != 0 # TODO: remove later
+                and 100 not in pct_train_examples
+            ):
+                pct_train_examples += [100]
+            pct_train_examples = [x for x in sorted(list(set(pct_train_examples))) if x <= 100]
+
+            # Set up ft_args_list and ft_task_list for each pct value
+            ft_args_list = setup_ft_args(pct_train_examples, downstream_args, downstream_task)
+            ft_task_list = setup_ft_tasks(pct_train_examples, ft_args_list, downstream_valid_subset)
+
+            # During PyTorch fine-tuning, temporarily move original model, optimizer, and criterion to cpu
+            if use_cuda:
+                model.to('cpu') # Move original model (and optimizer) to cpu
+                criterion.to('cpu') # Move original criterion to cpu
+
+            # Iterate through pct values
+            for pct_idx, pct in enumerate(pct_train_examples):
+
+                # Get ft_args and ft_task for current pct
+                ft_args = ft_args_list[pct_idx]
+                ft_task = ft_task_list[pct_idx]
+
+                # Get ft_model and ft_criterion for current pct
+                ft_model = setup_ft_model(args, downstream_model, use_cuda)
+                ft_criterion = setup_ft_criterion(args, downstream_criterion, use_cuda)
+
+                # Instantiate ft_trainer -- which includes the ft optimizer -- for current pct
+                ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
+
+                # Set up epoch iterator for current pct
+                ft_epoch_itr = ft_trainer.get_train_iterator(1)
+
+                # Fine-tune PyTorch classifier on ft_task training set
+                while ft_epoch_itr.next_epoch_idx <= ft_max_epoch and ft_trainer.get_num_updates() < ft_max_update:
                     downstream_train_pytorch(
-                        downstream_args, 
-                        ft_trainer, 
-                        downstream_task, 
-                        ft_epoch_itr, 
-                        ft_train_prefix, 
-                        global_epoch, 
-                        pct_train_examples, 
-                        valid_args
+                        ft_args,
+                        ft_trainer,
+                        ft_task,
+                        ft_epoch_itr,
+                        ft_train_prefix,
+                        pct,
+                        global_epoch,
+                        downstream_valid_subset
                     )
 
-                # Evaluate PyTorch classifier on downstream_task validation set
+                    # Validate PyTorch classifier on ft_task validation set
+                    cur_ft_valid_prefix = '_'.join([ft_valid_prefix, 'pct{:03d}'.format(pct)])
+                    validate(
+                        ft_args,
+                        ft_trainer,
+                        ft_task,
+                        ft_epoch_itr.epoch,
+                        downstream_valid_subset,
+                        cur_ft_valid_prefix,
+                        None,
+                        global_epoch
+                    )
+
+                # Evaluate PyTorch classifier on ft_task validation set
+                cur_global_ft_valid_prefix = '_'.join([global_ft_valid_prefix, 'pct{:03d}'.format(pct)])
                 validate(
-                    downstream_args, 
-                    ft_trainer, 
-                    downstream_task, 
-                    global_epoch, 
-                    downstream_valid_subset, 
-                    global_ft_valid_prefix, 
+                    ft_args,
+                    ft_trainer,
+                    ft_task,
+                    global_epoch,
+                    downstream_valid_subset,
+                    cur_global_ft_valid_prefix,
                     num_updates
                 )
 
+                if use_cuda:
+                    ft_model.to('cpu') # Move ft_model (and optimizer) to cpu
+                    ft_criterion.to('cpu') # Move ft_criterion to cpu
+
+            if use_cuda:
+                model.to('cuda:{}'.format(args.device_id)) # Move original model (and optimizer) to gpu
+                criterion.to('cuda:{}'.format(args.device_id)) # Move original criterion to gpu
+
         # Evaluate few-shot classifier
-        elif downstream_args.task_type != 'supervised':
-            downstream_trainer = downstream_dict[downstream_name]['trainer']
+        elif (
+            downstream_args.pytorch_finetuning
+            and downstream_args.task_type == 'few_shot'
+            and global_epoch % downstream_args.pytorch_epoch_interval == 0
+        ):
+            downstream_model = downstream_dict[downstream_name]['model']
+            downstream_criterion = downstream_dict[downstream_name]['criterion']
+            downstream_valid_subset = downstream_dict[downstream_name]['valid_subset']
 
-            # Validate on downstream_task validation set
-            validate(
-                downstream_args, 
-                downstream_trainer, 
-                downstream_task, 
-                global_epoch, 
-                downstream_valid_subset, 
-                downstream_name
+            downstream_validate_pytorch(
+                downstream_args,
+                downstream_task,
+                downstream_model,
+                downstream_criterion,
+                global_epoch,
+                downstream_valid_subset,
+                downstream_name,
+                num_updates
             )
-
-
-def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, global_epoch, pct_train_examples=[100], valid_args=None):
-    """Fine-tune PyTorch classifier on downstream training set for one epoch"""
-    task.split = 'train'
-    valid_subset, valid_prefix = valid_args['subset'], valid_args['prefix']
-
-    # Initialize data iterator
-    itr = epoch_itr.next_epoch_itr(
-        fix_batches_to_gpus=args.fix_batches_to_gpus,
-        shuffle=(epoch_itr.next_epoch_idx > args.curriculum),
-    )
-    update_freq = (
-        args.update_freq[epoch_itr.epoch - 1]
-        if epoch_itr.epoch <= len(args.update_freq)
-        else args.update_freq[-1]
-    )
-    itr = iterators.GroupedIterator(itr, update_freq)
-    progress = progress_bar.build_progress_bar(
-        args, itr, epoch_itr.epoch, no_progress_bar='simple',
-    )
-
-    # Add global epoch to beginning of progress bar description
-    progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.wrapped_bar.prefix), refresh=True)
-    
-    # Get training subset sizes corresponding to the training subset percentages
-    n_train_batches = []
-    for pct in pct_train_examples:
-        batch_idx = max(0, round(pct / max(pct_train_examples) * len(itr)) - 1)
-        n_train_batches.append(batch_idx)
-    pct_train_examples_ = copy.deepcopy(pct_train_examples)
-
-    # Task specific setup per epoch
-    task.begin_epoch(epoch_itr.epoch, trainer.get_model())
-
-    max_update = args.max_update or math.inf
-    with metrics.aggregate() as agg:
-        for batch_idx, samples in enumerate(progress):
-
-            # Train for one step
-            log_output = trainer.train_step(samples)
-            num_updates = trainer.get_num_updates()
-            if log_output is None:
-                continue
-
-            # Log mid-epoch stats
-            stats = get_ft_train_stats(agg.get_smoothed_values())
-            progress.log(stats, tag=train_prefix, step=num_updates)
-
-            # Validate
-            if batch_idx >= n_train_batches[0]:
-                cur_valid_prefix = '_'.join([valid_prefix, 'pct{:03d}'.format(pct_train_examples_[0])])
-                progress.wrapped_bar.tqdm.clear()
-                validate(args, trainer, task, epoch_itr.epoch, valid_subset, cur_valid_prefix, None, global_epoch)
-                del n_train_batches[0]
-                del pct_train_examples_[0]
-
-            if num_updates >= max_update:
-                break
-
-    # Log end-of-epoch stats
-    stats = get_ft_train_stats(agg.get_smoothed_values())
-    progress.print(stats, tag=train_prefix, step=num_updates)
-
-    # Reset epoch-level meters
-    metrics.reset_meters(train_prefix)
-
-
-def downstream_train_sklearn(args, trainer, task, epoch_for_logging, task_name):
-    """Fine-tune sklearn classifier on downstream training set"""
-
-    if args.fixed_validation_seed is not None:
-        # set fixed seed for every validation
-        utils.set_torch_seed(args.fixed_validation_seed)
-
-    # Initialize data iterator
-    itr = task.get_batch_iterator(
-        dataset=task.dataset('train'),
-        max_tokens=args.max_tokens_sklearn,
-        max_sentences=args.max_sentences_sklearn,
-        max_positions=utils.resolve_max_positions(
-            task.max_positions(),
-            trainer.get_model().max_positions(),
-        ),
-        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-        required_batch_size_multiple=args.required_batch_size_multiple,
-        seed=args.seed,
-        num_shards=1,
-        shard_id=0,
-        num_workers=args.num_workers,
-    ).next_epoch_itr(shuffle=False)
-    progress = progress_bar.build_progress_bar(
-        args, itr, epoch_for_logging,
-        prefix='sklearn fine-tune on \'{}\''.format(task_name),
-        no_progress_bar='simple'
-    )
-    progress = maybe_wrap_neptune_logging(progress, args)
-
-    # Reset meters
-    metrics.reset_meters(task_name)
-
-    # Set model to eval mode
-    with torch.no_grad():
-        trainer.model.eval()
-
-    # Load downstream train data
-    features, targets = load_downstream_data(progress, trainer, args.scaler)
-
-    # Train classifier
-    logger.info('fine-tuning LogisticRegression classifier on \'{}\''.format(task_name))
-    timer_start = timer()
-    if args.cross_validation:
-        classifier = LogisticRegressionCV(
-            multi_class=args.multi_class,
-            solver=args.solver,
-            n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-            random_state=args.seed, 
-            max_iter=args.max_iter,
-            verbose=args.verbose
-        ).fit(features, targets)
-    else:
-        classifier = LogisticRegression(
-            multi_class=args.multi_class,
-            solver=args.solver,
-            n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-            random_state=args.seed, 
-            max_iter=args.max_iter,
-            verbose=args.verbose
-        ).fit(features, targets)
-    timer_end = timer()
-    logger.info('finished sklearn fine-tuning in {:.2f} seconds'.format(timer_end-timer_start))
-
-    # Compute class predictions and probabilities
-    class_predictions = classifier.predict(features)
-    class_probabilities = classifier.predict_proba(features)
-
-    # Compute and log downstream training stats
-    stats = compute_sklearn_stats(targets, class_predictions, class_probabilities, args.num_classes, args.eval_metric)
-    stats = get_sklearn_stats(trainer, stats)
-    progress.print(stats, tag=task_name+'_sk_train', step=trainer.get_num_updates())
-
-    return classifier
-
-
-def downstream_validate_sklearn(args, trainer, task, epoch_for_logging, task_name, classifier, num_updates):
-    """Evaluate classifier on downstream validation set"""
-
-    if args.fixed_validation_seed is not None:
-        # set fixed seed for every validation
-        utils.set_torch_seed(args.fixed_validation_seed)
-
-    # Initialize data iterator
-    itr = task.get_batch_iterator(
-        dataset=task.dataset('valid'),
-        max_tokens=args.max_tokens_sklearn,
-        max_sentences=args.max_sentences_sklearn,
-        max_positions=utils.resolve_max_positions(
-            task.max_positions(),
-            trainer.get_model().max_positions(),
-        ),
-        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-        required_batch_size_multiple=args.required_batch_size_multiple,
-        seed=args.seed,
-        num_shards=1,
-        shard_id=0,
-        num_workers=args.num_workers,
-    ).next_epoch_itr(shuffle=False)
-    progress = progress_bar.build_progress_bar(
-        args, itr, epoch_for_logging,
-        prefix='sklearn valid on \'{}\''.format(task_name),
-        no_progress_bar='simple'
-    )
-    progress = maybe_wrap_neptune_logging(progress, args)
-
-    # Reset validation meters
-    metrics.reset_meters(task_name)
-
-    # Set model to eval mode
-    with torch.no_grad():
-        trainer.model.eval()
-
-    # Load downstream validation data
-    features, targets = load_downstream_data(progress, trainer)
-
-    # Compute class predictions and probabilities
-    class_predictions = classifier.predict(features)
-    class_probabilities = classifier.predict_proba(features)
-
-    # Compute and log downstream validation stats
-    stats = compute_sklearn_stats(targets, class_predictions, class_probabilities, args.num_classes, args.eval_metric)
-    stats = get_sklearn_stats(trainer, stats)
-    progress.print(stats, tag=task_name+'_sk_valid', step=num_updates)
-    
-
-def get_ft_train_stats(stats):
-    new_stats = copy.deepcopy(stats)
-    eval_keys = ['acc', 'f1']
-    for stat in stats:
-        if sum([e in stat for e in eval_keys]) == 0:
-            del new_stats[stat]
-    return new_stats
-
-
-def get_sklearn_stats(trainer, stats):
-    stats['wall'] = round(metrics.get_meter('default', 'wall').elapsed_time, 0)
-    stats['num_updates'] = trainer.get_num_updates()
-    return stats
 
 
 def distributed_main(i, args, start_rank=0):

@@ -32,6 +32,8 @@ class FewRelTask(BaseTask):
         parser.add_argument('--data_path', help='path to data')
         parser.add_argument('--n_way', default=5, help='number of few-shot classes')
         parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
+        # parser.add_argument('--n_train_relations', default=64, help='number of total classes')
+        # parser.add_argument('--n_train_examples_per_relation', default=700, help='number of total examples per class')
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -64,8 +66,12 @@ class FewRelTask(BaseTask):
             dictionary=self.dictionary,
             n_way=self.args.n_way,
             n_shot=self.args.n_shot,
+            # n_train_relations=self.args.n_train_relations,
+            # n_train_examples_per_relation=self.args.n_train_examples_per_relation,
             seed=self.seed,
         )
+        # if split == 'train':
+            # dataset.prune_by_prune_by_num_relations()
         dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)

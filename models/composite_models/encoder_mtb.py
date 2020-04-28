@@ -9,13 +9,12 @@ from fairseq.models import BaseFairseqModel
 
 import tasks
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
-from utils.diagnostic_utils import Diagnostic
 
 
 @register_model('encoder_mtb')
 class EncoderMTBModel(BaseFairseqModel):
 
-    def __init__(self, args, encoder, task):
+    def __init__(self, args, encoder):
         super().__init__()
 
         self.args = args
@@ -23,7 +22,6 @@ class EncoderMTBModel(BaseFairseqModel):
         self.encoder_embed_dim = args.encoder_embed_dim
         self.encoder = encoder
 
-        self.task = task
         self._max_positions = args.max_positions
 
     def max_positions(self):
@@ -38,14 +36,10 @@ class EncoderMTBModel(BaseFairseqModel):
         for cluster_id, cluster_texts in batch['textB'].items():
             cur_textB_enc, _ = self.encoder(cluster_texts)
             textB_enc.append(cur_textB_enc)
-        textB_enc = torch.cat(textB_enc, dim=0) 
+        textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
-
-        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
-        # diag.inspect_batch(batch, scores=scores)
-
         return scores
 
     @staticmethod
@@ -56,20 +50,19 @@ class EncoderMTBModel(BaseFairseqModel):
     @classmethod
     def build_model(cls, args, task):
         encoder = RobertaWrapper.build_model(args, task)
-        return cls(args, encoder, task)
+        return cls(args, encoder)
+
 
 @register_model_architecture('encoder_mtb', 'encoder_mtb__roberta_base')
 def mtb_base_architecture(args):
     base_architecture(args)
 
+
 @register_model_architecture('encoder_mtb', 'encoder_mtb__roberta_large')
 def mtb_large_architecture(args):
     large_architecture(args)
 
+
 @register_model_architecture('encoder_mtb', 'encoder_mtb__roberta_small')
 def mtb_small_architecture(args):
     small_architecture(args)
-
-
-
-
