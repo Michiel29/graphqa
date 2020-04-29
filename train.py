@@ -131,7 +131,7 @@ def main(args, init_distributed=False):
         )
         is_neptune_initialized = True
 
-    if args.eval_downstream:
+    if args.eval_downstream and len(args.downstream_dict) > 0:
         downstream_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
             downstream_dict[downstream_name] = create_downstream_dict(args, downstream_name, downstream_kwargs, model)
@@ -355,8 +355,6 @@ def get_valid_stats(args, trainer, stats):
 
 
 def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_updates):
-    use_cuda = torch.cuda.is_available() and not args.cpu
-
     for downstream_name in downstream_dict:
 
         downstream_args = downstream_dict[downstream_name]['args']
@@ -364,9 +362,11 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
 
         # Do sklearn fine-tuning
         if (
-                downstream_args.sklearn_finetuning
-                and downstream_args.task_type == 'supervised'
-                and global_epoch % (downstream_args.sklearn_epoch_interval or 1) == 0
+                downstream_args.task_type == 'supervised'
+                and (
+                        global_epoch % (downstream_args.epoch_interval or 1) == 0 
+                        or global_epoch == downstream_args.max_epoch
+                    )
                 and args.distributed_rank == 0
             ):
                 # Fine-tune sklearn LogisticRegression classifier on downstream_task validation set
@@ -390,112 +390,13 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
                     sk_classifier
                 )
 
-        # Do PyTorch fine-tuning (ft)
-        if (
-            downstream_args.pytorch_finetuning
-            and downstream_args.task_type == 'supervised'
-            and global_epoch % downstream_args.pytorch_epoch_interval == 0
-        ):
-            # Get ft trainer, model, criterion, and valid_subset
-            # downstream_trainer = downstream_dict[downstream_name]['trainer']
-            downstream_model = downstream_dict[downstream_name]['model']
-            downstream_criterion = downstream_dict[downstream_name]['criterion']
-            downstream_valid_subset = downstream_dict[downstream_name]['valid_subset']
-
-            # Get max epoch and max update for ft
-            ft_max_epoch = downstream_args.max_epoch or math.inf
-            ft_max_update = downstream_args.max_update or math.inf
-
-            # Set up ft prefixes
-            ft_train_prefix, ft_valid_prefix, global_ft_valid_prefix = create_ft_prefixes(downstream_name, global_epoch)
-
-            # Set up list of training subset percentages (pct) to use for ft
-            pct_train_examples = downstream_args.pct_train_examples
-            if (
-                global_epoch % downstream_args.pct_epoch_interval == 0
-                and global_epoch != 0 # TODO: remove later
-                and 100 not in pct_train_examples
-            ):
-                pct_train_examples += [100]
-            pct_train_examples = [x for x in sorted(list(set(pct_train_examples))) if x <= 100]
-
-            # Set up ft_args_list and ft_task_list for each pct value
-            ft_args_list = setup_ft_args(pct_train_examples, downstream_args, downstream_task)
-            ft_task_list = setup_ft_tasks(pct_train_examples, ft_args_list, downstream_valid_subset)
-
-            # During PyTorch fine-tuning, temporarily move original model, optimizer, and criterion to cpu
-            if use_cuda:
-                model.to('cpu') # Move original model (and optimizer) to cpu
-                criterion.to('cpu') # Move original criterion to cpu
-
-            # Iterate through pct values
-            for pct_idx, pct in enumerate(pct_train_examples):
-
-                # Get ft_args and ft_task for current pct
-                ft_args = ft_args_list[pct_idx]
-                ft_task = ft_task_list[pct_idx]
-
-                # Get ft_model and ft_criterion for current pct
-                ft_model = setup_ft_model(args, downstream_model, use_cuda)
-                ft_criterion = setup_ft_criterion(args, downstream_criterion, use_cuda)
-
-                # Instantiate ft_trainer -- which includes the ft optimizer -- for current pct
-                ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
-
-                # Set up epoch iterator for current pct
-                ft_epoch_itr = ft_trainer.get_train_iterator(1)
-
-                # Fine-tune PyTorch classifier on ft_task training set
-                while ft_epoch_itr.next_epoch_idx <= ft_max_epoch and ft_trainer.get_num_updates() < ft_max_update:
-                    downstream_train_pytorch(
-                        ft_args,
-                        ft_trainer,
-                        ft_task,
-                        ft_epoch_itr,
-                        ft_train_prefix,
-                        pct,
-                        global_epoch,
-                        downstream_valid_subset
-                    )
-
-                    # Validate PyTorch classifier on ft_task validation set
-                    cur_ft_valid_prefix = '_'.join([ft_valid_prefix, 'pct{:03d}'.format(pct)])
-                    validate(
-                        ft_args,
-                        ft_trainer,
-                        ft_task,
-                        ft_epoch_itr.epoch,
-                        downstream_valid_subset,
-                        cur_ft_valid_prefix,
-                        None,
-                        global_epoch
-                    )
-
-                # Evaluate PyTorch classifier on ft_task validation set
-                cur_global_ft_valid_prefix = '_'.join([global_ft_valid_prefix, 'pct{:03d}'.format(pct)])
-                validate(
-                    ft_args,
-                    ft_trainer,
-                    ft_task,
-                    global_epoch,
-                    downstream_valid_subset,
-                    cur_global_ft_valid_prefix,
-                    num_updates
-                )
-
-                if use_cuda:
-                    ft_model.to('cpu') # Move ft_model (and optimizer) to cpu
-                    ft_criterion.to('cpu') # Move ft_criterion to cpu
-
-            if use_cuda:
-                model.to('cuda:{}'.format(args.device_id)) # Move original model (and optimizer) to gpu
-                criterion.to('cuda:{}'.format(args.device_id)) # Move original criterion to gpu
-
         # Evaluate few-shot classifier
         elif (
-            downstream_args.pytorch_finetuning
-            and downstream_args.task_type == 'few_shot'
-            and global_epoch % downstream_args.pytorch_epoch_interval == 0
+            downstream_args.task_type == 'few_shot'
+            and (
+                    global_epoch % (downstream_args.epoch_interval or 1) == 0 
+                    or global_epoch == downstream_args.max_epoch
+                )
         ):
             downstream_model = downstream_dict[downstream_name]['model']
             downstream_criterion = downstream_dict[downstream_name]['criterion']

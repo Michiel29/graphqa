@@ -114,6 +114,24 @@ def load_downstream_data(args, samples, model, scaler=None):
         s = StandardScaler()
         features = s.fit_transform(features)
 
+    unique_targets, target_counts = np.unique(targets, return_counts=True)
+    for i, t in enumerate(unique_targets):
+        if target_counts[i] < args.k_folds:
+            cur_features = features[targets == t]
+            new_features, j = [], 0
+            while len(new_features) < args.k_folds - target_counts[i]:
+                if len(new_features) == 0:
+                    new_features = np.expand_dims(cur_features[j], axis=0)
+                else:
+                    new_features = np.concatenate((new_features, np.expand_dims(cur_features[j], axis=0)))
+                j += 1
+
+                if j == len(cur_features):
+                    j = 0
+
+            features = np.concatenate((features, new_features))
+            targets = np.concatenate((targets, np.full(len(new_features), t)))
+
     return features, targets
 
 def prepare_sample(args, sample):

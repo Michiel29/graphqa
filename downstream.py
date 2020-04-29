@@ -205,7 +205,9 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
         classifier = LogisticRegressionCV(
             multi_class=args.multi_class,
             solver=args.solver,
-            n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
+            Cs=args.Cs,
+            cv=args.k_folds,
+            n_jobs=min(os.cpu_count(), args.num_classes, args.Cs*args.k_folds),
             random_state=args.seed,
             max_iter=args.max_iter,
             verbose=args.verbose

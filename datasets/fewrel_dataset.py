@@ -18,8 +18,6 @@ class FewRelDataset(FairseqDataset):
         dictionary,
         n_way,
         n_shot,
-        # n_train_relations,
-        # n_train_examples_per_relation,
         seed,
 
     ):
@@ -30,31 +28,12 @@ class FewRelDataset(FairseqDataset):
         assert self.n_way > 1
         self.n_shot = n_shot
         assert self.n_way > 0
-        # self.n_train_relations = n_train_relations
-        # assert self.n_train_relations >= 0 and  self.n_train_relations <= 64
-        # self.n_train_examples_per_relation = n_train_examples_per_relation
-        # assert self.n_train_examples_per_relation >= 0 and  self.n_train_examples_per_relation <= 700
         self.seed = seed
         self.epoch = 0
 
         self.relation_index = defaultdict(list)
         for idx in range(len(self.relation_dataset)):
             self.relation_index[self.relation_dataset[idx].item()].append(idx)
-
-        # self.n_relations = 64
-
-    # def prune_by_num_relations(self, n_relations_new):
-    #     relations = np.random.choice(self.n_relations, n_relations_new, replace=False)
-    #     print('stop')
-
-    # def prune_by_num_examples(self):
-
-
-    # elif downstream_args.task_type == 'few_shot':
-    #     output_dict = defaultdict(dict)
-    #     for key in ['n_train_relations', 'n_train_examples_per_relation']:
-    #         params = downstream_args[key]
-    #         for p in params:
 
     def set_epoch(self, epoch):
         self.epoch = epoch

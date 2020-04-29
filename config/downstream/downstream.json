@@ -5,23 +5,18 @@
 
     "n_train_examples": null,
     "n_valid_examples": null,
-    "pct_train_examples": [100],
-    // "pct_train_examples": [10],
 
-    "n_train_relations": [16],
-    "n_train_examples_per_relation": [20],
-
-    "pytorch_epoch_interval": 1,
-    "pct_epoch_interval": 1,
-    "sklearn_epoch_interval": 1,
+    "epoch_interval": 1,
 
     "multi_class": "ovr",
     "solver": "liblinear",
     "n_jobs": 1,
-    "scaler": null,
+    "scaler": "standard",
     "max_iter": 1e5,
     "verbose": 0,
     "cross_validation": false,
+    "Cs": 5,
+    "k_folds": 5,
 
     "num_workers": 2
 }
