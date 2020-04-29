@@ -13,6 +13,8 @@ yes | apt-get install wget
 yes | apt install git
 yes | apt install gcc
 yes | apt-get install g++
+yes | apt-get install htop
+yes | apt-get install vim
 ​
 # install anaconda
 mkdir packages

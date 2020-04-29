@@ -13,10 +13,10 @@
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
 
-            "update_freq": 14,
+            "update_freq": 15,
             "epoch_size": 4e6,
             "max_sentences": 350,
-            "max_tokens": 2600,
+            "max_tokens": 2170,
 
             "criterion": "cross_entropy_custom",
             "weight": 0.01
@@ -31,12 +31,12 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 14,
+            "update_freq": 15,
             "epoch_size": 4e6,
             "n_valid_examples": 20000,
 
             "max_sentences": 350,
-            "max_tokens": 2600,
+            "max_tokens": 2180,
 
             "criterion": "masked_lm_custom",
             "weight": 0.99
