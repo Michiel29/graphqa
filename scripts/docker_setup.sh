@@ -34,10 +34,8 @@ git clone https://Michiel29Machine:uWnSK*hsG6VU69AW@github.com/Michiel29/self_in
 mkdir data
 mkdir save
 ​
-# wget datapath
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1YUOrLeogvUPls3OJW0a0lvop0Jn_FE_R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1YUOrLeogvUPls3OJW0a0lvop0Jn_FE_R" -O data.zip && rm -rf /tmp/cookies.txt
-unzip data
-​
+wget http://selfinference.s3.amazonaws.com/data.zip
+unzip data​
 ​
 # create env and install deps
 yes | conda create --name self_inference
