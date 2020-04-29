@@ -19,7 +19,6 @@ class FewRelDataset(FairseqDataset):
         n_way,
         n_shot,
         seed,
-
     ):
         self.annotation_text = annotation_text
         self.relation_dataset = relation_dataset

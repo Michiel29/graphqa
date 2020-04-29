@@ -22,7 +22,7 @@ if TOTAL_SHM_SIZE_B < MIN_SHM_SIZE_B:
         MIN_SHM_SIZE_PER_GPU_B / (1024 * 1024 * 1024),
         torch.cuda.device_count(),
     ))
-    MIN_SIZE_TO_USE_PLASMA_B = 1024 * 1024 * 1024 # 1GB
+    MIN_SIZE_TO_USE_PLASMA_B = 100 * 1024 * 1024 # 100MB
 
 
 class FakePlasmaArray(object):
