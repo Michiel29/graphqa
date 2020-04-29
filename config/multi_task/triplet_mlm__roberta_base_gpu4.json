@@ -1,0 +1,67 @@
+{
+    "add_configs": ["../roberta/base.json", "../base.json", "../downstream/downstream_base.json"],
+    // "add_configs": ["../roberta/base.json", "../base.json"],
+    // "eval_downstream": false,
+
+    "tasks": {
+        "trt": {
+            "task": "triplet_inference",
+            "k_negative": 100,
+            "negative_split_probs": [0.25, 0.25, 0.25],
+            "non_mask_rate": 0,
+            "subsampling_strategy": "by_entity_pair",
+            "subsampling_cap": 100,
+            "n_valid_examples": 20000,
+
+            "update_freq": 25,
+            "epoch_size": 4e6,
+            "max_sentences": 350,
+            "max_tokens": 2600,
+
+            "criterion": "cross_entropy_custom",
+            "weight": 0.01
+        },
+        "mlm": {
+            "task": "masked_lm_em",
+            "non_mask_rate": 0.5,
+
+            "mask_prob": 0.15,
+            "leave_unmasked_prob": 0.1,
+            "random_token_prob": 0.1,
+            "freq_weighted_replacement": false,
+            "mask_whole_words": true,
+
+            "update_freq": 25,
+            "epoch_size": 4e6,
+            "n_valid_examples": 20000,
+
+            "max_sentences": 350,
+            "max_tokens": 2600,
+
+            "criterion": "masked_lm_custom",
+            "weight": 0.99
+        }
+    },
+
+    "task": "multi_task",
+    "arch": "encoder_triplet__roberta_base",
+    "use_sentence_negatives": false,
+    "entity_dim": 256,
+    "triplet_type": "concat_linear_dot",
+    "encoder_output_layer_type": "entity_start_linear",
+
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+
+    "mask_type": "start_end",
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [2e-4],
+
+    "num_workers": 4,
+    "max_sentences": 350,
+    "update_freq": null,
+    "max_tokens": 2600
+}
