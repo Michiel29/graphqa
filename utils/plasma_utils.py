@@ -62,7 +62,7 @@ class PlasmaArray(object):
             '-s', self.path,
         ]
         if TOTAL_SHM_SIZE_B < MIN_SHM_SIZE_B:
-            options.append(['-d', '/tmp'])
+            options.extend(['-d', '/tmp'])
 
         self._server = subprocess.Popen(options)
 

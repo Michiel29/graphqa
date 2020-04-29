@@ -6,6 +6,7 @@ if [[ -d "/root/packages" ]]; then
 fi
 ​
 # install basic programs
+apt-get update
 yes | apt-get install unzip
 yes | apt-get install nano
 yes | apt-get install wget
