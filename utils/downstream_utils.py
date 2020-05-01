@@ -94,7 +94,11 @@ def setup_ft_criterion(args, downstream_criterion, use_cuda):
         ft_criterion = copy.deepcopy(downstream_criterion)
     return ft_criterion
 
-def load_downstream_data(args, samples, model, scaler=None):
+def load_downstream_data(args, samples, model, split, scaler=None, scaler_type=None):
+    assert not(scaler != None and scaler_type != None)
+    assert split in ['train', 'valid']
+    assert scaler_type in ['standard', None]
+
     features, targets = None, None
     for batch in samples:
         if batch is None:
@@ -110,29 +114,39 @@ def load_downstream_data(args, samples, model, scaler=None):
             features = np.concatenate((features, batch_features), axis=0)
             targets = np.concatenate((targets, batch_targets), axis=0)
 
-    if scaler == 'standard':
-        s = StandardScaler()
-        features = s.fit_transform(features)
+    if split == 'train':
+        # If there are fewer than n_splits examples for a given class, make 
+        # duplicates of that class' examples, so that each split has at
+        # least one example.
+        unique_targets, target_counts = np.unique(targets, return_counts=True)
+        for i, t in enumerate(unique_targets):
+            if target_counts[i] < args.n_splits:
+                cur_features = features[targets == t]
+                new_features, j = [], 0
+                while len(new_features) < args.n_splits - target_counts[i]:
+                    if len(new_features) == 0:
+                        new_features = np.expand_dims(cur_features[j], axis=0)
+                    else:
+                        new_features = np.concatenate((new_features, np.expand_dims(cur_features[j], axis=0)))
+                    j += 1
 
-    unique_targets, target_counts = np.unique(targets, return_counts=True)
-    for i, t in enumerate(unique_targets):
-        if target_counts[i] < args.k_folds:
-            cur_features = features[targets == t]
-            new_features, j = [], 0
-            while len(new_features) < args.k_folds - target_counts[i]:
-                if len(new_features) == 0:
-                    new_features = np.expand_dims(cur_features[j], axis=0)
-                else:
-                    new_features = np.concatenate((new_features, np.expand_dims(cur_features[j], axis=0)))
-                j += 1
+                    if j == len(cur_features):
+                        j = 0
 
-                if j == len(cur_features):
-                    j = 0
+                features = np.concatenate((features, new_features))
+                targets = np.concatenate((targets, np.full(len(new_features), t)))
 
-            features = np.concatenate((features, new_features))
-            targets = np.concatenate((targets, np.full(len(new_features), t)))
-
-    return features, targets
+        if scaler_type == 'standard':
+            scaler = StandardScaler().fit(features)
+            features = scaler.transform(features)
+            return features, targets, scaler
+        else:
+            return features, targets, None
+    else:
+        if scaler != None:
+            features = scaler.transform(features)
+        return features, targets
+            
 
 def prepare_sample(args, sample):
     if sample == "DUMMY":

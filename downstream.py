@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 
 import numpy as np
 import torch
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.linear_model import LogisticRegression
 
 from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
@@ -33,6 +33,7 @@ from utils.downstream_utils import (
     get_ft_valid_stats,
     get_sklearn_stats
 )
+from utils.logreg_utils import LogRegCV
 
 
 logging.basicConfig(
@@ -196,31 +197,22 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
         model.eval()
 
     # Load downstream train data
-    features, targets = load_downstream_data(args, progress, model, args.scaler)
+    features, targets, scaler = load_downstream_data(args, progress, model, 'train', None, args.scaler_type)
 
     # Train classifier
     logger.info('fine-tuning LogisticRegression classifier on \'{}\''.format(task_name))
     timer_start = timer()
-    if args.cross_validation:
-        classifier = LogisticRegressionCV(
-            multi_class=args.multi_class,
-            solver=args.solver,
-            Cs=args.Cs,
-            cv=args.k_folds,
-            n_jobs=min(os.cpu_count(), args.num_classes, args.Cs*args.k_folds),
-            random_state=args.seed,
-            max_iter=args.max_iter,
-            verbose=args.verbose
-        ).fit(features, targets)
-    else:
-        classifier = LogisticRegression(
-            multi_class=args.multi_class,
-            solver=args.solver,
-            n_jobs=min(os.cpu_count(), args.num_classes, args.n_jobs),
-            random_state=args.seed,
-            max_iter=args.max_iter,
-            verbose=args.verbose
-        ).fit(features, targets)
+    best_C = LogRegCV(args, features, targets)
+    classifier = LogisticRegression(
+        multi_class=args.multi_class,
+        solver=args.solver,
+        C=best_C,
+        n_jobs=min(os.cpu_count(), args.num_classes, args.num_workers_sklearn) if args.solver != 'liblinear' else None,
+        tol=args.tol,
+        random_state=args.seed,
+        max_iter=args.max_iter,
+        verbose=args.verbose
+    ).fit(features, targets)
     timer_end = timer()
     logger.info('finished sklearn fine-tuning in {:.2f} seconds'.format(timer_end-timer_start))
 
@@ -233,9 +225,9 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
     stats = get_sklearn_stats(stats, num_updates)
     progress.print(stats, tag=task_name+'_sk_train', step=num_updates)
 
-    return classifier
+    return classifier, scaler
 
-def downstream_validate_sklearn(args, task, model, epoch_for_logging, task_name, num_updates, classifier):
+def downstream_validate_sklearn(args, task, model, epoch_for_logging, task_name, num_updates, classifier, scaler):
     """Evaluate classifier on downstream validation set"""
 
     if args.fixed_validation_seed is not None:
@@ -273,7 +265,7 @@ def downstream_validate_sklearn(args, task, model, epoch_for_logging, task_name,
         model.eval()
 
     # Load downstream validation data
-    features, targets = load_downstream_data(args, progress, model, args.scaler)
+    features, targets = load_downstream_data(args, progress, model, 'valid', scaler, None)
 
     # Compute class predictions and probabilities
     class_predictions = classifier.predict(features)

@@ -8,15 +8,18 @@
 
     "epoch_interval": 1,
 
-    "multi_class": "ovr",
-    "solver": "liblinear",
-    "n_jobs": 1,
-    "scaler": "standard",
+    "multi_class": "multinomial",
+    "solver": "saga",
+    "tol": 1e-1,
     "max_iter": 1e5,
     "verbose": 0,
-    "cross_validation": false,
-    "Cs": 5,
-    "k_folds": 5,
+    "C_vals": [5e2, 1e2, 5e1, 1e1, 5e0, 1e0, 5e-1, 1e-1, 5e-2, 1e-2, 5e-3, 1e-3],
+    
+    "scaler_type": "standard",
+    "n_splits": 3,
+    "test_size": 0.2,
+    "mp_verbose": 1,
 
+    "num_workers_sklearn": 10,
     "num_workers": 2
 }

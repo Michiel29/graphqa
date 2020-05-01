@@ -370,7 +370,7 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
                 and args.distributed_rank == 0
             ):
                 # Fine-tune sklearn LogisticRegression classifier on downstream_task validation set
-                sk_classifier = downstream_train_sklearn(
+                sk_classifier, sk_scaler = downstream_train_sklearn(
                     downstream_args,
                     downstream_task,
                     model,
@@ -387,7 +387,8 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
                     global_epoch,
                     downstream_name,
                     num_updates,
-                    sk_classifier
+                    sk_classifier,
+                    sk_scaler
                 )
 
         # Evaluate few-shot classifier

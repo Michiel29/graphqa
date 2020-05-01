@@ -18,33 +18,33 @@
             "max_tokens": 6e3,
             "non_mask_rate": 1,
             "epoch_interval": 1
-        // },
-        // "semeval2010task8": {
-        //     "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_semeval2010task8__roberta_base",
-        //     "non_mask_rate": 1,
-        //     "epoch_interval": 1,
-        //     "max_sentences_sklearn": 96,
-        //     "max_tokens_sklearn": 6e3
-        // },
-        // "kbp37": {
-        //     "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_kbp37__roberta_base",
-        //     "non_mask_rate": 1,
-        //     "epoch_interval": 1,
-        //     "max_sentences_sklearn": 96,
-        //     "max_tokens_sklearn": 6e3
-        // },
-        // "tacred": {
-        //     "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
-        //     "task_type": "supervised",
-        //     "arch": "encoder_tacred__roberta_base",
-        //     "non_mask_rate": 1,
-        //     "epoch_interval": 2,
-        //     "max_sentences_sklearn": 96,
-        //     "max_tokens_sklearn": 6e3
+        },
+        "semeval2010task8": {
+            "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_semeval2010task8__roberta_base",
+            "non_mask_rate": 1,
+            "epoch_interval": 1,
+            "max_sentences_sklearn": 96,
+            "max_tokens_sklearn": 6e3
+        },
+        "kbp37": {
+            "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_kbp37__roberta_base",
+            "non_mask_rate": 1,
+            "epoch_interval": 1,
+            "max_sentences_sklearn": 96,
+            "max_tokens_sklearn": 6e3
+        },
+        "tacred": {
+            "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
+            "task_type": "supervised",
+            "arch": "encoder_tacred__roberta_base",
+            "non_mask_rate": 1,
+            "epoch_interval": 1,
+            "max_sentences_sklearn": 80,
+            "max_tokens_sklearn": 5e3
         }
     }
 }
