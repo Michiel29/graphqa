@@ -39,7 +39,7 @@ mkdir data
 mkdir save
 ​
 wget http://selfinference.s3.amazonaws.com/data.zip
-unzip data​
+
 ​
 # create env and install deps
 yes | conda create --name self_inference
@@ -68,3 +68,6 @@ pip install --editable .
 ​
 cd /root/self_inference/self_inference
 python setup.py build_ext --inplace
+
+# this breaks for unknown reason so going last
+unzip data​
