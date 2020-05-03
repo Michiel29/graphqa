@@ -1,3 +1,5 @@
+# Image: nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+
 # check if already instantiated
 if [[ -d "/root/packages" ]]; then
     source activate self_inference
