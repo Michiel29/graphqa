@@ -6,6 +6,7 @@ from fairseq.models.roberta import roberta_large_architecture as large_architect
 from fairseq.models import register_model, register_model_architecture
 from fairseq.checkpoint_utils import load_checkpoint_to_cpu
 
+from models.encoder.roberta_model import RobertaEncoderCustom
 from models.encoder.encoder_heads import encoder_head_dict
 from utils.checkpoint_utils import handle_state_dict_keys
 
@@ -73,6 +74,19 @@ class RobertaWrapper(RobertaModel):
                 **kwargs,
             )
         return x, extra
+
+    @classmethod
+    def build_model(cls, args, task):
+        """Build a new model instance."""
+
+        # make sure all arguments are present
+        base_architecture(args)
+
+        if not hasattr(args, 'max_positions'):
+            args.max_positions = args.tokens_per_sample
+
+        encoder = RobertaEncoderCustom(args, task.source_dictionary)
+        return cls(args, encoder)
 
     def load_from_pretrained(self, filename, args):
 

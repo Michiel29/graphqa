@@ -36,5 +36,6 @@
     "eval_metric": null,
 
     "validate_before_training": true,
-    "disable_training": false
+    "disable_training": false,
+    "grad_checkpoint_period": null
 }
