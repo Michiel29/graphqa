@@ -401,6 +401,7 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
                 num_updates
             )
 
+    torch.cuda.empty_cache()
 
 def distributed_main(i, args, start_rank=0):
     args.device_id = i
