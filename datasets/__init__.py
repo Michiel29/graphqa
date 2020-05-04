@@ -19,5 +19,6 @@ from .prepend_token_dataset import PrependTokenDataset
 from .rel_inf_dataset import RelInfDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
 from .shuffled_dataset import ShuffledDataset
+from .subgraph_sampler import SubgraphSampler
 from .triplet_dataset import TripletDataset
 from .token_block_annotated_dataset import TokenBlockAnnotatedDataset
