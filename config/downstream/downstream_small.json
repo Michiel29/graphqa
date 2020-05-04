@@ -34,8 +34,8 @@
             "arch": "encoder_kbp37__roberta_small",
             "non_mask_rate": 1,
             "epoch_interval": 1,
-            "max_sentences_sklearn": 200,
-            "max_tokens_sklearn": 2e4
+            "max_sentences_sklearn": 150,
+            "max_tokens_sklearn": 1.5e4
         },
         "tacred": {
             "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
