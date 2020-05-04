@@ -32,17 +32,14 @@ class NeighborhoodCoverage(object):
         self.min_common_neighbors = min_common_neighbors
         self.head_tail_set = set([head, tail])
         self.num_total_neighbors = len(common_neighbors)
-        self.head_tail_in_subgraph = self._unordered_pair_exists(
-            head,
-            tail,
-            entity_pairs_in_subgraph,
-        )
+        self.head_tail_in_subgraph = (head, tail) in entity_pairs_in_subgraph
+
         self.both_edges_in_subgraph = set()
         self.single_edge_missing = set()
         self.both_edges_missing = set()
         for n in common_neighbors:
-            n_head_exists = self._unordered_pair_exists(head, n, entity_pairs_in_subgraph)
-            n_tail_exists = self._unordered_pair_exists(tail, n, entity_pairs_in_subgraph)
+            n_head_exists = (head, n) in entity_pairs_in_subgraph
+            n_tail_exists = (tail, n) in entity_pairs_in_subgraph
             if n_head_exists and n_tail_exists:
                 self.both_edges_in_subgraph.add(n)
             elif not n_head_exists and not n_tail_exists:
@@ -50,9 +47,6 @@ class NeighborhoodCoverage(object):
             else:
                 self.single_edge_missing.add(n)
         self.reset_cost()
-
-    def _unordered_pair_exists(self, a, b, entity_pairs_in_subgraph):
-        return (a, b) in entity_pairs_in_subgraph or (b, a) in entity_pairs_in_subgraph
 
     def _update_neighbor(self, n):
         if n in self.both_edges_missing:
@@ -130,6 +124,7 @@ class SubgraphSampler(object):
         self.annotated_text = annotated_text
         self.min_common_neighbors = min_common_neighbors
         self.entities = set([])
+        self.entity_pairs = set([])
         self.covered_entity_pairs = set([])
         self.coverage = {}
         self.relation_statements = {}
@@ -160,7 +155,7 @@ class SubgraphSampler(object):
                             head=a,
                             tail=b,
                             common_neighbors=a_b_neighbors,
-                            entity_pairs_in_subgraph=self.relation_statements,
+                            entity_pairs_in_subgraph=self.entity_pairs,
                             min_common_neighbors=self.min_common_neighbors,
                         )
                 elif self.coverage[(a, b)] is not None and new_entity_pair is not None:
@@ -169,16 +164,11 @@ class SubgraphSampler(object):
     def get_coverage(self, a, b):
         return self.coverage[(min(a, b), max(a, b))]
 
-    def unordered_pair_exists(self, a_or_a_b, b=None):
-        if b is None:
-            a, b = a_or_a_b
-        else:
-            a, b = a_or_a_b, b
-        return (a, b) in self.relation_statements or (b, a) in self.relation_statements
-
     def _add_entity_pair(self, a, b, sentence):
-        assert not self.unordered_pair_exists(a, b)
+        assert (a, b) not in self.entity_pairs
         self.entities.update([a, b])
+        self.entities.update(self.get_coverage(a, b).both_edges_missing)
+        self.entity_pairs.update([(a, b), (b, a)])
         self.relation_statements[(a, b)] = sentence
         self.ntokens += len(sentence)
         self.nsentences += 1
@@ -220,12 +210,12 @@ class SubgraphSampler(object):
             cur_tokens += len(sentence)
             cur_sentences += 1
 
-        if not self.unordered_pair_exists(a, b):
+        if (a, b) not in self.entity_pairs:
             sample_new_relation_statement(a, b, sentence, False)
 
         for n in neighbors_to_add:
-            n_a_exists = self.unordered_pair_exists(a, n)
-            n_b_exists = self.unordered_pair_exists(b, n)
+            n_a_exists = (a, n) in self.entity_pairs
+            n_b_exists = (b, n) in self.entity_pairs
             assert not(n_a_exists and n_b_exists)
             if not n_a_exists:
                 sample_new_relation_statement(a, n)
@@ -254,7 +244,7 @@ class SubgraphSampler(object):
             if coverage is None:
                 # There is no edge between entity_pair[0] and entity_pair[1]
                 continue
-            if self.unordered_pair_exists(entity_pair):
+            if entity_pair in self.entity_pairs:
                 # This entity pair has already been selected
                 continue
             yield (entity_pair, coverage)

@@ -89,17 +89,15 @@ def main(args):
     )
     graph.set_epoch(1)
 
-    subgraph = SubgraphSampler(
-        graph=graph,
-        annotated_text=annotated_text,
-        min_common_neighbors=args.min_common_neighbors,
-    )
-
     with numpy_seed('SubgraphSampler', args.seed):
         random_perm = np.random.permutation(len(graph))
 
     if args.save_subgraph is not None:
-        subgraph = sample_subgraph(graph, annotated_text, random_perm[0], args)
+        for index in random_perm:
+            subgraph, _ = sample_subgraph(graph, annotated_text, index, args)
+            if subgraph is not None:
+                break
+
         path = '%s.max_tokens=%d.max_sentences=%d.min_common_neighbors=%d' % (
             args.save_subgraph,
             args.max_tokens,
