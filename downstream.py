@@ -192,12 +192,10 @@ def downstream_train_sklearn(args, task, model, epoch_for_logging, task_name, nu
     # Reset meters
     metrics.reset_meters(task_name)
 
-    # Set model to eval mode
+    # Load downstream train data
     with torch.no_grad():
         model.eval()
-
-    # Load downstream train data
-    features, targets, scaler = load_downstream_data(args, progress, model, 'train', None, args.scaler_type)
+        features, targets, scaler = load_downstream_data(args, progress, model, 'train', None, args.scaler_type)
 
     # Train classifier
     logger.info('fine-tuning LogisticRegression classifier on \'{}\''.format(task_name))
@@ -260,12 +258,10 @@ def downstream_validate_sklearn(args, task, model, epoch_for_logging, task_name,
     # Reset validation meters
     metrics.reset_meters(task_name)
 
-    # Set model to eval mode
+    # Load downstream validation data
     with torch.no_grad():
         model.eval()
-
-    # Load downstream validation data
-    features, targets = load_downstream_data(args, progress, model, 'valid', scaler, None)
+        features, targets = load_downstream_data(args, progress, model, 'valid', scaler, None)
 
     # Compute class predictions and probabilities
     class_predictions = classifier.predict(features)
