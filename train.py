@@ -9,7 +9,6 @@ Train a new model on one or across multiple GPUs.
 
 import logging
 import math
-import neptune
 import random
 import os
 import sys
@@ -39,8 +38,8 @@ from downstream import (
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import (
     generate_save_dir,
-    generate_tags,
     get_training_name,
+    save_checkpoint,
 )
 from utils.downstream_utils import (
     create_ft_prefixes,
@@ -54,8 +53,9 @@ from utils.logging_utils import (
     compute_sklearn_stats,
     maybe_wrap_neptune_logging,
     NeptuneWrapper,
+    initialize_neptune,
+    get_experiment_id
 )
-
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -121,15 +121,7 @@ def main(args, init_distributed=False):
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(args, trainer)
 
     if distributed_utils.is_master(args) and not args.debug:
-        import socket
-        neptune.init(NEPTUNE_PROJECT_NAME)
-        neptune.create_experiment(
-            name=args.training_name,
-            params=vars(args),
-            tags=generate_tags(args),
-            hostname=socket.gethostname(),
-        )
-        is_neptune_initialized = True
+        initialize_neptune(trainer, extra_state, args)
 
     if args.eval_downstream and len(args.downstream_dict) > 0:
         downstream_dict = {}
@@ -185,7 +177,11 @@ def main(args, init_distributed=False):
 
         # save checkpoint
         if epoch_itr.epoch % args.save_interval == 0:
-            checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+
+            save_extra_state = {}
+            if get_experiment_id():
+                save_extra_state['neptune_id'] = get_experiment_id()
+            save_checkpoint(args, trainer, epoch_itr, valid_losses[0], save_extra_state)
 
         # early stop
         if should_stop_early(args, valid_losses[0]):
@@ -254,15 +250,6 @@ def train(args, trainer, task, epoch_itr):
             # log mid-epoch stats
             stats = get_training_stats(agg.get_smoothed_values())
             progress.log(stats, tag='train', step=num_updates)
-
-            if (
-                not args.disable_validation
-                and args.save_interval_updates > 0
-                and num_updates % args.save_interval_updates == 0
-                and num_updates > 0
-            ):
-                valid_losses = validate(args, trainer, task, epoch_itr.epoch, valid_subsets)
-                checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
             if num_updates >= max_update:
                 break
@@ -364,7 +351,7 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
         if (
                 downstream_args.task_type == 'supervised'
                 and (
-                        global_epoch % (downstream_args.epoch_interval or 1) == 0 
+                        global_epoch % (downstream_args.epoch_interval or 1) == 0
                         or global_epoch == downstream_args.max_epoch
                     )
                 and args.distributed_rank == 0
@@ -395,7 +382,7 @@ def run_downstream(args, downstream_dict, model, criterion, global_epoch, num_up
         elif (
             downstream_args.task_type == 'few_shot'
             and (
-                    global_epoch % (downstream_args.epoch_interval or 1) == 0 
+                    global_epoch % (downstream_args.epoch_interval or 1) == 0
                     or global_epoch == downstream_args.max_epoch
                 )
         ):
@@ -497,9 +484,5 @@ def cli_main():
 
 
 if __name__ == '__main__':
-    os.environ['NEPTUNE_API_TOKEN'] = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiMGVlMjhiMTQtZGU0YS00MDFiLWE2NzQtNDk4Y2M1NTQwY2Q4In0="
-    try:
-        cli_main()
-    finally:
-        if is_neptune_initialized:
-            neptune.stop()
+
+    cli_main()

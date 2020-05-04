@@ -1,13 +1,72 @@
 import collections
-import neptune
+import os
+
 from numbers import Number
 import numpy as np
 from sklearn.metrics import multilabel_confusion_matrix, log_loss, accuracy_score
 from typing import Optional
+import logging
 
 from fairseq import meters, distributed_utils
 from fairseq.logging.meters import AverageMeter, safe_round
 from fairseq.logging.progress_bar import BaseProgressBar
+from neptune import Session
+from utils.checkpoint_utils import generate_tags
+
+logger = logging.getLogger()
+
+def set_experiment(experiment_input):
+    global experiment
+    experiment = experiment_input
+
+def get_experiment_id():
+    global experiment
+    if 'experiment' in globals():
+        return experiment.id
+    else:
+        return None
+
+def initialize_neptune(trainer, extra_state, args):
+    os.environ['NEPTUNE_API_TOKEN'] = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiMGVlMjhiMTQtZGU0YS00MDFiLWE2NzQtNDk4Y2M1NTQwY2Q4In0="
+    import socket
+    session = Session.with_default_backend()
+    project = session.get_project('selfinference/sandbox')
+    if extra_state is not None and "neptune_id" in extra_state:
+        experiment = project.get_experiments(extra_state["neptune_id"])[0]
+
+        exp_logs = experiment.get_logs()
+        log_dict = {}
+        logger.info('Clearing neptune experiment logs of {0}'.format(experiment.name))
+
+        for name in exp_logs:
+            log_dict[name] = experiment.get_numeric_channels_values(name).values
+            experiment.reset_log(name)
+
+        if experiment.state != 'running':
+            experiment.append_tag('trash')
+            experiment = project.create_experiment(
+                name=args.training_name,
+                params=vars(args),
+                tags=generate_tags(args),
+                hostname=socket.gethostname()
+            )
+
+        logger.info('Replacing neptune experiment logs up to checkpoint of {0}'.format(experiment.name))
+        for name, log in log_dict.items():
+            for i, x in enumerate(log[:, 0]):
+                if x <= trainer.get_num_updates():
+                    experiment.log_metric(name, x, log[i, 1])
+
+    else:
+        experiment = project.create_experiment(
+            name=args.training_name,
+            params=vars(args),
+            tags=generate_tags(args),
+            hostname=socket.gethostname()
+        )
+
+    set_experiment(experiment)
+
 
 
 class NeptuneWrapper(BaseProgressBar):
@@ -32,17 +91,18 @@ class NeptuneWrapper(BaseProgressBar):
             return '%s/%s' % (tag, key)
 
     def _log_to_neptune(self, stats, tag=None, step=None):
+        global experiment
         if step is None:
             step = stats['num_updates']
         for key in stats.keys() - {'num_updates'}:
             if isinstance(stats[key], AverageMeter):
-                neptune.log_metric(
+                experiment.log_metric(
                     log_name=self._get_log_name(tag, key),
                     x=step,
                     y=stats[key].val,
                 )
             elif isinstance(stats[key], Number):
-                neptune.log_metric(
+                experiment.log_metric(
                     log_name=self._get_log_name(tag, key),
                     x=step,
                     y=stats[key],
