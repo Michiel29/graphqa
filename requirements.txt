@@ -4,5 +4,6 @@ requests
 commentjson
 pyarrow
 sklearn
+pyarrow==0.16.*
 neptune-client
-
+psutil
