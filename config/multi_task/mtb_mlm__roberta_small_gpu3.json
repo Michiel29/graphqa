@@ -4,7 +4,7 @@
     // "eval_downstream": false,
 
     "tasks": {
-        "trt": {
+        "mtb": {
             "task": "mtb",
             "k_weak_negs": 100,
             "n_tries_entity": 100,
