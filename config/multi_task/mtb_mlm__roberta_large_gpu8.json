@@ -1,0 +1,68 @@
+{
+    "add_configs": ["../roberta/large.json", "../base.json", "../downstream/downstream_large.json"],
+    // "add_configs": ["../roberta/large.json", "../base.json"],
+    // "eval_downstream": false,
+
+    "tasks": {
+        "mtb": {
+            "task": "mtb",
+            "k_weak_negs": 100,
+            "n_tries_entity": 100,
+            "non_mask_rate": 0.7,
+            "subsampling_strategy": "by_entity_pair",
+            "subsampling_cap": 100,
+            "n_valid_examples": 20000,
+
+            "update_freq": 7,
+            "epoch_size": 4e6,
+            "max_sentences": 64,
+            "max_tokens": 1e4,
+
+            "criterion": "cross_entropy_custom",
+            "weight": 0.5
+        },
+        "mlm": {
+            "task": "masked_lm_em",
+            "non_mask_rate": 0.5,
+
+            "mask_prob": 0.15,
+            "leave_unmasked_prob": 0.1,
+            "random_token_prob": 0.1,
+            "freq_weighted_replacement": false,
+            "mask_whole_words": true,
+
+            "update_freq": 7,
+            "epoch_size": 4e6,
+            "n_valid_examples": 20000,
+
+            "max_sentences": 64,
+            "max_tokens": 1e4,
+
+            "criterion": "masked_lm_custom",
+            "weight": 0.5
+        }
+    },
+
+    "task": "multi_task",
+    "arch": "encoder_mtb__roberta_large",
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_start_linear",
+
+    "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+
+    "mask_type": "start_end",
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    "max_sentences": 64,
+    "update_freq": null,
+    "max_tokens": 1e4,
+
+    "gradient_checkpoint_period": 1,
+    "validate_before_training": false
+}
