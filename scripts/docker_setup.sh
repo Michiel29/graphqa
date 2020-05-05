@@ -70,4 +70,5 @@ cd /root/self_inference/self_inference
 python setup.py build_ext --inplace
 
 # this breaks for unknown reason so going last
-unzip data​
+cd /root/self_inference
+unzip data​.zip
