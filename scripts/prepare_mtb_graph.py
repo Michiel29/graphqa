@@ -187,8 +187,8 @@ def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train
             # If head_neighbors is not a subset of tail_neighbors, check if head has at least one edge which does not contain tail
             if not strong_neg:
                 sample = np.random.choice(len(cur_s_train), size=min(SAMPLE_SIZE, len(cur_s_train)), replace=False)
-                for edge_idx_ in sample:
-                    cur_edge_train_entities = set(annotation_data_train[slice(cur_s_train[edge_idx_], cur_e_train[edge_idx_])][:, -1])
+                for sample_edge_idx in sample:
+                    cur_edge_train_entities = set(annotation_data_train[slice(cur_s_train[sample_edge_idx], cur_e_train[sample_edge_idx])][:, -1])
                     assert head in cur_edge_train_entities
                     assert len(cur_edge_train_entities) > 1
                     if tail not in cur_edge_train_entities:
