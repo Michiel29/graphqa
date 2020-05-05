@@ -1,7 +1,8 @@
-torch #1.4.0, cuda 10.1 works
 fastBPE
 sacremoses
 requests
 commentjson
 pyarrow
+sklearn
+neptune-client
 
