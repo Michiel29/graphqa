@@ -28,18 +28,22 @@ class EncoderMTBModel(BaseFairseqModel):
         return self._max_positions
 
     def forward(self, batch):
+        n_pairs = int(batch['A2B'].numel()/batch['size'])
 
         textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
-        textA_enc = torch.repeat_interleave(textA_enc, int(batch['A2B'].numel()/batch['size']), dim=0)
+        textA_enc = torch.repeat_interleave(textA_enc, n_pairs, dim=0)
 
         textB_enc = []
-        for cluster_id, cluster_texts in batch['textB'].items():
+        for cluster_texts in batch['textB'].values():
             cur_textB_enc, _ = self.encoder(cluster_texts)
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
+
+        scores = scores.reshape(-1, n_pairs)
+
         return scores
 
     @staticmethod

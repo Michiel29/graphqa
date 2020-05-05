@@ -62,6 +62,13 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
+        if 'ntokens_AB' in logging_outputs[0].keys():
+            ntokens_AB = utils.item(sum(log.get('ntokens_AB', 0) for log in logging_outputs))
+            metrics.log_scalar('wpb_AB', ntokens_AB, priority=200, round=1)
+        if 'ntokens_mem' in logging_outputs[0].keys():    
+            ntokens_mem = utils.item(sum(log.get('ntokens_mem', 0) for log in logging_outputs))
+            metrics.log_scalar('wpb_mem', ntokens_mem, priority=200, round=1)
+
         criterion.__class__.reduce_metrics(logging_outputs, self.split)
 
     def get_batch_iterator(

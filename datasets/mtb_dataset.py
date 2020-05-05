@@ -3,13 +3,15 @@ from torch.nn.utils.rnn import pad_sequence
 import logging
 
 import os
-from copy import deepcopy
+import copy
 import numpy as np
 import numpy.random as rd
 import itertools
 
 from fairseq.data import data_utils, FairseqDataset
 from utils.diagnostic_utils import Diagnostic
+
+from datasets import GraphDataset
 
 logger = logging.getLogger(__name__)
 
@@ -18,70 +20,92 @@ class MTBDataset(FairseqDataset):
 
     def __init__(
         self,
-        split_dataset,
-        train_dataset,
-        graph,
-        n_entities,
-        dictionary,
-        entity_dictionary,
-        k_weak_neg,
-        n_tries_entity,
-        n_tries_text,
-        max_positions,
+        split,
+        split_annotated_text,
+        train_annotated_text,
+        split_graph,
+        train_graph,
         seed,
-        run_batch_diag=False,
+        dictionary,
+        k_weak_negs,
+        n_tries_entity
     ):
-        self.split_dataset = split_dataset
-        self.train_dataset = train_dataset
-        self.graph = graph
-        self.n_texts = len(train_dataset)
-        self.n_entities = n_entities
-        self.dictionary = dictionary
-        self.entity_dictionary = entity_dictionary
-        self.k_weak_neg = k_weak_neg
-        self.n_tries_entity = n_tries_entity
-        self.n_tries_text = n_tries_text
-        self.max_positions = max_positions
+        self.split = split
+        self.split_annotated_text = split_annotated_text
+        self.train_annotated_text = train_annotated_text
+        self.split_graph = split_graph
+        self.train_graph = train_graph
+
         self.seed = seed
-        self.run_batch_diag = run_batch_diag
-        self.epoch = 0
+        self.dictionary = dictionary
+
+        self.k_weak_negs = k_weak_negs
+        self.n_tries_entity = n_tries_entity
+
+        self.epoch = None
 
     def set_epoch(self, epoch):
+        self.split_graph.set_epoch(epoch)
+        self.train_graph.set_epoch(epoch)
         self.epoch = epoch
 
     def __len__(self):
-        return len(self.split_dataset)
+        return len(self.split_graph)
 
     def num_tokens(self, index):
-        return self.sizes[index]
+        return self.split_graph.sizes[index]
 
     def size(self, index):
-        return self.sizes[index]
-
-    def ordered_indices(self):
-        return np.argsort([10 * (np.random.random(len(self.sizes)) - 0.5) + self.sizes])[0]
+        return self.split_graph.sizes[index]
 
     @property
     def sizes(self):
-        return self.split_dataset.sizes
+        return self.split_graph.sizes
 
-    def sample_text(self, headB_tailB_edges, headB, tailB, textA, strong_neg=False, tailA=None):
+    def ordered_indices(self):
+        return self.split_graph.ordered_indices()
+
+    def get_edge_entities(self, annotation_data, start_block, end_block):
+        # From http://sociograph.blogspot.com/2011/12/gotcha-with-numpys-searchsorted.html
+        start_block = annotation_data.dtype.type(start_block)
+        end_block = annotation_data.dtype.type(end_block)
+
+        # We are interested in all annotations that INTERSECT [start_block; end_block)
+        # Recall that the [start_pos; end_pos) interval for the annotation s is defined as
+        # [annotations[s - 1][0], annotations[s - 1][1])
+        #
+        # From https://docs.scipy.org/doc/numpy/reference/generated/numpy.searchsorted.html
+        # side	returned index i satisfies
+        # left	a[i-1] < v <= a[i]
+        # right	a[i-1] <= v < a[i]
+        #
+        # First, we need to find an index s such that
+        # annotations[s - 1].end_pos <= start_block < annotations[s].end_pos
+        s = np.searchsorted(annotation_data[:, 1], start_block, side='right')
+
+        # Second, we need to find an index e such that
+        # annotations[e - 1].start_pos < end_block <= annotations[e].start_pos
+        e = np.searchsorted(annotation_data[:, 0], end_block, side='left')
+
+        return set(annotation_data[slice(s, e)][:, -1])
+
+    def sample_text(self, headB_tailB_edges, textA, strong_neg=False, tailA=None):
 
         # Iterate through edges between headB and tailB (i.e., textB candidates)
         for edge in headB_tailB_edges:
 
             # For strong negatives, discard the current edge if it contains tailA
             if strong_neg:
-                edge_entity_ids = self.train_dataset.annotation_data[edge][2::3].numpy()
-                if tailA in edge_entity_ids:
+                edge_entities = self.get_edge_entities(
+                    self.train_annotated_text.annotation_data.array, 
+                    edge[GraphDataset.START_BLOCK], 
+                    edge[GraphDataset.END_BLOCK]
+                )
+                if tailA in edge_entities:
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.train_dataset.__getitem__(edge, head_entity=headB, tail_entity=tailB)['text']
-
-            # Discard textB if it is longer than max_positions
-            if len(textB) > self.max_positions:
-                continue
+            textB = self.train_annotated_text.annotate(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -92,46 +116,44 @@ class MTBDataset(FairseqDataset):
         # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
-    def sample_positive(self, head, tail, head_neighbors, head_edges, textA):
-        # Get all indices of head_neighbors, for which the neighbor is tail
-        head_tail_edges_idxs = np.flatnonzero(head_neighbors == tail)
+    def sample_positive(self, head_edges, tail, textA):
+        # Get all indices of head's neighbors, for which the neighbor is tail
+        head_neighbors_idxs = np.flatnonzero(head_edges[:, GraphDataset.TAIL_ENTITY] == tail)
 
-        # Check that head and tail are mentioned in at least two training texts
-        if len(head_tail_edges_idxs) < 1:
+        # Check that head and tail are mentioned in at least one training text
+        if (
+            self.split == 'train' and len(head_neighbors_idxs) < 2 
+            or self.split == 'valid' and len(head_neighbors_idxs) < 1
+        ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
-        elif len(head_tail_edges_idxs) == 1:
-            raise Exception("POSITIVE -- head and tail are mentioned together in only one training text")
 
         # Get all edges between head and tail
-        head_tail_edges = np.take(head_edges, head_tail_edges_idxs, 0)
+        head_tail_edges = head_edges[head_neighbors_idxs, :]
 
         # Shuffle head-tail edges
         head_tail_edges = head_tail_edges[torch.randperm(len(head_tail_edges)).numpy()]
 
         # Sample textB_pos from head-tail edges
-        textB_pos = self.sample_text(head_tail_edges, head, tail, textA)
+        textB_pos = self.sample_text(head_tail_edges, textA)
 
         return textB_pos
 
-    def sample_strong_negative(self, headA, tailA, headA_neighbors, headA_edges, textA):
-        # Set headB to be headA
-        headB = headA
-
-        # Get tailB candidate indices -- i.e., indices of headA_neighbors, for which the neighbor is not tailA
-        tailB_candidates_idxs = np.flatnonzero(headA_neighbors != tailA)
+    def sample_strong_negative(self, headA_edges, tailA, textA):
+        # Get all indices of head's neighbors, for which the neighbor is not tail
+        head_neighbors_idxs = np.flatnonzero(headA_edges[:, GraphDataset.TAIL_ENTITY] != tailA)
 
         # Check that headA has at least one neighbor besides tailA
-        if len(tailB_candidates_idxs) == 0:
+        if len(head_neighbors_idxs) < 1:
             raise Exception("STRONG NEGATIVE -- headA has no neighbors besides tailA")
 
+        # Get all of headB's edges (note that headB = headA), excluding those shared with tailA
+        headB_edges = headA_edges[head_neighbors_idxs, :]
+
         # Get tailB candidates -- i.e., all of headB's neighbors, excluding tailA
-        tailB_candidates = np.take(headA_neighbors, tailB_candidates_idxs, 0)
+        tailB_candidates = headB_edges[:, GraphDataset.TAIL_ENTITY]
 
         # Get unique array of tailB candidates -- i.e., all of headB's neighbors, excluding tailA and graph duplicates
         tailB_candidates_unique = np.unique(tailB_candidates)
-
-        # Get all of headB's edges, excluding those shared with tailA
-        headB_edges = np.take(headA_edges, tailB_candidates_idxs, 0)
 
         # Set maximum number of tailB candidates to consider
         n_tailB_candidates = min(self.n_tries_entity, len(tailB_candidates_unique))
@@ -141,120 +163,54 @@ class MTBDataset(FairseqDataset):
 
         # Iterate through all of the tailB candidates
         for tailB in tailB_candidates_sample:
-            # Get indices of tailB_candidates corresponding to tailB
-            headB_tailB_edges_idxs = np.flatnonzero(tailB_candidates == tailB)
-
-            # Shuffle headB-tailB edge indices
-            headB_tailB_edges_idxs = headB_tailB_edges_idxs[torch.randperm(len(headB_tailB_edges_idxs)).numpy()]
 
             # Get all edges between headB and tailB, according to the shuffled indices
-            headB_tailB_edges = np.take(headB_edges, headB_tailB_edges_idxs, 0)
+            headB_tailB_edges = headB_edges[headB_edges[:, GraphDataset.TAIL_ENTITY] == tailB]
 
-            # Sample textB from headB_tailB_edges
-            textB = self.sample_text(headB_tailB_edges, headB, tailB, textA, strong_neg=True, tailA=tailA)
-            if textB is not None:
+            # Shuffle headB_tailB_edges
+            headB_tailB_edges = headB_tailB_edges[torch.randperm(len(headB_tailB_edges)).numpy()]
+
+            # Sample textB_strong_neg from headB_tailB_edges
+            textB_strong_neg = self.sample_text(headB_tailB_edges, textA, strong_neg=True, tailA=tailA)
+            if textB_strong_neg is not None:
                 break
 
-        return textB, tailB
-
-    def sample_weak_negative(self, headA, tailA, headA_neighbors, headA_edges, textA, increment):
-        textB_list, headB_list, tailB_list, textB_len_list = [], [], [], []
-        while len(textB_list) < self.k_weak_neg + increment:
-            # Sample an index for textB from the list of all texts
-            textB_idx = rd.randint(self.n_texts)
-
-            # Get array of unique entity ids for textB
-            unique_entity_ids = np.unique(self.train_dataset.annotation_data[textB_idx][2::3].numpy())
-
-            # Check that there are at least two entities in textB
-            assert len(unique_entity_ids) >= 2
-
-            # Check that headA and tailA are not in the textB
-            if headA in unique_entity_ids or tailA in unique_entity_ids:
-                continue
-
-            # Sample two of the entities in textB to use as headB and tailB
-            headB, tailB = np.random.choice(unique_entity_ids, size=2, replace=False)
-
-            # Retrieve textB token sequence, with headB and tailB marked
-            textB = self.train_dataset.__getitem__(textB_idx, headB, tailB)['text']
-
-            # Check that textB is not longer than max_positions
-            if len(textB) > self.max_positions:
-                continue
-            else:
-                textB_list.append(textB)
-                headB_list.append(headB)
-                tailB_list.append(tailB)
-                textB_len_list.append(len(textB))
-
-        return textB_list, headB_list, tailB_list, textB_len_list
+        return textB_strong_neg
 
     def __getitem__(self, index):
-        item = self.split_dataset[index]
-
-        textA = item['text']
-        headA = item['head']
-        tailA = item['tail']
+        edge = self.split_graph[index]
+        headA = edge[GraphDataset.HEAD_ENTITY].item()
+        tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
+            textA = self.split_annotated_text.annotate(*(edge.numpy()))
 
-            # Get neighbors and edges for headA
-            headA_neighbors = self.graph[headA]['neighbors'].numpy()
-            headA_edges = self.graph[headA]['edges'].numpy()
+            # Get edges with headA as the head
+            headA_edges = self.train_graph.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
             # Sample positive text pair: textA and textB share both head and tail
-            textB_pos = self.sample_positive(headA, tailA, headA_neighbors, headA_edges, textA)
+            textB_pos = self.sample_positive(headA_edges, tailA, textA)
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None:
                 return None
 
-            # Initialize lists for storing text pairs and their corresponding head/tail entities
-            textB, headB, tailB, textB_len = [textB_pos], [headA], [tailA], [len(textB_pos)]
-
             # Sample one strong negative text pair
-            textB_strong_neg, tailB_strong_neg = self.sample_strong_negative(headA, tailA, headA_neighbors, headA_edges, textA)
+            textB_strong_neg = self.sample_strong_negative(headA_edges, tailA, textA)
 
-             # If we successfully sample a strong negative, then append textB_neg, headB_neg, and tailB_neg to their respective lists.
-             # Otherwise, sample one extra weak negative.
-            if textB_strong_neg is not None:
-                textB.append(textB_strong_neg)
-                headB.append(headA)
-                tailB.append(tailB_strong_neg)
-                textB_len.append(len(textB_strong_neg))
-                weak_increment = 0
-            else:
-                weak_increment = 1
+            # Check if strong negative text pair was successfully sampled
+            if textB_strong_neg is None:
+                return None
 
-            # Sample [k + weak_increment] weak negative text pairs
-            textB_weak_neg, headB_weak_neg, tailB_weak_neg, textB_weak_neg_len = self.sample_weak_negative(headA, tailA, headA_neighbors, headA_edges, textA, weak_increment)
-            textB += textB_weak_neg
-            headB += headB_weak_neg
-            tailB += tailB_weak_neg
-            textB_len += textB_weak_neg_len
-
-        # A_dict = {'textA': textA, 'headA': headA, 'tailA': tailA}
-        # B_dict = {'textB': textB, 'headB': headB, 'tailB': tailB}
-        # diag = Diagnostic(self.dictionary, self.entity_dictionary)
-        # diag.inspect_mtb_pairs(A_dict, B_dict)
-
-        item_dict = {
+        item = {
             'textA': textA,
-            'textB': textB,
-            'textB_len': textB_len,
+            'textB': [textB_pos, textB_strong_neg],
             'ntokens': len(textA),
             'nsentences': 1,
-            'ntokens_AB': len(textA) + sum(textB_len),
+            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_strong_neg),
         }
 
-        if self.run_batch_diag:
-            item_dict['headA'] = headA
-            item_dict['tailA'] = tailA
-            item_dict['headB'] = headB
-            item_dict['tailB'] = tailB
-
-        return item_dict
+        return item
 
     def collater(self, instances):
         # Filter out instances for which no positive text pair exists
@@ -268,19 +224,12 @@ class MTBDataset(FairseqDataset):
         textA_list = []
         textB_dict = {}
         A2B_dict = {}
-        target_dict = {}
         ntokens = 0
         nsentences = 0
         ntokens_AB = 0
 
-        if self.run_batch_diag:
-            headA_list = []
-            tailA_list = []
-            headB_list = []
-            tailB_list = []
-
         # Get array of textB lengths
-        textB_len = np.array([instance['textB_len'] for instance in instances])
+        textB_len = np.array(list(itertools.chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
 
         # Compute statistics for textB lengths
         textB_mean = np.mean(textB_len)
@@ -288,38 +237,26 @@ class MTBDataset(FairseqDataset):
 
         # Generate cluster candidates based on textB lengths statistics
         bin_vals = [0] + [textB_mean + 0.5*k*textB_std for k in range(-3, 4)] + [float('inf')]
-        cluster_candidates = [np.where(np.logical_and(textB_len > bin_vals[i], textB_len <= bin_vals[i+1])) for i in range(len(bin_vals)-1)]
+        cluster_candidates = [np.where(np.logical_and(textB_len > bin_vals[i], textB_len <= bin_vals[i+1]))[0] for i in range(len(bin_vals)-1)]
 
-        # Build textB clusters; initialize textB_dict, A2B_dict, and target_dict
+        # Build textB clusters; initialize textB_dict and A2B_dict
         cluster_id = 0
-        textB_clusters = -1 * np.ones((batch_size, self.k_weak_neg+2))
+        textB_clusters = -1 * np.ones(batch_size * 2)
         for c in cluster_candidates:
-            if len(c[0]) > 0:
-                textB_clusters[c[0], c[1]] = cluster_id
+            if len(c) > 0:
+                textB_clusters[c] = cluster_id
                 textB_dict[cluster_id] = []
                 A2B_dict[cluster_id] = []
-                target_dict[cluster_id] = []
                 cluster_id += 1
 
-        # Populate textA_list, textB_dict, target_dict, and other auxiliary lists
+        # Populate textA_list, textB_dict, and other auxiliary lists
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
-
             for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i, j]
+                cluster_id = textB_clusters[i * 2 + j]
                 textB_dict[cluster_id].append(cur_textB)
-                A2B_dict[cluster_id].append(i * (self.k_weak_neg+2) + j)
-                if j == 0:
-                    target_dict[cluster_id].append(1)
-                else:
-                    target_dict[cluster_id].append(0)
-
-            if self.run_batch_diag:
-                headA_list.append(instance['headA'])
-                tailA_list.append(instance['tailA'])
-                headB_list.append(instance['headB'])
-                tailB_list.append(instance['tailB'])
-
+                A2B_dict[cluster_id].append(i * 2 + j)
+            
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -327,33 +264,38 @@ class MTBDataset(FairseqDataset):
         # Pad textA
         padded_textA = pad_sequence(textA_list, batch_first=True, padding_value=self.dictionary.pad())
 
-        # Pad textB; get A2B_list and target_list
+        # Pad textB, and get A2B_list
         padded_textB = {}
         padded_textB_size = 0
         A2B_list = []
-        target_list = []
         for cluster_id, cluster_texts in textB_dict.items():
             padded_textB[cluster_id] = pad_sequence(cluster_texts, batch_first=True, padding_value=self.dictionary.pad())
             padded_textB_size += torch.numel(padded_textB[cluster_id])
             A2B_list += A2B_dict[cluster_id]
-            target_list += target_dict[cluster_id]
+        A2B_list = np.argsort(A2B_list)
+
+        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
+        # using texts in the current batch
+        A2B_list = A2B_list.reshape(batch_size, 2)
+        k_weak_negs = min(self.k_weak_negs, batch_size * 2 - 2)
+        textB_idxs = np.arange(batch_size * 2)
+        A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
+        for i in range(batch_size):
+            weak_neg_candidates = textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]
+            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
+            A2B_weak_negs[i, :] = weak_negs
+        A2B_list = np.concatenate((A2B_list, A2B_weak_negs), axis=1).flatten()
 
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
-            'textB_size': padded_textB_size,
-            'A2B': torch.LongTensor(np.argsort(A2B_list)),
-            'target': torch.LongTensor(target_list),
+            'A2B': torch.LongTensor(A2B_list),
+            'target': torch.zeros(batch_size, dtype=torch.long),
             'size': batch_size,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'ntokens_AB': ntokens_AB,
+            'ntokens_mem': padded_textA.numel() + padded_textB_size
         }
-
-        if self.run_batch_diag:
-            batch_dict['headA'] = torch.LongTensor(headA_list)
-            batch_dict['tailA'] = torch.LongTensor(tailA_list)
-            batch_dict['headB'] = torch.LongTensor(headB_list)
-            batch_dict['tailB'] = torch.LongTensor(tailB_list)
 
         return batch_dict

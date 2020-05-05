@@ -52,6 +52,11 @@ class CrossEntropy(FairseqCriterion):
             'accuracy': utils.item((pred == target).float().sum()),
         }
 
+        if 'ntokens_AB' in sample.keys():
+            logging_output['ntokens_AB'] = sample['ntokens_AB']
+        if 'ntokens_mem' in sample.keys():
+            logging_output['ntokens_mem'] = sample['ntokens_mem']
+
         logging_output = self.task.reporter(target, pred, logging_output)
 
         return loss, sample_size, logging_output
@@ -63,9 +68,9 @@ class CrossEntropy(FairseqCriterion):
         weight = 0 if split == 'train' else sample_size
 
         loss_sum = sum(log.get(prefix + 'loss', 0) for log in logging_outputs)
-        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, weight, priority=0, round=3)
-
         accuracy_sum = sum(log.get(prefix + 'accuracy', 0) for log in logging_outputs)
+
+        metrics.log_scalar(prefix + 'loss', loss_sum / sample_size, weight, priority=0, round=3)
         metrics.log_scalar(prefix + 'acc', accuracy_sum / sample_size, weight, priority=10, round=3)
         if split == 'train':
             metrics.log_scalar(

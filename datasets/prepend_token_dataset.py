@@ -17,6 +17,8 @@ class PrependTokenDataset(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
+        if item is None:
+            return None
         ntokens = item.get['ntokens'] if hasattr(item, 'ntokens') else 0
 
         for key in self.keys:
