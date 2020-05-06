@@ -35,12 +35,7 @@ mkdir self_inference
 cd self_inference
 git clone https://Michiel29Machine:uWnSK*hsG6VU69AW@github.com/Michiel29/self_inference.git
 ​
-mkdir data
-mkdir save
-​
-wget http://selfinference.s3.amazonaws.com/data.zip
 
-​
 # create env and install deps
 yes | conda create --name self_inference
 source activate self_inference
@@ -71,4 +66,9 @@ python setup.py build_ext --inplace
 
 # this breaks for unknown reason so going last
 cd /root/self_inference
+mkdir save
+​mkdir data
+
+cd data
+wget http://selfinference.s3.amazonaws.com/data.zip
 unzip data​.zip

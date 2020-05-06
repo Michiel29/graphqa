@@ -1,0 +1,1 @@
+echo "tmux new-session -d -s my_session 'cd self_inference/self_inference && python train.py ${0}'" >> ~/onstart.sh
