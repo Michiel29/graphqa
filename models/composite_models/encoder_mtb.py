@@ -52,8 +52,9 @@ class EncoderMTBModel(BaseFairseqModel):
         RobertaWrapper.add_args(parser)
 
     @classmethod
-    def build_model(cls, args, task):
-        encoder = RobertaWrapper.build_model(args, task)
+    def build_model(cls, args, task, encoder=None):
+        if encoder is None:
+            encoder = RobertaWrapper.build_model(args, task)
         return cls(args, encoder)
 
 

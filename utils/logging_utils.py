@@ -29,6 +29,8 @@ def get_experiment_id():
 def initialize_neptune(trainer, extra_state, args):
     os.environ['NEPTUNE_API_TOKEN'] = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiMGVlMjhiMTQtZGU0YS00MDFiLWE2NzQtNDk4Y2M1NTQwY2Q4In0="
     import socket
+    params = vars(args)
+    params['hostname'] = socket.gethostname()
     session = Session.with_default_backend()
     project = session.get_project('selfinference/sandbox')
     if extra_state is not None and "neptune_id" in extra_state:
@@ -46,9 +48,8 @@ def initialize_neptune(trainer, extra_state, args):
             experiment.append_tag('trash')
             experiment = project.create_experiment(
                 name=args.training_name,
-                params=vars(args),
-                tags=generate_tags(args),
-                hostname=socket.gethostname()
+                params=params,
+                tags=generate_tags(args)
             )
 
         logger.info('Replacing neptune experiment logs up to checkpoint of {0}'.format(experiment.name))
@@ -60,9 +61,8 @@ def initialize_neptune(trainer, extra_state, args):
     else:
         experiment = project.create_experiment(
             name=args.training_name,
-            params=vars(args),
-            tags=generate_tags(args),
-            hostname=socket.gethostname()
+            params=params,
+            tags=generate_tags(args)
         )
 
     set_experiment(experiment)

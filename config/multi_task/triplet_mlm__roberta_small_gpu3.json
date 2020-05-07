@@ -45,23 +45,23 @@
     },
 
     "task": "multi_task",
-    "arch": "encoder_triplet__roberta_small",
+    "arch": "multi_model",
     "use_sentence_negatives": false,
     "entity_dim": 256,
     "triplet_type": "concat_linear_dot",
     "encoder_output_layer_type": "entity_start_linear",
 
-    "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
 
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
-    "lr": [4e-4],
+    "lr": [2e-4],
 
-    "num_workers": 0,
+    "num_workers": 4,
     "max_sentences": 1336,
     "update_freq": null,
     "max_tokens": 12000,
