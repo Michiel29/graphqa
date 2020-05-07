@@ -6,6 +6,7 @@
     "tasks": {
         "trt": {
             "task": "triplet_inference",
+            "arch": "encoder_triplet__roberta_small",
             "k_negative": 100,
             "negative_split_probs": [0.25, 0.25, 0.25],
             "non_mask_rate": 0,
@@ -44,7 +45,7 @@
     },
 
     "task": "multi_task",
-    "arch": "encoder_triplet__roberta_small",
+    "arch": "multi_model",
     "use_sentence_negatives": false,
     "entity_dim": 256,
     "triplet_type": "concat_linear_dot",
@@ -58,10 +59,11 @@
     "max_epoch": 200,
     "warmup_updates": 1000,
     "total_num_updates": 10000000,
-    "lr": [4e-4],
+    "lr": [2e-4],
 
     "num_workers": 4,
     "max_sentences": 1336,
     "update_freq": null,
-    "max_tokens": 12000
+    "max_tokens": 12000,
+    "validate_before_training": false
 }

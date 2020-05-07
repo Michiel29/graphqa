@@ -28,7 +28,7 @@ class MultiCriterion(FairseqCriterion):
         for task_name, criterion in self.criterion_dict.items():
             if task_name in sample:
                 total_sample_size = sample[task_name]['sample_size']
-                loss, _, logging_output = criterion(model, sample[task_name], reduce=reduce)
+                loss, _, logging_output = criterion(model.model_dict[task_name], sample[task_name], reduce=reduce)
                 total_loss += self.weight_dict[task_name] * loss / total_sample_size
                 for k, v in logging_output.items():
                     total_logging_output[task_name + '_' + k] = v

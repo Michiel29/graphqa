@@ -52,8 +52,9 @@ class EncoderTripletModel(BaseFairseqModel):
         RobertaWrapper.add_args(parser)
 
     @classmethod
-    def build_model(cls, args, task):
-        encoder = RobertaWrapper.build_model(args, task)
+    def build_model(cls, args, task, encoder=None):
+        if encoder is None:
+            encoder = RobertaWrapper.build_model(args, task)
         triplet_model = triplet_dict[args.triplet_type](args)
         n_entities = len(task.entity_dictionary)
         return cls(args, encoder, triplet_model, n_entities)
