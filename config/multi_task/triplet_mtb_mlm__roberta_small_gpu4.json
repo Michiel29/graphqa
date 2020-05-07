@@ -24,6 +24,7 @@
         },
         "mtb": {
             "task": "mtb",
+            "arch": "encoder_triplet__roberta_small",
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
