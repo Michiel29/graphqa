@@ -121,6 +121,10 @@ class RobertaWrapper(RobertaModel):
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
 
+class MLMWrapper(object):
+
+
+
 @register_model_architecture('roberta_wrapper', 'roberta_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
