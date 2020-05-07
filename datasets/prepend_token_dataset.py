@@ -24,8 +24,14 @@ class PrependTokenDataset(BaseWrapperDataset):
         for key in self.keys:
             if isinstance(item[key], list):
                 for i in range(len(item[key])):
-                    item[key][i] = torch.cat([item[key][i].new([self.token]), item[key][i]])
-                    ntokens += 1
+                    current_item = item[key][i]
+                    if current_item.ndim == 2:
+                        t = current_item.new_full(size=(current_item.shape[0], 1), fill_value=self.token)
+                        item[key][i] = torch.cat([t, current_item], dim=1)
+                        ntokens += t.numel()
+                    else:
+                        item[key][i] = torch.cat([current_item.new([self.token]), current_item])
+                        ntokens += 1
             elif key is not None:
                 if item[key].ndim == 2:
                     t = item[key].new_full(size=(item[key].shape[0], 1), fill_value=self.token)

@@ -3,7 +3,7 @@
     "add_configs": ["../roberta/small.json", "../base.json"],
     "eval_downstream": false,
 
-    "task": "r3l",
+    "task": "gnn",
     // "arch": "encoder_gnn__roberta_small",
     "arch": "encoder_triplet__roberta_small",
     "triplet_type": "concat_linear_dot",
@@ -15,6 +15,7 @@
     "use_sentence_negatives": false,
 
     "min_common_neighbors": 10,
+    "num_text_chunks": 4,
 
     "mask_type": "start_end",
     "non_mask_rate": 0,

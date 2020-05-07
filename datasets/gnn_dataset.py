@@ -1,4 +1,5 @@
 import logging
+import math
 import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -13,7 +14,7 @@ from utils.data_utils import numpy_seed
 logger = logging.getLogger(__name__)
 
 
-class R3LDataset(FairseqDataset):
+class GNNDataset(FairseqDataset):
 
     def __init__(
         self,
@@ -24,6 +25,7 @@ class R3LDataset(FairseqDataset):
         min_common_neighbors_for_the_last_edge,
         max_tokens,
         max_sentences,
+        num_text_chunks,
         seed,
     ):
         self.annotated_text = annotated_text
@@ -33,6 +35,7 @@ class R3LDataset(FairseqDataset):
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
+        self.num_text_chunks = 4
         self.seed = seed
         self.epoch = None
 
@@ -59,20 +62,40 @@ class R3LDataset(FairseqDataset):
 
         return subgraph
 
+    def _split(self, sentences):
+        chunk_size = math.ceil(len(sentences) / self.num_text_chunks)
+        chunks = []
+        for start_pos in range(0, len(sentences), chunk_size):
+            end_pos = min(len(sentences), start_pos + chunk_size)
+            current_chunk = pad_sequence(
+                sentences[start_pos:end_pos],
+                batch_first=True,
+                padding_value=self.dictionary.pad(),
+            )
+            chunks.append(current_chunk)
+        return chunks
+
     def _get_all_sentences_and_index(self, subgraph):
+        len_and_edges = [(len(sentence), a, b) for (a, b), sentence in subgraph.get_relation_statements().items()]
+        len_and_edges.sort()
+
         sentences = []
         index = {}
-        for i, (head_tail, sentence) in enumerate(subgraph.get_relation_statements().items()):
-            index[head_tail] = i
-            sentences.append(sentence)
-        sentences = pad_sequence(sentences, batch_first=True, padding_value=self.dictionary.pad())
+        for i, (_, a, b) in enumerate(len_and_edges):
+            a_b = (a, b)
+            assert a_b not in index
+            index[a_b] = i
+            sentences.append(subgraph.get_relation_statements()[a_b])
+
+        sentences = self._split(sentences)
         return sentences, index
 
     def _get_edge_tuples(self, subgraph, index):
-        targets = {}
+        graph = []
+        target_text_idx = []
         for a_b in subgraph.get_covered_edges():
             a_b_index = index[a_b]
-            targets[a_b_index] = []
+            current_target_graph = []
             a, b = a_b
             a_b_set = set(a_b)
             for a_c in subgraph.get_relation_statements().keys():
@@ -83,9 +106,12 @@ class R3LDataset(FairseqDataset):
                     b_c_set_inter = set(b_c).intersection(a_b_set)
                     if not(len(b_c_set_inter) == 1 and next(iter(b_c_set_inter)) == b):
                         continue
-                    targets[a_b_index].append((index[a_c], index[b_c]))
-            assert len(targets[a_b_index]) > 0
-        return targets
+                    current_target_graph.append((index[a_c], index[b_c]))
+            assert len(current_target_graph) > 0
+            graph.append(torch.LongTensor(current_target_graph))
+            target_text_idx.append(index[a_b])
+        target_text_idx = torch.LongTensor(target_text_idx)
+        return graph, target_text_idx
 
     def __getitem__(self, index):
         with numpy_seed('R3LDataset', self.seed, self.epoch, index):
@@ -100,11 +126,12 @@ class R3LDataset(FairseqDataset):
                 subgraph = _sample_subgraph(index)
 
         sentences, index = self._get_all_sentences_and_index(subgraph)
-        graph = self._get_edge_tuples(subgraph, index)
+        graph, target_text_idx = self._get_edge_tuples(subgraph, index)
 
         return {
             'text': sentences,
             'graph': graph,
+            'target_text_idx': target_text_idx,
             'yield': subgraph.get_yield(),
             'rel_cov': subgraph.get_relative_coverages_mean(),
             'nsentences': subgraph.nsentences,

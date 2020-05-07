@@ -8,4 +8,4 @@ from .masked_lm_em import MaskedLMEMTask
 from .triplet_inference import TripletInferenceTask
 from .mtb import MTBTask
 from .multi_task import MultiTask
-from .r3l_task import R3LTask
+from .gnn_task import GNNTask

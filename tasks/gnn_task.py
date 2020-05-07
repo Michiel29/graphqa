@@ -12,7 +12,7 @@ from datasets import (
     FixedSizeDataset,
     GraphDataset,
     PrependTokenDataset,
-    R3LDataset,
+    GNNDataset,
 )
 from utils.data_utils import numpy_seed, safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
@@ -21,8 +21,8 @@ from tasks import BaseTask
 logger = logging.getLogger(__name__)
 
 
-@register_task('r3l')
-class R3LTask(BaseTask):
+@register_task('gnn')
+class GNNTask(BaseTask):
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args, dictionary, entity_dictionary)
 
@@ -40,6 +40,7 @@ class R3LTask(BaseTask):
                             help='probability of not masking the entity with a [BLANK] token')
         parser.add_argument('--min-common-neighbors', type=int, default=None)
         parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
+        parser.add_argument('--num-text-chunks', type=int, default=None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(
@@ -66,7 +67,7 @@ class R3LTask(BaseTask):
             seed=self.args.seed,
         )
 
-        dataset = R3LDataset(
+        dataset = GNNDataset(
             annotated_text=annotated_text,
             graph=graph,
             dictionary=self.dictionary,
@@ -74,6 +75,7 @@ class R3LTask(BaseTask):
             min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
             max_tokens=self.args.max_tokens - 1, # for bos
             max_sentences=self.args.max_sentences,
+            num_text_chunks=self.args.num_text_chunks,
             seed=self.args.seed,
         )
         if split == 'train' and self.args.epoch_size is not None:
