@@ -13,9 +13,9 @@
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
 
-            "update_freq": 7,
-            "epoch_size": 4e6,
-            "max_sentences": 64,
+            "update_freq": 6,
+            "epoch_size": 6e5,
+            "max_sentences": 48,
             "max_tokens": 1e4,
 
             "criterion": "cross_entropy_custom",
@@ -31,11 +31,11 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 7,
-            "epoch_size": 4e6,
+            "update_freq": 6,
+            "epoch_size": 6e5,
             "n_valid_examples": 20000,
 
-            "max_sentences": 64,
+            "max_sentences": 48,
             "max_tokens": 1e4,
 
             "criterion": "masked_lm_custom",
@@ -48,8 +48,8 @@
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
 
-    "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
+    //"data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
 
@@ -63,6 +63,5 @@
     "update_freq": null,
     "max_tokens": 1e4,
 
-    "gradient_checkpoint_period": 1,
-    "validate_before_training": false
+    "gradient_checkpoint_period": 1
 }
