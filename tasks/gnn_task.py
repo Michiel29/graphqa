@@ -1,6 +1,10 @@
+from fairseq.data import FairseqDataset, iterators
 from fairseq.tasks import register_task
+
 import logging
+import numpy as np
 import os
+import time
 
 from datasets import (
     AnnotatedText,
@@ -8,17 +12,17 @@ from datasets import (
     FixedSizeDataset,
     GraphDataset,
     PrependTokenDataset,
-    R3LDataset,
+    GNNDataset,
 )
-from utils.data_utils import safe_load_indexed_dataset
+from utils.data_utils import numpy_seed, safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
 from tasks import BaseTask
 
 logger = logging.getLogger(__name__)
 
 
-@register_task('r3l')
-class R3LTask(BaseTask):
+@register_task('gnn')
+class GNNTask(BaseTask):
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args, dictionary, entity_dictionary)
 
@@ -36,6 +40,7 @@ class R3LTask(BaseTask):
                             help='probability of not masking the entity with a [BLANK] token')
         parser.add_argument('--min-common-neighbors', type=int, default=None)
         parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
+        parser.add_argument('--num-text-chunks', type=int, default=None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(
@@ -62,13 +67,15 @@ class R3LTask(BaseTask):
             seed=self.args.seed,
         )
 
-        dataset = R3LDataset(
+        dataset = GNNDataset(
             annotated_text=annotated_text,
             graph=graph,
-            min_common_neighbors=args.min_common_neighbors,
-            min_common_neighbors_for_the_last_edge=args.min_common_neighbors_for_the_last_edge,
-            max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
+            dictionary=self.dictionary,
+            min_common_neighbors=self.args.min_common_neighbors,
+            min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
+            max_tokens=self.args.max_tokens - 1, # for bos
+            max_sentences=self.args.max_sentences,
+            num_text_chunks=self.args.num_text_chunks,
             seed=self.args.seed,
         )
         if split == 'train' and self.args.epoch_size is not None:
@@ -134,16 +141,13 @@ class R3LTask(BaseTask):
 
         # get indices ordered by example size
         start_time = time.time()
-        with data_utils.numpy_seed(seed, epoch):
+        with numpy_seed('R3LTask', seed, epoch):
             indices = dataset.ordered_indices()
         sort_time = time.time() - start_time
 
         # create mini-batches with given size constraints
         start_time = time.time()
-        batch_sampler = data_utils.batch_by_size(
-            indices, dataset.num_tokens, max_tokens=max_tokens, max_sentences=max_sentences,
-            required_batch_size_multiple=required_batch_size_multiple,
-        )
+        batch_sampler = np.expand_dims(indices, 1)
         batch_by_size_time = time.time() - start_time
         logger.info(
             'get batch iterator [seed=%d, epoch=%d, num_shards=%d] is done in %.3f seconds '
