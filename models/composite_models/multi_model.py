@@ -8,9 +8,7 @@ from fairseq.models import ARCH_MODEL_REGISTRY
 from models.encoder.roberta import RobertaWrapper
 
 @register_model('multi_model')
-
 class MultiModel(object):
-
     @staticmethod
     def add_args(parser):
         """Add model-specific arguments to the parser."""
