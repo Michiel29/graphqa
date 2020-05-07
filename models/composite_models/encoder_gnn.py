@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -8,70 +9,81 @@ from fairseq.models import BaseFairseqModel, roberta
 
 import tasks
 
-from models.encoder import encoder_dict
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
-from models.gnn import gnn_dict
-
+from models.gnn import gnn_layer_dict
+from modules.mlp import MLP_factory
 
 @register_model('encoder_gnn')
 class EncoderGNNModel(BaseFairseqModel):
 
-    def __init__(self, args, encoder, gnn_model):
+    def __init__(self, args, encoder):
         super().__init__()
-
         self.args = args
-
         self.encoder = encoder
-        self.gnn_model = gnn_model
+        self.mlp = MLP_factory(args.layer_sizes)
+        self.gnn_layers = nn.ModuleList([gnn_layer_dict[args.gnn_layer_type](args.gnn_layer_args) for i in range(args.gnn_layer_args['n_gnn_layers']-1)])
+        self.neg_type = args.neg_type
 
-        mention_dim = args.mention_dim
-        emb_dim = args.emb_dim
-
-        # Define subgraph embedders
-        self.embedder_dict = nn.ModuleDict()
-        for arity in emb_dim.keys():
-            self.embedder_dict[str(arity)] = nn.Linear(mention_dim, emb_dim[arity], padding_idx=0)
-
-        # Define scoring MLPs
-        self.mlp_dict = nn.ModuleDict()
-        for k, v in args.layer_sizes.items():
-            self.mlp_dict[k] = MLP_factory(v, dropout, layer_norm)
-
-    def embed_subgraph(self, x):
-        x_emb = {}
-        for arity in x.keys():
-            x_emb_idx = (x[arity] + 1).long()
-            x_emb[arity] = self.embedder_dict[str(arity)](x_emb_idx)
-        return x_emb
-
-    def select_goal_encoding(x_enc, goal_arity):
-        idx = (slice(None),) + tuple(range(goal_arity))
-        goal_enc = x_enc[goal_arity][idx]
-        return goal_enc
+    def encode_text(self, text_chunks):
+        text_enc = []
+        for chunk in text_chunks:
+            text_enc.append(self.encoder(chunk))
+        text_enc = torch.cat(text_enc, dim=0)
+        return text_enc
 
     def forward(self, batch):
 
-        goal_arity = batch['goal_arity']
+        batch = {}
 
-        text_encoding = self.encoder(batch['text'])
+        # batch = {
+        #   'text': list of n_chunks token tensors, sorted by ascending length -- shape (chunk_size, chunk_text_len)
+        #   'graph': list of tensors which are indices into text_enc -- len(batch['graph']) = n_targets, shape of each tensor is (m_i, 2)
+        #   'target_text_idx': indices into text_enc -- shape (n_targets)
+        #   'target': torch.arange(n_targets)
+        # }
 
-        # TODO: add subgraph selection model
-        # subgraph = subgraph_selector(batch['goal_entities'], batch['mention'])
+        text_enc = self.encode_text(batch['text'])
+        device = text_enc.device
 
-        subgraph_embedding = self.embed_subgraph(subgraph)
+        target_text_idx = batch['target_text_idx']
+        n_targets = len(target_text_idx)
+        n_matches = n_targets ** 2
 
-        subgraph_encoding = self.gnn_model(subgraph_embedding)
+        graph_sizes = torch.LongTensor([len(g) for g in batch['graph']], device=device) # (n_targets)
 
-        goal_encoding = self.select_goal_encoding(subgraph_encoding, goal_arity)
+        graph_idx = torch.cat(batch['graph'], dim=0) # (sum(m_i), 2)
+        graph_idx = graph_idx.unsqueeze(0).expand(n_targets, -1, -1).reshape(-1) # (n_targets * sum(m_i) * 2)
 
-        final_encoding = torch.cat((goal_encoding, text_encoding), dim=-1)
+        target_text_idx_expand = target_text_idx.unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
+        graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_targets, -1).reshape(-1) # (n_targets ** 2)
+        
+        target_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
+        put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
-        score = self.mlp[goal_arity](final_encoding)
-        normalized_scores = F.softmax(score, dim=-1)
-        positive_scores = normalized_scores[Ellipsis, 0]
+        graph_rep = text_enc[graph_idx].reshape(len(graph_idx)/2, 2, -1) # (n_targets * sum(m_i), 2, d)
+        target_rep = text_enc[target_text_idx_expand] # (n_targets ** 2, d)  
 
-        return positive_scores
+        for layer in self.gnn_layers:
+            target_rep_repeat = torch.repeat_interleave(target_rep, graph_sizes_expand, dim=0) # (n_targets * sum(m_i), d)
+            layer_output = layer(target_rep_repeat, graph_rep) # (n_targets * sum(m_i), d)
+            target_rep = target_text_idx_expand.index_put(put_indices, layer_output, accumulate=True) # (n_targets ** 2, d)
 
+        scores = self.mlp(target_rep) # (n_targets ** 2)
+        scores = scores.reshape(n_targets, n_targets) # (n_targets, n_targets) -- rows=texts, cols=graphs
+        
+        if self.neg_type == 'graph':
+            pass
+        elif self.neg_type == 'text':
+            scores = scores.t()
+        elif self.neg_type == 'graph_text':
+            scores_graph = scores
+            mask = 1 - torch.eye(n_targets)
+            scores_text = torch.masked_select(scores_graph.t(), mask).reshape(n_targets, n_targets-1) # (n_targets, n_target-1)
+            scores = torch.cat((scores_graph, scores_text), dim=1) # (n_targets, 2*n_targets-1)
+        else:
+            raise Exception('neg_type {} does not exist'.format(self.neg_type))
+
+        return scores
 
     @staticmethod
     def add_args(parser):
@@ -81,12 +93,10 @@ class EncoderGNNModel(BaseFairseqModel):
                             help='type of gnn model to use for inference')
 
     @classmethod
-    def build_model(cls, args, task):
-
-        encoder = encoder_dict[args.encoder_type](args)
-        gnn_model = gnn_dict[args.gnn_type](args)
-
-        return cls(args, encoder, gnn_model)
+    def build_model(cls, args, task, encoder=None):
+        if encoder is None:
+            encoder = RobertaWrapper.build_model(args, task)
+        return cls(args, encoder)
 
 
 @register_model_architecture('encoder_gnn', 'encoder_gnn__roberta_base')

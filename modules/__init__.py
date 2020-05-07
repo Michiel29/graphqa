@@ -1,1 +1,2 @@
 from .transformer_encoder import TransformerSentenceEncoderCustom
+from .mlp import MLP_factory
