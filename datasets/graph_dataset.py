@@ -40,6 +40,8 @@ class GraphDataset(FairseqDataset):
         self.seed = seed
         self.epoch = None
         self.precompute_neighbors_cache()
+        self.degree = np.full(len(self.edges), -1, dtype=np.int32)
+
 
     def precompute_neighbors_cache(self):
         start_time = time.time()
@@ -93,6 +95,11 @@ class GraphDataset(FairseqDataset):
             return self.neighbors_cache[entity]
         else:
             return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
+
+    def get_degree(self, entity):
+        if self.degree[entity] == -1:
+            self.degree[entity] = len(self.get_neighbors(entity))
+        return self.degree[entity]
 
     def subsample_graph_by_entity_pairs(self):
         from datasets.graph_dataset_util_fast import (

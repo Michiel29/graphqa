@@ -46,7 +46,7 @@ def sample_subgraph(graph, annotated_text, index, args):
     tail = edge[GraphDataset.TAIL_ENTITY]
     sentence = annotated_text.annotate(*(edge.numpy()))
 
-    if not subgraph.try_add_entity_pair_with_neighbors(head, tail, args.max_tokens, args.max_sentences, 1, sentence):
+    if not subgraph.add_initial_entity_pair(head, tail, args.max_tokens, args.max_sentences, sentence):
         return None, None
 
     result = subgraph.fill(args.max_tokens, args.max_sentences, args.min_common_neighbors_for_the_last_edge)

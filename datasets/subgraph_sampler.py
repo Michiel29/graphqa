@@ -1,3 +1,4 @@
+import heapq
 import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -33,6 +34,9 @@ class NeighborhoodCoverage(object):
         self.head_tail_set = set([head, tail])
         self.num_total_neighbors = len(common_neighbors)
         self.head_tail_in_subgraph = (head, tail) in entity_pairs_in_subgraph
+
+        # n_head_exists = [(head, n) in entity_pairs_in_subgraph for n in common_neighbors]
+        # n_tail_exists = [(tail, n) in entity_pairs_in_subgraph for n in common_neighbors]
 
         self.both_edges_in_subgraph = set()
         self.single_edge_missing = set()
@@ -119,6 +123,10 @@ class NeighborhoodCoverage(object):
 
 
 class SubgraphSampler(object):
+
+    MAX_ENTITIES_SIZE = 600
+    MAX_ENTITIES_FROM_QUEUE = 10
+
     def __init__(self, graph, annotated_text, min_common_neighbors):
         self.graph = graph
         self.annotated_text = annotated_text
@@ -130,6 +138,9 @@ class SubgraphSampler(object):
         self.relation_statements = {}
         self.ntokens = 0
         self.nsentences = 0
+
+        self.entity_score = []
+        self.entity_coverage = {}
 
     def _update_coverage(self, new_entity_pair=None):
         for a in self.entities:
@@ -162,17 +173,56 @@ class SubgraphSampler(object):
                     self.coverage[(a, b)].add_entity_pair(set(new_entity_pair))
 
     def get_coverage(self, a, b):
-        return self.coverage[(min(a, b), max(a, b))]
+        return self.coverage.get((min(a, b), max(a, b)), None)
+
+    def _add_entities_with_the_highest_score(self):
+        counter = 0
+        while (
+            len(self.entity_score) > 0
+            and counter < SubgraphSampler.MAX_ENTITIES_FROM_QUEUE
+            and len(self.entities) < SubgraphSampler.MAX_ENTITIES_SIZE
+        ):
+            score, entity = heapq.heappop(self.entity_score)
+            if entity not in self.entities:
+                self.entities.add(entity)
+                counter += 1
+        self._update_coverage()
+
+    def _update_entities_scores(self, entities):
+        for entity in entities.difference(self.entities):
+            if entity not in self.entity_coverage:
+                self.entity_coverage[entity] = 1
+            else:
+                self.entity_coverage[entity] += 1
+            score = self.entity_coverage[entity] / float(self.graph.get_degree(entity))
+            heapq.heappush(self.entity_score, (-score, entity))
 
     def _add_entity_pair(self, a, b, sentence):
         assert (a, b) not in self.entity_pairs
         self.entities.update([a, b])
-        self.entities.update(self.get_coverage(a, b).both_edges_missing)
+
+        coverage = self.get_coverage(a, b)
+        if coverage is None:
+            self._update_coverage()
+        self._update_entities_scores(self.get_coverage(a, b).both_edges_missing)
+        # self.entities.update(self.get_coverage(a, b).both_edges_missing)
+
         self.entity_pairs.update([(a, b), (b, a)])
         self.relation_statements[(a, b)] = sentence
         self.ntokens += len(sentence)
         self.nsentences += 1
         self._update_coverage((a, b))
+
+    def add_initial_entity_pair(self, a, b, max_tokens, max_sentences, sentence):
+        a, b = item(a), item(b)
+        self.entities.update([a, b])
+        self._update_coverage()
+        coverage = self.get_coverage(a, b)
+        if coverage.num_total_neighbors == 0:
+            return False
+        self.entities.update(self.get_coverage(a, b).both_edges_missing)
+        self._update_coverage()
+        return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1, sentence)
 
     def try_add_entity_pair_with_neighbors(
         self,
@@ -184,10 +234,8 @@ class SubgraphSampler(object):
         sentence=None,
     ):
         a, b = item(a), item(b)
+        assert a in self.entities and b in self.entities
 
-        if a not in self.entities or b not in self.entities:
-            self.entities.update([a, b])
-            self._update_coverage()
         coverage = self.get_coverage(a, b)
         if coverage.num_total_neighbors == 0:
             return False
@@ -236,6 +284,7 @@ class SubgraphSampler(object):
         assert num_neighbors_added >= min_neighbors_to_add
         for (na, nb, sentence) in new_relation_statements:
             self._add_entity_pair(na, nb, sentence)
+        self._add_entities_with_the_highest_score()
         self.covered_entity_pairs.add((a, b))
         return True
 
@@ -295,6 +344,11 @@ class SubgraphSampler(object):
             if only_accept_zero_cost:
                 assert successfully_added
 
+            # print('edges=%d, covered=%d, entities=%d' % (
+            #     len(self.relation_statements),
+            #     len(self.covered_entity_pairs),
+            #     len(self.entities),
+            # ))
             if (
                 not successfully_added
                 or self.ntokens >= max_tokens
