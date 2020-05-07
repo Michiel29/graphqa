@@ -5,6 +5,9 @@ from torch.nn.utils.rnn import pad_sequence
 import logging
 
 
+from datasets import GraphDataset
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -214,6 +217,13 @@ class SubgraphSampler(object):
             return False
         return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1, sentence)
 
+    def _sample_sentence(self, head_entity, tail_entity):
+        edges = self.graph.edges[head_entity].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+        left = np.searchsorted(edges[:, GraphDataset.TAIL_ENTITY], tail_entity, side='left')
+        right = np.searchsorted(edges[:, GraphDataset.TAIL_ENTITY], tail_entity, side='right')
+        index = np.random.randint(left, right)
+        return self.annotated_text.annotate(*edges[index])
+
     def try_add_entity_pair_with_neighbors(
         self,
         a,
@@ -242,8 +252,7 @@ class SubgraphSampler(object):
             if shall_sample_ordered_pair:
                 x, y = self._sample_ordered_pair(x, y)
             if sentence is None:
-                # TODO: sample sentence
-                sentence = torch.ones(100)
+                sentence = self._sample_sentence(x, y)
             new_relation_statements.append((x, y, sentence))
             cur_tokens += len(sentence)
             cur_sentences += 1
