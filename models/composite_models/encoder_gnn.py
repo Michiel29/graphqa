@@ -6,10 +6,10 @@ from fairseq import models
 from fairseq.models import register_model, register_model_architecture
 from fairseq.models import BaseFairseqModel, roberta
 
-
 import tasks
 
 from models.encoder import encoder_dict
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
 from models.gnn import gnn_dict
 
 
@@ -88,6 +88,17 @@ class EncoderGNNModel(BaseFairseqModel):
 
         return cls(args, encoder, gnn_model)
 
-@register_model_architecture('encoder_gnn', 'encoder_gnn')
-def encoder_gnn_architecture(args):
-    pass
+
+@register_model_architecture('encoder_gnn', 'encoder_gnn__roberta_base')
+def encoder_gnn_base_architecture(args):
+    base_architecture(args)
+
+
+@register_model_architecture('encoder_gnn', 'encoder_gnn__roberta_large')
+def encoder_gnn_large_architecture(args):
+    large_architecture(args)
+
+
+@register_model_architecture('encoder_gnn', 'encoder_gnn__roberta_small')
+def encoder_gnn_small_architecture(args):
+    small_architecture(args)

@@ -360,3 +360,19 @@ class SubgraphSampler(object):
             self.get_coverage(a, b).relative_coverage()
             for a, b in self.covered_entity_pairs
         ])
+
+    def get_yield(self):
+        return float(len(self.relation_statements)) / len(self.covered_entity_pairs)
+
+    def get_relative_coverages_mean(self):
+        return self.relative_coverages().mean()
+
+    def get_relation_statements(self):
+        return self.relation_statements
+
+    def is_covered(self, a_b):
+        assert a_b in self.entity_pairs
+        return a_b in self.covered_entity_pairs
+
+    def get_covered_edges(self):
+        return self.covered_entity_pairs
