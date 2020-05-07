@@ -1,11 +1,20 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    "add_configs": ["../roberta/small.json", "../base.json"],
+    "eval_downstream": false,
 
     "task": "r3l",
-    "arch": "encoder_gnn__roberta_small",
+    // "arch": "encoder_gnn__roberta_small",
+    "arch": "encoder_triplet__roberta_small",
+    "triplet_type": "concat_linear_dot",
+    "entity_dim": 256,
+
     "encoder_output_layer_type": "entity_start_linear",
     "data_path": "../data/nki/bin-v5-threshold20-small",
     // "data_path": "../data/nki/bin-v5-threshold20",
+    "use_sentence_negatives": false,
+
+    "min_common_neighbors": 10,
 
     "mask_type": "start_end",
     "non_mask_rate": 0,
@@ -19,7 +28,7 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 4,
+    "num_workers": 0,
     "max_sentences": 1336,
     "update_freq": [7],
     "max_tokens": 12000,

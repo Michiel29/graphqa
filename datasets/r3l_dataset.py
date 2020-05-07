@@ -6,7 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 from fairseq.data import FairseqDataset
 
 from datasets import AnnotatedText, GraphDataset
-from subgraph_sampler import SubgraphSampler
+from datasets.subgraph_sampler import SubgraphSampler
 from utils.data_utils import numpy_seed
 
 
@@ -19,6 +19,7 @@ class R3LDataset(FairseqDataset):
         self,
         annotated_text,
         graph,
+        dictionary,
         min_common_neighbors,
         min_common_neighbors_for_the_last_edge,
         max_tokens,
@@ -27,6 +28,7 @@ class R3LDataset(FairseqDataset):
     ):
         self.annotated_text = annotated_text
         self.graph = graph
+        self.dictionary = dictionary
         self.min_common_neighbors = min_common_neighbors
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
         self.max_tokens = max_tokens
@@ -38,7 +40,7 @@ class R3LDataset(FairseqDataset):
         self.graph.set_epoch(epoch)
         self.epoch = epoch
 
-    def _sample_subgraph(graph, index):
+    def _sample_subgraph(self, index):
         edge = self.graph[index]
         head = edge[GraphDataset.HEAD_ENTITY]
         tail = edge[GraphDataset.TAIL_ENTITY]
@@ -50,7 +52,7 @@ class R3LDataset(FairseqDataset):
         )
         sentence = self.annotated_text.annotate(*(edge.numpy()))
 
-        if not subgraph.add_initial_entity_pair(head, tail, args.max_tokens, args.max_sentences, sentence):
+        if not subgraph.add_initial_entity_pair(head, tail, self.max_tokens, self.max_sentences, sentence):
             return None
 
         subgraph.fill(self.max_tokens, self.max_sentences, self.min_common_neighbors_for_the_last_edge)
@@ -60,7 +62,7 @@ class R3LDataset(FairseqDataset):
     def _get_all_sentences_and_index(self, subgraph):
         sentences = []
         index = {}
-        for i, (head_tail, sentence) in enumerate(subgraph.get_relation_statements()):
+        for i, (head_tail, sentence) in enumerate(subgraph.get_relation_statements().items()):
             index[head_tail] = i
             sentences.append(sentence)
         sentences = pad_sequence(sentences, batch_first=True, padding_value=self.dictionary.pad())
@@ -74,20 +76,20 @@ class R3LDataset(FairseqDataset):
             a, b = a_b
             a_b_set = set(a_b)
             for a_c in subgraph.get_relation_statements().keys():
-                a_c_set_diff = set(a_c).difference(a_b_set)
-                if len(a_c_set_diff) != 1 or next(iter(a_c_set_diff)) != a:
+                a_c_set_inter = set(a_c).intersection(a_b_set)
+                if not(len(a_c_set_inter) == 1 and next(iter(a_c_set_inter)) == a):
                     continue
                 for b_c in subgraph.get_relation_statements().keys():
-                    b_c_set_diff = set(b_c).difference(a_b_set)
-                    if len(b_c_set_diff) != 1 or next(iter(b_c_set_diff)) != b:
+                    b_c_set_inter = set(b_c).intersection(a_b_set)
+                    if not(len(b_c_set_inter) == 1 and next(iter(b_c_set_inter)) == b):
                         continue
-                targets[a_b_index].append((index[a_c], index[b_c]))
+                    targets[a_b_index].append((index[a_c], index[b_c]))
             assert len(targets[a_b_index]) > 0
         return targets
 
     def __getitem__(self, index):
         with numpy_seed('R3LDataset', self.seed, self.epoch, index):
-            subgraph = _sample_subgraph(index)
+            subgraph = self._sample_subgraph(index)
             while subgraph is None:
                 logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
                     self.seed,
@@ -111,6 +113,10 @@ class R3LDataset(FairseqDataset):
 
     def __len__(self):
         return len(self.graph)
+
+    @property
+    def sizes(self):
+        return np.full(len(self), self.max_tokens, dtype=np.int32)
 
     def ordered_indices(self):
         return self.graph.ordered_indices()
