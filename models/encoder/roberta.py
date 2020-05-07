@@ -120,11 +120,6 @@ class RobertaWrapper(RobertaModel):
         missing_keys, unexpected_keys = super().load_state_dict(new_state_dict, strict=False, args=args)
         handle_state_dict_keys(missing_keys, unexpected_keys)
 
-
-class MLMWrapper(object):
-
-
-
 @register_model_architecture('roberta_wrapper', 'roberta_small')
 def small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
@@ -136,3 +131,16 @@ def small_architecture(args):
 @register_model_architecture('roberta_wrapper', 'roberta_wrapper_base')
 def base_wrapper_architecture(args):
     base_architecture(args)
+
+
+@register_model('mlm')
+class MLMWrapper(object):
+    @classmethod
+    def build_model(cls, args, task, encoder=None):
+        """Build a new model instance."""
+        if encoder is None:
+            encoder = RobertaWrapper.build_model(args, task)
+
+@register_model_architecture('mlm', 'mlm')
+def mlm(args):
+    pass
