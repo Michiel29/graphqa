@@ -187,7 +187,6 @@ class SubgraphSampler(object):
             if entity not in self.entities:
                 self.entities.add(entity)
                 counter += 1
-        self._update_coverage()
 
     def _update_entities_scores(self, entities):
         for entity in entities.difference(self.entities):
@@ -279,6 +278,7 @@ class SubgraphSampler(object):
         for (a, b, _) in new_relation_statements:
             self._update_entities_scores(self.get_coverage(a, b).both_edges_missing)
         self._add_entities_with_the_highest_score()
+        self._update_coverage()
         self.covered_entity_pairs.add((a, b))
         return True
 
@@ -338,11 +338,6 @@ class SubgraphSampler(object):
             if only_accept_zero_cost:
                 assert successfully_added
 
-            # print('edges=%d, covered=%d, entities=%d' % (
-            #     len(self.relation_statements),
-            #     len(self.covered_entity_pairs),
-            #     len(self.entities),
-            # ))
             if (
                 not successfully_added
                 or self.ntokens >= max_tokens
