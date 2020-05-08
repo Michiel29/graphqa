@@ -1,4 +1,5 @@
 from .encoder_dual import EncoderDualModel
+from .encoder_gnn import EncoderGNNModel
 from .encoder_triplet import EncoderTripletModel
 from .encoder_mtb import EncoderMTBModel
 from .encoder_fewrel import EncoderFewRelModel

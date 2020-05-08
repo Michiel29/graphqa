@@ -114,16 +114,16 @@ class GNNDataset(FairseqDataset):
         return graph, target_text_idx
 
     def __getitem__(self, index):
-        with numpy_seed('R3LDataset', self.seed, self.epoch, index):
+        with numpy_seed('GNNDataset', self.seed, self.epoch, index):
             subgraph = self._sample_subgraph(index)
             while subgraph is None:
-                logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
-                    self.seed,
-                    self.epoch,
-                    index,
-                ))
+                # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
+                #     self.seed,
+                #     self.epoch,
+                #     index,
+                # ))
                 index = np.random.randint(len(self.graph))
-                subgraph = _sample_subgraph(index)
+                subgraph = self._sample_subgraph(index)
 
         sentences, index = self._get_all_sentences_and_index(subgraph)
         graph, target_text_idx = self._get_edge_tuples(subgraph, index)
@@ -132,6 +132,7 @@ class GNNDataset(FairseqDataset):
             'text': sentences,
             'graph': graph,
             'target_text_idx': target_text_idx,
+            'target': torch.arange(len(target_text_idx)),
             'yield': subgraph.get_yield(),
             'rel_cov': subgraph.get_relative_coverages_mean(),
             'nsentences': subgraph.nsentences,

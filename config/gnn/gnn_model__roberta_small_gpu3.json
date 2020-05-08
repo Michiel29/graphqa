@@ -4,15 +4,20 @@
     "eval_downstream": false,
 
     "task": "gnn",
-    // "arch": "encoder_gnn__roberta_small",
-    "arch": "encoder_triplet__roberta_small",
-    "triplet_type": "concat_linear_dot",
+    "arch": "encoder_gnn__roberta_small",
+    "gnn_layer_type": "mlp_concat",
+    "gnn_layer_args": {
+        "enc_dim": 256,
+        "layer_sizes": [[256, 2]],
+        "n_gnn_layers": 1
+    },
+    "neg_type": "graph_text",
+    "layer_sizes": [[256, 1], [1, 1]],
     "entity_dim": 256,
 
     "encoder_output_layer_type": "entity_start_linear",
     "data_path": "../data/nki/bin-v5-threshold20-small",
     // "data_path": "../data/nki/bin-v5-threshold20",
-    "use_sentence_negatives": false,
 
     "min_common_neighbors": 10,
     "num_text_chunks": 4,
@@ -29,7 +34,7 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 0,
+    "num_workers": 4,
     "max_sentences": 1336,
     "update_freq": [7],
     "max_tokens": 12000,

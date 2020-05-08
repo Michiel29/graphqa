@@ -34,8 +34,8 @@ class CrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
-        target = sample['target']
         model_output = model(sample)
+        target = sample['target']
 
         # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         # diag.inspect_batch(sample, scores=model_output)
@@ -56,6 +56,11 @@ class CrossEntropy(FairseqCriterion):
             logging_output['ntokens_AB'] = sample['ntokens_AB']
         if 'ntokens_mem' in sample.keys():
             logging_output['ntokens_mem'] = sample['ntokens_mem']
+        if 'yield' in sample.keys():
+            logging_output['yield'] = sample['yield']
+        if 'rel_cov' in sample.keys():
+            logging_output['rel_cov'] = sample['rel_cov']
+
 
         logging_output = self.task.reporter(target, pred, logging_output)
 
