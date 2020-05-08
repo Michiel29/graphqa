@@ -97,5 +97,7 @@
     "max_sentences": 1336,
     "update_freq": null,
     "max_tokens": 12000,
+    
+    "fp16": true,
     "validate_before_training": false
 }
