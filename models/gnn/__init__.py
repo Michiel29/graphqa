@@ -1,6 +1,7 @@
-from .nlm import NLM
+from .gnn_layers import MLPConcatLayer, MLPLinearConcatLayer
 
 gnn_layer_dict = {
-    'nlm': NLM
-    }
+    'mlp_concat': MLPConcatLayer,
+    'mlp_linear_concat': MLPLinearConcatLayer
+}
 

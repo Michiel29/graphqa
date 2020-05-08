@@ -61,10 +61,10 @@ class EncoderGNNModel(BaseFairseqModel):
         put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
         graph_rep = text_enc[graph_idx].reshape(len(graph_idx)/2, 2, -1) # (n_targets * sum(m_i), 2, d)
-        target_rep = text_enc[target_text_idx_expand] # (n_targets ** 2, d)  
+        target_rep = text_enc[target_text_idx_expand].unsqueeze(1) # (n_targets ** 2, 1, d)  
 
         for layer in self.gnn_layers:
-            target_rep_repeat = torch.repeat_interleave(target_rep, graph_sizes_expand, dim=0) # (n_targets * sum(m_i), d)
+            target_rep_repeat = torch.repeat_interleave(target_rep, graph_sizes_expand, dim=0) # (n_targets * sum(m_i), 1, d)
             layer_output = layer(target_rep_repeat, graph_rep) # (n_targets * sum(m_i), d)
             target_rep = target_text_idx_expand.index_put(put_indices, layer_output, accumulate=True) # (n_targets ** 2, d)
 
