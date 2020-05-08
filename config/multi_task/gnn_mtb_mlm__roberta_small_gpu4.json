@@ -4,23 +4,37 @@
     // "eval_downstream": false,
 
     "tasks": {
-        "trt": {
-            "task": "triplet_inference",
-            "arch": "encoder_triplet__roberta_small",
-            "k_negative": 100,
-            "negative_split_probs": [0.25, 0.25, 0.25],
+        "gnn": {
+            "task": "gnn",
+            "arch": "encoder_gnn__roberta_small",
+
+            "gnn_layer_type": "mlp_concat",
+            "gnn_layer_args": {
+                "enc_dim": 256,
+                "layer_sizes": [[256, 2]],
+                "n_gnn_layers": 1
+            },
+            "neg_type": "graph_text",
+            "layer_sizes": [[256, 1], [1, 1]],
+            "min_common_neighbors": 10,
+            "max_common_neighbors": 10,
+            "max_entities_size": 600,
+            "max_entities_from_queue": 5,
+            "num_text_chunks": 8,
+            "min_common_neighbors_for_the_last_edge": 1,
+
             "non_mask_rate": 0,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
-            "n_valid_examples": 20000,
+            "n_valid_examples": 400,
 
-            "update_freq": 6,
-            "epoch_size": 4e6,
-            "max_sentences": 77,
-            "max_tokens": 1e4,
+            "update_freq": 21,
+            "epoch_size": 6e3,
+            "max_sentences": 1,
+            "max_tokens": 19000,
 
             "criterion": "cross_entropy_custom",
-            "weight": 0.01
+            "weight": 0.1
         },
         "mtb": {
             "task": "mtb",
@@ -33,12 +47,12 @@
             "n_valid_examples": 20000,
 
             "update_freq": 6,
-            "epoch_size": 4e6,
+            "epoch_size": 132000,
             "max_sentences": 77,
             "max_tokens": 1e4,
 
             "criterion": "cross_entropy_custom",
-            "weight": 0.49
+            "weight": 0.4
         },
         "mlm": {
             "task": "masked_lm_em",
@@ -51,7 +65,7 @@
             "mask_whole_words": true,
 
             "update_freq": 6,
-            "epoch_size": 4e6,
+            "epoch_size": 132000,
             "n_valid_examples": 20000,
 
             "max_sentences": 77,
@@ -79,8 +93,9 @@
     "total_num_updates": 10000000,
     "lr": [2e-4],
 
-    "num_workers": 3,
+    "num_workers": 0,
     "max_sentences": 1336,
     "update_freq": null,
-    "max_tokens": 12000
+    "max_tokens": 12000,
+    "validate_before_training": false
 }
