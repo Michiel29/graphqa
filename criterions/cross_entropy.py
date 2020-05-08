@@ -50,6 +50,7 @@ class CrossEntropy(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'accuracy': utils.item((pred == target).float().sum()),
+            'num_updates': 1,
         }
 
         if 'ntokens_AB' in sample.keys():
@@ -87,14 +88,19 @@ class CrossEntropy(FairseqCriterion):
             )
 
         if 'yield' in logging_outputs[0].keys():
-            yield_pct = np.array([
-                utils.item(x) for x in [log.get('yield') for log in logging_outputs] if x is not None
-            ])
+            def get_value(log, key):
+                if key not in log:
+                    return None
+                else:
+                    return utils.item(log[key]) / utils.item(log['num_updates'])
+
+            yield_pct = np.array(list(
+                filter(None, [get_value(log, 'yield') for log in logging_outputs])
+            ))
+            rel_cov = np.array(list(
+                filter(None, [get_value(log, 'rel_cov') for log in logging_outputs])
+            ))
             metrics.log_scalar(prefix + 'yield', yield_pct.mean(), priority=100, round=3)
-        if 'rel_cov' in logging_outputs[0].keys():
-            rel_cov = np.array([
-                utils.item(x) for x in [log.get('rel_cov') for log in logging_outputs] if x is not None
-            ])
             metrics.log_scalar(prefix + 'rel_cov', rel_cov.mean(), priority=100, round=3)
 
     @staticmethod

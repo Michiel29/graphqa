@@ -28,8 +28,8 @@
     "non_mask_rate": 0,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 1,
-    "epoch_size": 4e6,
-    "n_valid_examples": 500,
+    "epoch_size": 4e5,
+    "n_valid_examples": 1000,
 
     "max_epoch": 200,
     "warmup_updates": 1000,
@@ -38,8 +38,8 @@
 
     "num_workers": 5,
     "max_sentences": 1000,
-    "update_freq": [7],
-    "max_tokens": 15000,
+    "update_freq": [30],
+    "max_tokens": 13000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
