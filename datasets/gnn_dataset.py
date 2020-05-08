@@ -22,6 +22,7 @@ class GNNDataset(FairseqDataset):
         graph,
         dictionary,
         min_common_neighbors,
+        max_common_neighbors,
         min_common_neighbors_for_the_last_edge,
         max_entities_size,
         max_entities_from_queue,
@@ -34,6 +35,7 @@ class GNNDataset(FairseqDataset):
         self.graph = graph
         self.dictionary = dictionary
         self.min_common_neighbors = min_common_neighbors
+        self.max_common_neighbors = max_common_neighbors
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
@@ -114,6 +116,11 @@ class GNNDataset(FairseqDataset):
                         continue
                     current_target_graph.append((index[a_c], index[b_c]))
             assert len(current_target_graph) > 0
+            if len(current_target_graph) > self.max_common_neighbors:
+                current_target_graph = [
+                    current_target_graph[x]
+                    for x in np.random.permutation(len(current_target_graph))[:self.max_common_neighbors]
+                ]
             graph.append(torch.LongTensor(current_target_graph))
             target_text_idx.append(index[a_b])
         target_text_idx = torch.LongTensor(target_text_idx)

@@ -39,8 +39,11 @@ class GNNTask(BaseTask):
         parser.add_argument('--non-mask-rate', default=1.0, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
         parser.add_argument('--min-common-neighbors', type=int, default=None)
+        parser.add_argument('--max-common-neighbors', type=int, default=None)
         parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
         parser.add_argument('--num-text-chunks', type=int, default=None)
+        parser.add_argument('--max-entities-size', type=int, default=None)
+        parser.add_argument('--max-entities-from-queue', type=int, default=None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(
@@ -72,6 +75,7 @@ class GNNTask(BaseTask):
             graph=graph,
             dictionary=self.dictionary,
             min_common_neighbors=self.args.min_common_neighbors,
+            max_common_neighbors=self.args.max_common_neighbors,
             min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
             max_entities_size=self.args.max_entities_size,
             max_entities_from_queue=self.args.max_entities_from_queue,
