@@ -73,6 +73,8 @@ class GNNTask(BaseTask):
             dictionary=self.dictionary,
             min_common_neighbors=self.args.min_common_neighbors,
             min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
+            max_entities_size=self.args.max_entities_size,
+            max_entities_from_queue=self.args.max_entities_from_queue,
             max_tokens=self.args.max_tokens - 1, # for bos
             max_sentences=self.args.max_sentences,
             num_text_chunks=self.args.num_text_chunks,

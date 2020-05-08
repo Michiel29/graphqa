@@ -23,6 +23,8 @@ class GNNDataset(FairseqDataset):
         dictionary,
         min_common_neighbors,
         min_common_neighbors_for_the_last_edge,
+        max_entities_size,
+        max_entities_from_queue,
         max_tokens,
         max_sentences,
         num_text_chunks,
@@ -33,6 +35,8 @@ class GNNDataset(FairseqDataset):
         self.dictionary = dictionary
         self.min_common_neighbors = min_common_neighbors
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
+        self.max_entities_size = max_entities_size
+        self.max_entities_from_queue = max_entities_from_queue
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.num_text_chunks = 4
@@ -52,6 +56,8 @@ class GNNDataset(FairseqDataset):
             graph=self.graph,
             annotated_text=self.annotated_text,
             min_common_neighbors=self.min_common_neighbors,
+            max_entities_size=self.max_entities_size,
+            max_entities_from_queue=self.max_entities_from_queue,
         )
         sentence = self.annotated_text.annotate(*(edge.numpy()))
 
@@ -150,5 +156,7 @@ class GNNDataset(FairseqDataset):
         return self.graph.ordered_indices()
 
     def collater(self, samples):
+        if len(samples) == 0:
+            return None
         assert len(samples) == 1
         return samples[0]

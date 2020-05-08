@@ -86,6 +86,17 @@ class CrossEntropy(FairseqCriterion):
                 round=3,
             )
 
+        if 'yield' in logging_outputs[0].keys():
+            yield_pct = np.array([
+                utils.item(x) for x in [log.get('yield') for log in logging_outputs] if x is not None
+            ])
+            metrics.log_scalar(prefix + 'yield', yield_pct.mean(), priority=100, round=3)
+        if 'rel_cov' in logging_outputs[0].keys():
+            rel_cov = np.array([
+                utils.item(x) for x in [log.get('rel_cov') for log in logging_outputs] if x is not None
+            ])
+            metrics.log_scalar(prefix + 'rel_cov', rel_cov.mean(), priority=100, round=3)
+
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
         """
