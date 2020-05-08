@@ -46,5 +46,6 @@
 
     "validate_before_training": false,
 
+    "fp16": true,
     "criterion": "cross_entropy_custom"
 }
