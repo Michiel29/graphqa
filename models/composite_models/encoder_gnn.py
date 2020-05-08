@@ -92,8 +92,7 @@ class EncoderGNNModel(BaseFairseqModel):
     def add_args(parser):
         """Add model-specific arguments to the parser."""
 
-        parser.add_argument('--gnn_type', type=str, default='nlm',
-                            help='type of gnn model to use for inference')
+        parser.add_argument('--gnn-layer-type', type=str, default=None)
 
     @classmethod
     def build_model(cls, args, task, encoder=None):

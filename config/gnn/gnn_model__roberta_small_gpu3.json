@@ -1,13 +1,12 @@
 {
-    // "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
-    "add_configs": ["../roberta/small.json", "../base.json"],
-    "eval_downstream": false,
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
 
     "task": "gnn",
     "arch": "encoder_gnn__roberta_small",
     "gnn_layer_type": "mlp_concat",
     "gnn_layer_args": {
         "enc_dim": 256,
+        "linear_dim": 256,
         "layer_sizes": [[256, 2]],
         "n_gnn_layers": 1
     },
