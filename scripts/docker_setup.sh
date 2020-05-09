@@ -69,8 +69,9 @@ cd /root/self_inference
 mkdir save
 
 wget http://selfinference.s3.amazonaws.com/data.zip
-​mkdir data
+mkdir data
 mv data.zip data/data.zip
 
 cd data
 unzip data​.zip
+ls
