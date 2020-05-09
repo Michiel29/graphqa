@@ -8,10 +8,12 @@
         "enc_dim": 256,
         "linear_dim": 256,
         "layer_sizes": [[256, 2]],
+        "layer_norm": false,
         "n_gnn_layers": 1
     },
     "neg_type": "graph_text",
     "layer_sizes": [[256, 1], [1, 1]],
+    "gnn_mlp_layer_norm": false,
     "entity_dim": 256,
 
     "encoder_output_layer_type": "entity_start_linear",

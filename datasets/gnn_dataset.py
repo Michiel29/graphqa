@@ -98,23 +98,25 @@ class GNNDataset(FairseqDataset):
         sentences = self._split(sentences)
         return sentences, index
 
+    def _get_ordered_edge(self, subgraph, a, b):
+        if (a, b) in subgraph.get_relation_statements():
+            assert (b, a) not in subgraph.get_relation_statements()
+            return a, b
+        else:
+            assert (b, a) in subgraph.get_relation_statements()
+            return b, a
+
     def _get_edge_tuples(self, subgraph, index):
         graph = []
         target_text_idx = []
-        for a_b in subgraph.get_covered_edges():
-            a_b_index = index[a_b]
+        for a, b in subgraph.get_covered_edges():
             current_target_graph = []
-            a, b = a_b
-            a_b_set = set(a_b)
-            for a_c in subgraph.get_relation_statements().keys():
-                a_c_set_inter = set(a_c).intersection(a_b_set)
-                if not(len(a_c_set_inter) == 1 and next(iter(a_c_set_inter)) == a):
-                    continue
-                for b_c in subgraph.get_relation_statements().keys():
-                    b_c_set_inter = set(b_c).intersection(a_b_set)
-                    if not(len(b_c_set_inter) == 1 and next(iter(b_c_set_inter)) == b):
-                        continue
-                    current_target_graph.append((index[a_c], index[b_c]))
+            mutual_neighbors = subgraph.get_coverage(a, b).both_edges_in_subgraph
+            for c in mutual_neighbors:
+                current_target_graph.append((
+                    index[self._get_ordered_edge(subgraph, a, c)],
+                    index[self._get_ordered_edge(subgraph, c, b)],
+                ))
             assert len(current_target_graph) > 0
             if len(current_target_graph) > self.max_common_neighbors:
                 current_target_graph = [
@@ -122,7 +124,7 @@ class GNNDataset(FairseqDataset):
                     for x in np.random.permutation(len(current_target_graph))[:self.max_common_neighbors]
                 ]
             graph.append(torch.LongTensor(current_target_graph))
-            target_text_idx.append(index[a_b])
+            target_text_idx.append(index[(a, b)])
         target_text_idx = torch.LongTensor(target_text_idx)
         return graph, target_text_idx
 

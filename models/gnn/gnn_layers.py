@@ -7,7 +7,7 @@ class MLPConcatLayer(nn.Module):
 
     def __init__(self, args):
         super().__init__()
-        self.mlp = MLP_factory([[3 * args['enc_dim'], 1]] + args['layer_sizes'])
+        self.mlp = MLP_factory([[3 * args['enc_dim'], 1]] + args['layer_sizes'], layer_norm=args['layer_norm'])
 
     def forward(self, target, graph, **unused):
         # target: (n_targets * sum(m_i), 1, d)
@@ -25,7 +25,7 @@ class MLPLinearConcatLayer(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.graph_linear = nn.Linear(2*args['enc_dim'], args['linear_dim'])
-        self.mlp = MLP_factory([[2 * args['enc_dim'], 1]] + args['layer_sizes'])
+        self.mlp = MLP_factory([[2 * args['enc_dim'], 1]] + args['layer_sizes'], layer_norm=args['layer_norm'])
 
     def forward(self, target, graph, **unused):
         # target: (n_targets * sum(m_i), 1, d)

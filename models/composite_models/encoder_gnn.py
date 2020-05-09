@@ -26,7 +26,7 @@ class EncoderGNNModel(BaseFairseqModel):
             for i in range(args.gnn_layer_args['n_gnn_layers'])
         ])
         final_gnn_layer_dim = args.gnn_layer_args['layer_sizes'][-1][0]
-        self.mlp = MLP_factory([[final_gnn_layer_dim, 1]] + args.layer_sizes)
+        self.mlp = MLP_factory([[final_gnn_layer_dim, 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
         self.neg_type = args.neg_type
 
     def encode_text(self, text_chunks):
@@ -60,6 +60,9 @@ class EncoderGNNModel(BaseFairseqModel):
         graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_targets, -1).reshape(-1) # (n_targets ** 2)
 
         target_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
+        put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
+
+        target_idx_range = torch.arange(n_targets ** 2, device=device) # (n_targets ** 2)
         put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
         assert len(graph_idx) % 2 == 0
