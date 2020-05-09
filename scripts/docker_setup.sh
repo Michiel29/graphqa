@@ -67,8 +67,10 @@ python setup.py build_ext --inplace
 # this breaks for unknown reason so going last
 cd /root/self_inference
 mkdir save
+
+wget http://selfinference.s3.amazonaws.com/data.zip
 ​mkdir data
+mv data.zip data/data.zip
 
 cd data
-wget http://selfinference.s3.amazonaws.com/data.zip
 unzip data​.zip
