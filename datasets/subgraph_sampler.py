@@ -127,13 +127,19 @@ class NeighborhoodCoverage(object):
 
 class SubgraphSampler(object):
 
-    MAX_ENTITIES_SIZE = 600
-    MAX_ENTITIES_FROM_QUEUE = 10
-
-    def __init__(self, graph, annotated_text, min_common_neighbors):
+    def __init__(
+        self,
+        graph,
+        annotated_text,
+        min_common_neighbors,
+        max_entities_size,
+        max_entities_from_queue,
+    ):
         self.graph = graph
         self.annotated_text = annotated_text
         self.min_common_neighbors = min_common_neighbors
+        self.max_entities_size = max_entities_size
+        self.max_entities_from_queue = max_entities_from_queue
         self.entities = set([])
         self.entity_pairs = set([])
         self.covered_entity_pairs = set([])
@@ -183,8 +189,8 @@ class SubgraphSampler(object):
         counter = 0
         while (
             len(self.entity_score) > 0
-            and counter < SubgraphSampler.MAX_ENTITIES_FROM_QUEUE
-            and len(self.entities) < SubgraphSampler.MAX_ENTITIES_SIZE
+            and counter < self.max_entities_from_queue
+            and len(self.entities) < self.max_entities_size
         ):
             score, entity = heapq.heappop(self.entity_score)
             if entity not in self.entities:
@@ -360,3 +366,19 @@ class SubgraphSampler(object):
             self.get_coverage(a, b).relative_coverage()
             for a, b in self.covered_entity_pairs
         ])
+
+    def get_yield(self):
+        return len(self.covered_entity_pairs) / float(len(self.relation_statements))
+
+    def get_relative_coverages_mean(self):
+        return self.relative_coverages().mean()
+
+    def get_relation_statements(self):
+        return self.relation_statements
+
+    def is_covered(self, a_b):
+        assert a_b in self.entity_pairs
+        return a_b in self.covered_entity_pairs
+
+    def get_covered_edges(self):
+        return self.covered_entity_pairs

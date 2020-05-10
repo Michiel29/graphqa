@@ -17,6 +17,7 @@ from .mtb_triplets_dataset import (
 )
 from .prepend_token_dataset import PrependTokenDataset
 from .rel_inf_dataset import RelInfDataset
+from .gnn_dataset import GNNDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
 from .shuffled_dataset import ShuffledDataset
 from .subgraph_sampler import SubgraphSampler

@@ -34,8 +34,8 @@ class CrossEntropy(FairseqCriterion):
         3) logging outputs to display while training
         """
 
-        target = sample['target']
         model_output = model(sample)
+        target = sample['target']
 
         # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         # diag.inspect_batch(sample, scores=model_output)
@@ -50,12 +50,18 @@ class CrossEntropy(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'accuracy': utils.item((pred == target).float().sum()),
+            'num_updates': 1,
         }
 
         if 'ntokens_AB' in sample.keys():
             logging_output['ntokens_AB'] = sample['ntokens_AB']
         if 'ntokens_mem' in sample.keys():
             logging_output['ntokens_mem'] = sample['ntokens_mem']
+        if 'yield' in sample.keys():
+            logging_output['yield'] = sample['yield']
+        if 'rel_cov' in sample.keys():
+            logging_output['rel_cov'] = sample['rel_cov']
+
 
         logging_output = self.task.reporter(target, pred, logging_output)
 
@@ -80,6 +86,22 @@ class CrossEntropy(FairseqCriterion):
                 priority=10,
                 round=3,
             )
+
+        if 'yield' in logging_outputs[0].keys():
+            def get_value(log, key):
+                if key not in log:
+                    return None
+                else:
+                    return utils.item(log[key]) / utils.item(log['num_updates'])
+
+            yield_pct = np.array(list(
+                filter(None, [get_value(log, 'yield') for log in logging_outputs])
+            ))
+            rel_cov = np.array(list(
+                filter(None, [get_value(log, 'rel_cov') for log in logging_outputs])
+            ))
+            metrics.log_scalar(prefix + 'yield', yield_pct.mean(), priority=100, round=3)
+            metrics.log_scalar(prefix + 'rel_cov', rel_cov.mean(), priority=100, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:

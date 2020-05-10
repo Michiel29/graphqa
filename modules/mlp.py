@@ -6,11 +6,11 @@ def MLP_factory(layer_sizes, dropout=False, layer_norm=False):
     for block in layer_sizes:
         unpacked_sizes.extend([block[0]] * block[1])
 
-    for k in range(len(unpacked_sizes)-1):
+    for k in range(len(unpacked_sizes) - 1):
         if layer_norm:
             modules.append(nn.LayerNorm(unpacked_sizes[k]))
-        modules.append(nn.Linear(unpacked_sizes[k], unpacked_sizes[k+1]))
-        if k < len(unpacked_sizes)-2:
+        modules.append(nn.Linear(unpacked_sizes[k], unpacked_sizes[k + 1]))
+        if k < len(unpacked_sizes) - 2:
             modules.append(nn.ReLU())
             if dropout is not False:
                 modules.append(nn.Dropout(dropout))

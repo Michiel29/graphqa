@@ -18,6 +18,9 @@ import gc
 
 import numpy as np
 import torch
+# Workaround for the exception "RuntimeError: received 0 items of ancdata",
+# e.g. see https://github.com/pytorch/pytorch/issues/973
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
