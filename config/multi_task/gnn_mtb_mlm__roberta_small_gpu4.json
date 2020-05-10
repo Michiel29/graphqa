@@ -12,10 +12,10 @@
             "gnn_layer_args": {
                 "enc_dim": 256,
                 "layer_sizes": [[256, 2]],
-                "layer_norm": false,
+                "layer_norm": true,
                 "n_gnn_layers": 1
             },
-            "gnn_mlp_layer_norm": false,
+            "gnn_mlp_layer_norm": true,
             "neg_type": "graph_text",
             "layer_sizes": [[256, 1], [1, 1]],
             "min_common_neighbors": 10,

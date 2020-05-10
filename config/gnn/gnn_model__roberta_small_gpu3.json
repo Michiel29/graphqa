@@ -8,12 +8,12 @@
         "enc_dim": 256,
         "linear_dim": 256,
         "layer_sizes": [[256, 2]],
-        "layer_norm": false,
+        "layer_norm": true,
         "n_gnn_layers": 1
     },
     "neg_type": "graph_text",
     "layer_sizes": [[256, 1], [1, 1]],
-    "gnn_mlp_layer_norm": false,
+    "gnn_mlp_layer_norm": true,
     "entity_dim": 256,
 
     "encoder_output_layer_type": "entity_start_linear",
@@ -40,8 +40,8 @@
 
     "num_workers": 5,
     "max_sentences": 1000,
-    "update_freq": [21],
-    "max_tokens": 19000,
+    "update_freq": [22],
+    "max_tokens": 18000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
