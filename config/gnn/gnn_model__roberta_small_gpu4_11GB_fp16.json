@@ -1,13 +1,12 @@
 {
-    // "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
-    "add_configs": ["../roberta/small.json", "../base.json"],
-    "eval_downstream": false,
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
 
     "task": "gnn",
     "arch": "encoder_gnn__roberta_small",
     "gnn_layer_type": "mlp_concat",
     "gnn_layer_args": {
         "enc_dim": 256,
+        "linear_dim": 256,
         "layer_sizes": [[256, 2]],
         "layer_norm": false,
         "n_gnn_layers": 1
@@ -39,15 +38,14 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 5,
+    "num_workers": 6,
     "max_sentences": 1000,
-    "update_freq": [21],
+    "update_freq": [15],
     "max_tokens": 19000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
     "validate_before_training": false,
-
     "fp16": true,
     "criterion": "cross_entropy_custom"
 }
