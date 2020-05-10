@@ -17,23 +17,23 @@
             "gnn_mlp_layer_norm": true,
             "neg_type": "graph_text",
             "layer_sizes": [[256, 1], [1, 1]],
-            
+
             "min_common_neighbors": 10,
             "max_common_neighbors": 10,
             "max_entities_size": 600,
             "max_entities_from_queue": 5,
-            "num_text_chunks": 8,
+            "num_text_chunks": 4,
             "min_common_neighbors_for_the_last_edge": 1,
 
-            "non_mask_rate": 0,
+            "non_mask_rate": 0.1,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 1,
-            
-            "update_freq": 21,
-            "epoch_size": 6e3,
+
+            "update_freq": 15,
+            "epoch_size": 12000,
             "n_valid_examples": 400,
 
-            "max_sentences": 1,
+            "max_sentences": 1000,
             "max_tokens": 19000,
 
             "num_workers": 4,
@@ -51,12 +51,12 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 6,
-            "epoch_size": 132000,
+            "update_freq": 7,
+            "epoch_size": 442400,
             "n_valid_examples": 20000,
 
-            "max_sentences": 77,
-            "max_tokens": 1e4,
+            "max_sentences": 79,
+            "max_tokens": 1e5,
 
             "num_workers": 2,
 

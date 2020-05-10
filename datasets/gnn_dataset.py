@@ -41,7 +41,7 @@ class GNNDataset(FairseqDataset):
         self.max_entities_from_queue = max_entities_from_queue
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
-        self.num_text_chunks = 4
+        self.num_text_chunks = num_text_chunks
         self.seed = seed
         self.epoch = None
 

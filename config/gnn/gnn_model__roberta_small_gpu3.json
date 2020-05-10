@@ -24,7 +24,7 @@
     "max_common_neighbors": 10,
     "max_entities_size": 600,
     "max_entities_from_queue": 5,
-    "num_text_chunks": 8,
+    "num_text_chunks": 4,
 
     "mask_type": "start_end",
     "non_mask_rate": 0,
