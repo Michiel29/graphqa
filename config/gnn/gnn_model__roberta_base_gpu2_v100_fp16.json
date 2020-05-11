@@ -1,0 +1,51 @@
+{
+    "add_configs": ["../roberta/base.json", "../base.json", "../downstream/downstream_base.json"],
+
+    "task": "gnn",
+    "arch": "encoder_gnn__roberta_base",
+    "gnn_layer_type": "mlp_concat",
+    "gnn_layer_args": {
+        "enc_dim": 256,
+        "linear_dim": 256,
+        "layer_sizes": [[256, 2]],
+        "layer_norm": true,
+        "n_gnn_layers": 1
+    },
+    "neg_type": "graph_text",
+    "layer_sizes": [[256, 1], [1, 1]],
+    "gnn_mlp_layer_norm": true,
+    "entity_dim": 256,
+
+    "encoder_output_layer_type": "entity_start_linear",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+
+    "min_common_neighbors": 10,
+    "max_common_neighbors": 10,
+    "max_entities_size": 600,
+    "max_entities_from_queue": 5,
+    "num_text_chunks": 8,
+
+    "mask_type": "start_end",
+    "non_mask_rate": 0.1,
+    "subsampling_strategy": "by_entity_pair",
+    "subsampling_cap": 1,
+    "epoch_size": 18000,
+    "n_valid_examples": 1000,
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 15,
+    "max_sentences": 1000,
+    "update_freq": [57],
+    "max_tokens": 12000,
+    // batch size ~ 2278.7
+    "required_batch_size_multiple": 1,
+
+    "validate_before_training": false,
+    "fp16": true,
+    "criterion": "cross_entropy_custom"
+}
