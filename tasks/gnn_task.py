@@ -23,8 +23,12 @@ logger = logging.getLogger(__name__)
 
 @register_task('gnn')
 class GNNTask(BaseTask):
+
+    NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE = 20
+
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args, dictionary, entity_dictionary)
+        self.sample_sizes_mean = None
 
     @staticmethod
     def add_args(parser):
@@ -179,3 +183,13 @@ class GNNTask(BaseTask):
             epoch=epoch,
         )
         return epoch_iter
+
+    def get_sample_size(self, batch, sizes):
+        if self.sample_sizes_mean is None:
+            assert len(self.datasets['train']) >= NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE
+            sample_sizes = []
+            for i in range(NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE):
+                current_sample_size = len(self.datasets['train'][i]['target_text_idx'])
+                sample_sizes.append(current_sample_size)
+            self.sample_sizes_mean = float(sum(sample_sizes)) / len(sample_sizes)
+        return int(self.sample_sizes_mean * len(batch))
