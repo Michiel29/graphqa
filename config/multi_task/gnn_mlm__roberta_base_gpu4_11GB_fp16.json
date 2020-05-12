@@ -86,6 +86,6 @@
     "max_tokens": 12000,
 
     "fp16": true,
-    "validate_before_training": false,
+    "validate_before_training": true,
     "gradient_checkpoint_period": 1
 }
