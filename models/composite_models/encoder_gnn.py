@@ -52,8 +52,8 @@ class EncoderGNNModel(BaseFairseqModel):
         n_targets = len(target_text_idx)
         n_matches = n_targets ** 2
         #   candidate_idx = batch['candidates']
-        candidate_idx = torch.arange(n_targets, device=device)
-        candidate_idx = candidate_idx.unsqueeze(0).expand(n_targets, -1)
+
+        candidate_idx = target_text_idx.unsqueeze(0).expand(n_targets, -1)
         n_candidates = candidate_idx.shape[-1]
 
         graph_sizes = torch.tensor([len(g) for g in batch['graph']], dtype=torch.int64, device=device) # (n_targets)
@@ -61,39 +61,37 @@ class EncoderGNNModel(BaseFairseqModel):
         graph_idx = torch.cat(batch['graph'], dim=0) # (sum(m_i), 2)
         graph_idx = graph_idx.unsqueeze(0).expand(n_candidates, -1, -1).reshape(-1) # (n_candidates * sum(m_i) * 2)
 
-        candidate_idx_transpose = candidate_idx.transpose() # (n_candidates, n_targets)
+        candidate_idx_transpose = candidate_idx.t().reshape(-1) # (n_targets * n_candidates)
 
         graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_candidates, -1).reshape(-1) # (n_targets * n_candidates)
 
-        candidate_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
-        put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
-
-        target_idx_range = torch.arange(n_targets ** 2, device=device) # (n_targets ** 2)
-        put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
+        candidate_idx_range = torch.arange(n_targets * n_candidates, device=device) # (n_targets * n_candidates)
+        put_indices = tuple(torch.repeat_interleave(candidate_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
         assert len(graph_idx) % 2 == 0
         graph_rep = text_enc[graph_idx].reshape(len(graph_idx) // 2, 2, -1) # (n_targets * sum(m_i), 2, d)
-        target_rep = text_enc[target_text_idx_expand].unsqueeze(1) # (n_targets ** 2, 1, d)
+        candidate_rep = text_enc[candidate_idx_transpose].unsqueeze(1) # (n_targets * n_candidates, 1, d)
 
         for layer in self.gnn_layers:
-            target_rep_repeat = torch.repeat_interleave(target_rep, graph_sizes_expand, dim=0) # (n_targets * sum(m_i), 1, d)
-            layer_output = layer(target_rep_repeat, graph_rep).unsqueeze(-2) # (n_targets * sum(m_i), d)
-            target_rep = target_rep.index_put(put_indices, layer_output, accumulate=True) # (n_targets ** 2, d)
+            candidate_rep_repeat = torch.repeat_interleave(candidate_rep, graph_sizes_expand, dim=0) # (n_candidates * sum(m_i), 1, d)
+            layer_output = layer(candidate_rep_repeat, graph_rep).unsqueeze(-2) # (n_candidates * sum(m_i), d)
+            candidate_rep = candidate_rep.index_put(put_indices, layer_output, accumulate=True) # (n_targets * n_candidates, d)
 
-        scores = self.mlp(target_rep) # (n_targets ** 2)
-        scores = scores.reshape(n_targets, n_targets) # (n_targets, n_targets) -- rows=texts, cols=graphs
+        scores = self.mlp(candidate_rep) # (n_targets * n_candidates)
+        scores = scores.reshape(n_candidates, n_targets) # (n_candidates, n_targets)
+        scores = scores.t() # (n_targets, n_candidates)
 
-        if self.neg_type == 'graph':
-            pass
-        elif self.neg_type == 'text':
-            scores = scores.t()
-        elif self.neg_type == 'graph_text':
-            scores_graph = scores
-            mask = (1 - torch.eye(n_targets, device=device)).bool()
-            scores_text = torch.masked_select(scores_graph.t(), mask).reshape(n_targets, n_targets - 1) # (n_targets, n_target - 1)
-            scores = torch.cat((scores_graph, scores_text), dim=1) # (n_targets, 2*n_targets-1)
-        else:
-            raise Exception('neg_type {} does not exist'.format(self.neg_type))
+        # if self.neg_type == 'text':
+        #     pass
+        # elif self.neg_type == 'text':
+        #     scores = scores.t()
+        # elif self.neg_type == 'graph_text':
+        #     scores_graph = scores
+        #     mask = (1 - torch.eye(n_targets, device=device)).bool()
+        #     scores_text = torch.masked_select(scores_graph.t(), mask).reshape(n_targets, n_targets - 1) # (n_targets, n_target - 1)
+        #     scores = torch.cat((scores_graph, scores_text), dim=1) # (n_targets, 2*n_targets-1)
+        # else:
+        #     raise Exception('neg_type {} does not exist'.format(self.neg_type))
 
         return scores
 
