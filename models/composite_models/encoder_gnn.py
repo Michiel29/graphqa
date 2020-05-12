@@ -59,9 +59,6 @@ class EncoderGNNModel(BaseFairseqModel):
         target_text_idx_expand = target_text_idx.unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
         graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_targets, -1).reshape(-1) # (n_targets ** 2)
 
-        target_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
-        put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
-
         target_idx_range = torch.arange(n_targets ** 2, device=device) # (n_targets ** 2)
         put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
