@@ -17,6 +17,12 @@ yes | apt install gcc
 yes | apt-get install g++
 yes | apt-get install htop
 yes | apt-get install vim
+
+echo '* soft nofile 400000' >> /etc/security/limits.conf
+echo '* hard nofile 400000' >> /etc/security/limits.conf
+echo 'session required pam_limits.so' >> /etc/pam.d/common-session-noninteractive
+echo 'ulimit -n 400000' >> ~/.bashrc
+source ~/.bashrc
 ​
 # install anaconda
 mkdir packages
