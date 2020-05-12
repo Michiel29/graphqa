@@ -35,7 +35,7 @@ class ListTaskIterator(object):
             seed=self.seed,
             num_shards=self.num_shards,
             shard_id=self.shard_id,
-            num_workers=self.num_workers,
+            num_workers=self.args.tasks[task_name]['num_workers'],
             epoch=self.epoch,
         )
         update_freq = self.update_freq[task_name]

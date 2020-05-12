@@ -14,8 +14,8 @@
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
             "arch": "encoder_fewrel__roberta_base",
-            "max_sentences": 96,
-            "max_tokens": 6e3,
+            "max_sentences": 48,
+            "max_tokens": 3e3,
             "non_mask_rate": 1,
             "epoch_interval": 1
         },
@@ -25,8 +25,8 @@
             "arch": "encoder_semeval2010task8__roberta_base",
             "non_mask_rate": 1,
             "epoch_interval": 1,
-            "max_sentences_sklearn": 96,
-            "max_tokens_sklearn": 6e3
+            "max_sentences_sklearn": 48,
+            "max_tokens_sklearn": 3e3
         },
         "kbp37": {
             "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
@@ -34,8 +34,8 @@
             "arch": "encoder_kbp37__roberta_base",
             "non_mask_rate": 1,
             "epoch_interval": 1,
-            "max_sentences_sklearn": 96,
-            "max_tokens_sklearn": 6e3
+            "max_sentences_sklearn": 48,
+            "max_tokens_sklearn": 3e3
         },
         "tacred": {
             "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
@@ -43,8 +43,8 @@
             "arch": "encoder_tacred__roberta_base",
             "non_mask_rate": 1,
             "epoch_interval": 1,
-            "max_sentences_sklearn": 80,
-            "max_tokens_sklearn": 5e3
+            "max_sentences_sklearn": 40,
+            "max_tokens_sklearn": 2500
         }
     }
 }
