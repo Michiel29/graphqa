@@ -8,6 +8,7 @@ import logging
 from datasets import AnnotatedText, GraphDataset, SubgraphSampler
 from utils.data_utils import numpy_seed, safe_load_indexed_dataset
 from utils.dictionary import CustomDictionary, EntityDictionary
+from utils.diagnostic_utils import Diagnostic
 from utils.numpy_utils import MMapNumpyArray
 
 
@@ -18,19 +19,27 @@ def name(entity_dictionary, index):
     s = entity_dictionary[index]
     if len(s) > 20:
         s = s[:20] + '...'
-    return s
+    return s + '\n' + str(index)
 
 
-def save_subgraph(subgraph, entity_dictionary, path):
+def save_subgraph(subgraph, dictionary, entity_dictionary, path, shall_add_text):
+    if shall_add_text:
+        diagnostic = Diagnostic(dictionary, entity_dictionary)
+
     G = pgv.AGraph(strict=True, directed=True)
-    for h, t in subgraph.relation_statements.keys():
+    for (h, t), sentence in subgraph.relation_statements.items():
         assert (t, h) not in subgraph.covered_entity_pairs
         if (h, t) in subgraph.covered_entity_pairs:
             color = 'red'
         else:
             color = 'black'
-        G.add_edge(name(entity_dictionary, h), name(entity_dictionary, t), color=color)
-    G.write(path + '.dot')
+
+        if shall_add_text:
+            text = diagnostic.decode_text(sentence)
+            G.add_edge(name(entity_dictionary, h), name(entity_dictionary, t), color=color, label=text)
+        else:
+            G.add_edge(name(entity_dictionary, h), name(entity_dictionary, t), color=color)
+
     G.layout(prog='dot')
     G.draw(path + '.png')
 
@@ -40,6 +49,8 @@ def sample_subgraph(graph, annotated_text, index, args):
         graph=graph,
         annotated_text=annotated_text,
         min_common_neighbors=args.min_common_neighbors,
+        max_entities_size=args.max_entities_size,
+        max_entities_from_queue=args.max_entities_from_queue,
     )
     edge = graph[index]
     head = edge[GraphDataset.HEAD_ENTITY]
@@ -92,45 +103,45 @@ def main(args):
     with numpy_seed('SubgraphSampler', args.seed):
         random_perm = np.random.permutation(len(graph))
 
-    if args.save_subgraph is not None:
-        for index in random_perm:
-            subgraph, _ = sample_subgraph(graph, annotated_text, index, args)
-            if subgraph is not None:
-                break
+        if args.save_subgraph is not None:
+            for index in random_perm:
+                subgraph, _ = sample_subgraph(graph, annotated_text, index, args)
+                if subgraph is not None:
+                    break
 
-        path = '%s.max_tokens=%d.max_sentences=%d.min_common_neighbors=%d' % (
-            args.save_subgraph,
-            args.max_tokens,
-            args.max_sentences,
-            args.min_common_neighbors,
-        )
-        save_subgraph(subgraph, entity_dictionary, path)
-    else:
-        num_subgraphs, total_edges, total_covered_edges = 0, 0, 0
-        total_relative_coverage_mean, total_relative_coverage_median = 0, 0
-        total_full_batch = 0
-        with trange(len(graph), desc='Subgraph sampling') as progress_bar:
-            for i in progress_bar:
-                subgraph, fill_successfully = sample_subgraph(graph, annotated_text, random_perm[i], args)
-                if subgraph is None:
-                    continue
+            path = '%s.max_tokens=%d.max_sentences=%d.min_common_neighbors=%d' % (
+                args.save_subgraph,
+                args.max_tokens,
+                args.max_sentences,
+                args.min_common_neighbors,
+            )
+            save_subgraph(subgraph, dictionary, entity_dictionary, path, args.save_text)
+        else:
+            num_subgraphs, total_edges, total_covered_edges = 0, 0, 0
+            total_relative_coverage_mean, total_relative_coverage_median = 0, 0
+            total_full_batch = 0
+            with trange(len(graph), desc='Subgraph sampling') as progress_bar:
+                for i in progress_bar:
+                    subgraph, fill_successfully = sample_subgraph(graph, annotated_text, random_perm[i], args)
+                    if subgraph is None:
+                        continue
 
-                num_subgraphs += 1
-                total_edges += len(subgraph.relation_statements)
-                total_covered_edges += len(subgraph.covered_entity_pairs)
-                relative_coverages = subgraph.relative_coverages()
-                total_relative_coverage_mean += np.mean(relative_coverages)
-                total_relative_coverage_median += np.median(relative_coverages)
-                total_full_batch += int(fill_successfully)
+                    num_subgraphs += 1
+                    total_edges += len(subgraph.relation_statements)
+                    total_covered_edges += len(subgraph.covered_entity_pairs)
+                    relative_coverages = subgraph.relative_coverages()
+                    total_relative_coverage_mean += np.mean(relative_coverages)
+                    total_relative_coverage_median += np.median(relative_coverages)
+                    total_full_batch += int(fill_successfully)
 
-                progress_bar.set_postfix(
-                    n=num_subgraphs,
-                    edges=total_edges / num_subgraphs,
-                    cov_edges=total_covered_edges / num_subgraphs,
-                    rel_cov_mean=total_relative_coverage_mean / num_subgraphs,
-                    rel_cov_median=total_relative_coverage_median / num_subgraphs,
-                    full_batch=total_full_batch / num_subgraphs,
-                )
+                    progress_bar.set_postfix(
+                        n=num_subgraphs,
+                        edges=total_edges / num_subgraphs,
+                        cov_edges=total_covered_edges / num_subgraphs,
+                        rel_cov_mean=total_relative_coverage_mean / num_subgraphs,
+                        rel_cov_median=total_relative_coverage_median / num_subgraphs,
+                        full_batch=total_full_batch / num_subgraphs,
+                    )
 
 
 def cli_main():
@@ -146,7 +157,10 @@ def cli_main():
     parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
     parser.add_argument('--max-tokens', type=int, default=2e4)
     parser.add_argument('--max-sentences', type=int, default=100000)
+    parser.add_argument('--max-entities-size', type=int, default=600)
+    parser.add_argument('--max-entities-from-queue', type=int, default=5)
     parser.add_argument('--save-subgraph', type=str)
+    parser.add_argument('--save-text', action='store_true', default=False)
     parsed_args = parser.parse_args()
     main(parsed_args)
 

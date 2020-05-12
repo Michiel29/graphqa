@@ -11,6 +11,13 @@ ext_modules = [
         extra_link_args = ["-fopenmp"],
         language="c++",
     ),
+    Extension(
+        "datasets.subgraph_sampler_faster",
+        ["datasets/subgraph_sampler_faster.pyx"],
+        extra_compile_args=["-O3", "-ffast-math", "-march=native", "-fopenmp"],
+        extra_link_args = ["-fopenmp"],
+        language="c++",
+    )
 ]
 
 setup(

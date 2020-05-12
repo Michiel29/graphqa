@@ -49,8 +49,8 @@ class GraphDataset(FairseqDataset):
         entity, total_bytes = 0, 0
         while entity < len(self.edges) and total_bytes < self.NEIGHBORS_CACHE_SIZE:
             neighbors = self.get_neighbors(entity)
-            total_bytes += neighbors.nelement() * neighbors.element_size()
-            self.neighbors_cache[entity] = neighbors.numpy()
+            total_bytes += neighbors.nbytes
+            self.neighbors_cache[entity] = neighbors
             entity += 1
         assert entity == len(self.neighbors_cache)
         logger.info('cached neighbours for %d top entities (%.3f MB) in %.3f seconds.' % (
@@ -92,9 +92,12 @@ class GraphDataset(FairseqDataset):
         if isinstance(entity, torch.Tensor):
             entity = entity.item()
         if entity in self.neighbors_cache:
-            return self.neighbors_cache[entity]
+            result = self.neighbors_cache[entity]
         else:
-            return self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
+            result = self.edges[entity].reshape(-1, self.EDGE_SIZE)[:, self.TAIL_ENTITY].unique()
+        if isinstance(result, torch.Tensor):
+            result = result.numpy()
+        return result
 
     def get_degree(self, entity):
         if self.degree[entity] == -1:
