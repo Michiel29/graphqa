@@ -41,6 +41,7 @@ class EncoderGNNModel(BaseFairseqModel):
         #   'text': list of n_chunks token tensors, sorted by ascending length -- shape (chunk_size, chunk_text_len)
         #   'graph': list of tensors which are indices into text_enc -- len(batch['graph']) = n_targets, shape of each tensor is (m_i, 2)
         #   'target_text_idx': indices into text_enc -- shape (n_targets)
+        #   'candidate_idx': for each neighborhood, contains all candidates sentence idx including target sentences- tensor of shape n_targets by n_candidates
         #   'target': torch.arange(n_targets)
         # }
 
@@ -50,16 +51,21 @@ class EncoderGNNModel(BaseFairseqModel):
         target_text_idx = batch['target_text_idx']
         n_targets = len(target_text_idx)
         n_matches = n_targets ** 2
+        #   candidate_idx = batch['candidates']
+        candidate_idx = torch.arange(n_targets, device=device)
+        candidate_idx = candidate_idx.unsqueeze(0).expand(n_targets, -1)
+        n_candidates = candidate_idx.shape[-1]
 
         graph_sizes = torch.tensor([len(g) for g in batch['graph']], dtype=torch.int64, device=device) # (n_targets)
 
         graph_idx = torch.cat(batch['graph'], dim=0) # (sum(m_i), 2)
-        graph_idx = graph_idx.unsqueeze(0).expand(n_targets, -1, -1).reshape(-1) # (n_targets * sum(m_i) * 2)
+        graph_idx = graph_idx.unsqueeze(0).expand(n_candidates, -1, -1).reshape(-1) # (n_candidates * sum(m_i) * 2)
 
-        target_text_idx_expand = target_text_idx.unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
-        graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_targets, -1).reshape(-1) # (n_targets ** 2)
+        candidate_idx_transpose = candidate_idx.transpose() # (n_candidates, n_targets)
 
-        target_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
+        graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_candidates, -1).reshape(-1) # (n_targets * n_candidates)
+
+        candidate_idx_range = torch.arange(n_targets, device=device).unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
         put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
 
         target_idx_range = torch.arange(n_targets ** 2, device=device) # (n_targets ** 2)
