@@ -434,10 +434,6 @@ def cli_main():
 
     pre_parsed_args, unknown = parser.parse_known_args()
 
-    # set sharing strategy file system in case /dev/shm limits are small
-    if pre_parsed_args.torch_file_system:
-        torch.multiprocessing.set_sharing_strategy('file_system')
-
     config_dict = {}
     for config_path in pre_parsed_args.config:
         config_dict = update_config(config_dict, compose_configs(config_path))
@@ -448,6 +444,10 @@ def cli_main():
 
     update_namespace(args, config_dict)
 
+    # set sharing strategy file system in case /dev/shm/ limits are small
+    if args.torch_file_system:
+        torch.multiprocessing.set_sharing_strategy('file_system')
+
     training_name = get_training_name(args)
     base_save_dir = generate_save_dir(args, training_name, sys.argv[1:])
     setattr(args, 'training_name', training_name)
@@ -455,10 +455,6 @@ def cli_main():
     setattr(args, 'tensorboard_logdir', os.path.join(base_save_dir, 'tensorboard'))
 
     save_config(vars(args), base_save_dir)
-
-
-
-
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

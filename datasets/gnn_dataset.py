@@ -227,11 +227,11 @@ class GNNDataset(FairseqDataset):
                 #     self.epoch,
                 #     index,
                 # ))
-                index = np.random.randint(len(self.graph))
-                subgraph = self._sample_subgraph(index)
+                text_index = np.random.randint(len(self.graph))
+                subgraph = self._sample_subgraph(text_index)
 
-        sentences, index = self._get_all_sentences_and_index(subgraph)
-        graph, candidate_text_idx = self._make_negatives(subgraph, index)
+        sentences, text_index = self._get_all_sentences_and_index(subgraph)
+        graph, candidate_text_idx = self._make_negatives(subgraph, text_index)
 
         return {
             'text': sentences,
