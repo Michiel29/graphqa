@@ -33,7 +33,7 @@
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 1,
     "epoch_size": 18000,
-    "n_valid_examples": 1000,
+    "n_valid_examples": 400,
 
     "max_epoch": 200,
     "warmup_updates": 1000,
