@@ -217,7 +217,8 @@ class GNNDataset(FairseqDataset):
             graph.append(torch.LongTensor(edge_subgraphs).reshape(-1, 2))
             candidate_text_idx.append(edge_candidate_idx)
 
-        graph = torch.cat(graph, dim=0)
+        if len(graph) > 0:
+            graph = torch.cat(graph, dim=0)
         graph_sizes = torch.LongTensor(graph_sizes)
         candidate_text_idx = torch.LongTensor(candidate_text_idx)
 

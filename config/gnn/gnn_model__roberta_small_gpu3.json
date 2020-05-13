@@ -47,7 +47,7 @@
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
-    "validate_before_training": true,
+    "validate_before_training": false,
 
     "criterion": "cross_entropy_custom"
 }
