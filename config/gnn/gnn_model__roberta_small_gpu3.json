@@ -11,7 +11,7 @@
         "layer_norm": true,
         "n_gnn_layers": 1
     },
-    "neg_type": "graph_text",
+    "neg_type": "text",
     "layer_sizes": [[256, 1], [1, 1]],
     "gnn_mlp_layer_norm": true,
     "entity_dim": 256,
@@ -24,6 +24,8 @@
     "max_common_neighbors": 10,
     "max_entities_size": 600,
     "max_entities_from_queue": 5,
+    "total_negatives": 100,
+    "max_hard_negatives": 50,
     "num_text_chunks": 4,
 
     "mask_type": "start_end",
@@ -38,14 +40,14 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 5,
+    "num_workers": 4,
     "max_sentences": 1000,
     "update_freq": [22],
     "max_tokens": 18000,
     // batch size ~ 2278.7
     "required_batch_size_multiple": 1,
 
-    "validate_before_training": false,
+    "validate_before_training": true,
 
     "criterion": "cross_entropy_custom"
 }

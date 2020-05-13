@@ -48,6 +48,8 @@ class GNNTask(BaseTask):
         parser.add_argument('--num-text-chunks', type=int, default=None)
         parser.add_argument('--max-entities-size', type=int, default=None)
         parser.add_argument('--max-entities-from-queue', type=int, default=None)
+        parser.add_argument('--total-negatives', type=int, default=None)
+        parser.add_argument('--max_hard_negatives', type=int, default=None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(
@@ -83,6 +85,8 @@ class GNNTask(BaseTask):
             min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
             max_entities_size=self.args.max_entities_size,
             max_entities_from_queue=self.args.max_entities_from_queue,
+            total_negatives=self.args.total_negatives,
+            max_hard_negatives=self.args.max_hard_negatives,
             max_tokens=self.args.max_tokens - 1, # for bos
             max_sentences=self.args.max_sentences,
             num_text_chunks=self.args.num_text_chunks,
