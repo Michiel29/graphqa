@@ -137,11 +137,16 @@ class GNNDataset(FairseqDataset):
 
     def _make_negatives(self, subgraph, index):
         graph = []
+        graph_sizes = []
         candidate_text_idx = []
 
         for a, b in subgraph.get_covered_edges():
             coverage = subgraph.get_coverage(a, b)
             mutual_neighbors = coverage.both_edges_in_subgraph
+
+            if len(mutual_neighbors) < 2:
+                continue
+
             edge_subgraphs = []
             edge_candidate_idx = []
             total_subgraph = []
@@ -153,9 +158,6 @@ class GNNDataset(FairseqDataset):
 
             total_subgraph = np.array(total_subgraph)
 
-            if len(mutual_neighbors) < 2:
-                continue
-
             n_mutual = len(mutual_neighbors)
 
             target_leave_out = np.random.randint(n_mutual)
@@ -163,7 +165,7 @@ class GNNDataset(FairseqDataset):
 
             target_neighbor_indices = [i for i in range(n_mutual) if i != target_leave_out]
             target_subgraph = total_subgraph[target_neighbor_indices]
-            graph.append(torch.LongTensor(target_subgraph))
+            edge_subgraphs.append(target_subgraph)
             edge_candidate_idx.append(target_text_idx)
 
             if n_mutual * 2 > self.max_hard_negatives:
@@ -176,7 +178,7 @@ class GNNDataset(FairseqDataset):
                 negative_neighbor_subgraph = total_subgraph[negative_neighbor_indices]
 
                 for negative_text_idx in total_subgraph[mutual_idx]:
-                    graph.append(torch.LongTensor(negative_neighbor_subgraph))
+                    edge_subgraphs.append(negative_neighbor_subgraph)
                     edge_candidate_idx.append(negative_text_idx)
 
             # If not enough mutual negatives, try negatives with only single neighbor
@@ -190,7 +192,7 @@ class GNNDataset(FairseqDataset):
                 for neighbor in neighbor_choice:
                     for pair in [(a, neighbor), (b, neighbor), (neighbor, a), (neighbor, b)]:
                         if pair in subgraph.get_relation_statements():
-                            graph.append(torch.LongTensor(target_subgraph))
+                            edge_subgraphs.append(target_subgraph)
                             edge_candidate_idx.append(index[pair])
                             edge_found = True
                             break
@@ -208,14 +210,18 @@ class GNNDataset(FairseqDataset):
             weak_neg_choices = np.random.choice(weak_neg_options, size=n_weak_negatives, replace=False)
 
             for pair_text_idx in weak_neg_choices:
-                graph.append(torch.LongTensor(target_subgraph))
+                edge_subgraphs.append(target_subgraph)
                 edge_candidate_idx.append(pair_text_idx)
 
+            graph_sizes.extend([len(g) for g in edge_subgraphs])
+            graph.append(torch.LongTensor(edge_subgraphs).reshape(-1, 2))
             candidate_text_idx.append(edge_candidate_idx)
 
+        graph = torch.cat(graph, dim=0)
+        graph_sizes = torch.LongTensor(graph_sizes)
         candidate_text_idx = torch.LongTensor(candidate_text_idx)
 
-        return graph, candidate_text_idx
+        return graph, graph_sizes, candidate_text_idx
 
     # @profile
     def __getitem__(self, index):
@@ -231,11 +237,12 @@ class GNNDataset(FairseqDataset):
                 subgraph = self._sample_subgraph(text_index)
 
         sentences, text_index = self._get_all_sentences_and_index(subgraph)
-        graph, candidate_text_idx = self._make_negatives(subgraph, text_index)
+        graph, graph_sizes, candidate_text_idx = self._make_negatives(subgraph, text_index)
 
         return {
             'text': sentences,
             'graph': graph,
+            'graph_sizes': graph_sizes,
             'candidate_text_idx': candidate_text_idx,
             'target': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
             'yield': subgraph.get_yield(),
@@ -243,6 +250,50 @@ class GNNDataset(FairseqDataset):
             'nsentences': subgraph.nsentences,
             'ntokens': subgraph.ntokens,
         }
+
+    # def __getitem__(self, index):
+
+    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
+    #         subgraph = self._sample_subgraph(index)
+    #         while subgraph is None:
+    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
+    #             #     self.seed,
+    #             #     self.epoch,
+    #             #     index,
+    #             # ))
+    #             text_index = np.random.randint(len(self.graph))
+    #             subgraph = self._sample_subgraph(text_index)
+
+    #     sentences, text_index = self._get_all_sentences_and_index(subgraph)
+    #     graph2, candidate_text_idx = self._make_negatives(subgraph, text_index)
+
+    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
+    #         subgraph = self._sample_subgraph(index)
+    #         while subgraph is None:
+    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
+    #             #     self.seed,
+    #             #     self.epoch,
+    #             #     index,
+    #             # ))
+    #             index = np.random.randint(len(self.graph))
+    #             subgraph = self._sample_subgraph(index)
+
+    #     sentences, index = self._get_all_sentences_and_index(subgraph)
+    #     graph, target_text_idx = self._get_edge_tuples(subgraph, index)
+
+    #     return {
+    #         'text': sentences,
+    #         'graph': graph,
+    #         'target_text_idx': target_text_idx,
+    #         'target': torch.arange(len(target_text_idx)),
+    #         'yield': subgraph.get_yield(),
+    #         'rel_cov': subgraph.get_relative_coverages_mean(),
+    #         'nsentences': subgraph.nsentences,
+    #         'ntokens': subgraph.ntokens,
+    #         'candidate_text_idx': candidate_text_idx,
+    #         'target2': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
+    #         'graph2': graph2,
+    #     }
 
     def __len__(self):
         return len(self.graph)

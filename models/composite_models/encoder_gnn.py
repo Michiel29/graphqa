@@ -40,7 +40,8 @@ class EncoderGNNModel(BaseFairseqModel):
     def forward(self, batch):
         # batch = {
         #   'text': list of n_chunks token tensors, sorted by ascending length -- shape (chunk_size, chunk_text_len)
-        #   'graph': list of tensors which are indices into text_enc -- len(batch['graph']) = n_targets * total_negatives, shape of each tensor is (m_i, 2)
+        #   'graph': Tensor of indices into text_enc. shape of tensor is (sum m_i, 2)
+        #   'graph_sizes': tensor of n_targets * n_candidates, length of each graph. Within target should be same len
         #   'candidate_text_idx': for each neighborhood, contains all candidates sentence idx including target sentences- tensor of shape n_targets by n_candidates
         #   'target': torch.zeros(n_targets)
         # }
@@ -52,14 +53,11 @@ class EncoderGNNModel(BaseFairseqModel):
         n_candidates = candidate_text_idx.shape[-1] # (n_targets, n_candidates)
         n_targets = len(candidate_text_idx)
 
-        graph_sizes = torch.tensor([len(g) for g in batch['graph']], dtype=torch.int64, device=device) # (n_targets)
+        graph_sizes = batch['graph_sizes']
 
-        graph_idx = torch.cat(batch['graph'], dim=0) # (sum(m_i), 2)
-        # graph_idx = graph_idx.unsqueeze(0).expand(n_candidates, -1, -1).reshape(-1) # (n_candidates * sum(m_i) * 2)
+        graph_idx = batch['graph']
 
         candidate_text_idx = candidate_text_idx.reshape(-1) # (n_targets * n_candidates)
-
-        # graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_candidates, -1).reshape(-1) # (n_targets * n_candidates)
 
         candidate_idx_range = torch.arange(n_targets * n_candidates, device=device) # (n_targets * n_candidates)
         put_indices = tuple(torch.repeat_interleave(candidate_idx_range, graph_sizes, dim=0).unsqueeze(0)) # (sum(m_i))
@@ -76,6 +74,59 @@ class EncoderGNNModel(BaseFairseqModel):
         scores = scores.reshape(n_targets, n_candidates) # (n_targets, n_candidates)
 
         return scores
+
+
+    # def forward(self, batch):
+    #     # batch = {
+    #     #   'text': list of n_chunks token tensors, sorted by ascending length -- shape (chunk_size, chunk_text_len)
+    #     #   'graph': list of tensors which are indices into text_enc -- len(batch['graph']) = n_targets, shape of each tensor is (m_i, 2)
+    #     #   'target_text_idx': indices into text_enc -- shape (n_targets)
+    #     #   'target': torch.arange(n_targets)
+    #     # }
+
+    #     text_enc = self.encode_text(batch['text'])
+    #     device = text_enc.device
+
+    #     target_text_idx = batch['target_text_idx']
+    #     n_targets = len(target_text_idx)
+    #     n_matches = n_targets ** 2
+
+    #     graph_sizes = torch.tensor([len(g) for g in batch['graph']], dtype=torch.int64, device=device) # (n_targets)
+
+    #     graph_idx = torch.cat(batch['graph'], dim=0) # (sum(m_i), 2)
+    #     graph_idx = graph_idx.unsqueeze(0).expand(n_targets, -1, -1).reshape(-1) # (n_targets * sum(m_i) * 2)
+
+    #     target_text_idx_expand = target_text_idx.unsqueeze(-1).expand(-1, n_targets).reshape(-1) # (n_targets ** 2)
+    #     graph_sizes_expand = graph_sizes.unsqueeze(0).expand(n_targets, -1).reshape(-1) # (n_targets ** 2)
+
+    #     target_idx_range = torch.arange(n_targets ** 2, device=device) # (n_targets ** 2)
+    #     put_indices = tuple(torch.repeat_interleave(target_idx_range, graph_sizes_expand, dim=0).unsqueeze(0)) # (n_targets * sum(m_i))
+
+    #     assert len(graph_idx) % 2 == 0
+    #     graph_rep = text_enc[graph_idx].reshape(len(graph_idx) // 2, 2, -1) # (n_targets * sum(m_i), 2, d)
+    #     target_rep = text_enc[target_text_idx_expand].unsqueeze(1) # (n_targets ** 2, 1, d)
+
+    #     for layer in self.gnn_layers:
+    #         target_rep_repeat = torch.repeat_interleave(target_rep, graph_sizes_expand, dim=0) # (n_targets * sum(m_i), 1, d)
+    #         layer_output = layer(target_rep_repeat, graph_rep).unsqueeze(-2) # (n_targets * sum(m_i), d)
+    #         target_rep = target_rep.index_put(put_indices, layer_output, accumulate=True) # (n_targets ** 2, d)
+
+    #     scores = self.mlp(target_rep) # (n_targets ** 2)
+    #     scores = scores.reshape(n_targets, n_targets) # (n_targets, n_targets) -- rows=texts, cols=graphs
+
+    #     if self.neg_type == 'graph':
+    #         pass
+    #     elif self.neg_type == 'text':
+    #         scores = scores.t()
+    #     elif self.neg_type == 'graph_text':
+    #         scores_graph = scores
+    #         mask = (1 - torch.eye(n_targets, device=device)).bool()
+    #         scores_text = torch.masked_select(scores_graph.t(), mask).reshape(n_targets, n_targets - 1) # (n_targets, n_target - 1)
+    #         scores = torch.cat((scores_graph, scores_text), dim=1) # (n_targets, 2*n_targets-1)
+    #     else:
+    #         raise Exception('neg_type {} does not exist'.format(self.neg_type))
+
+    #     return scores
 
     @staticmethod
     def add_args(parser):
