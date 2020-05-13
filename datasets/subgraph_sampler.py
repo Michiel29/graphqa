@@ -180,7 +180,6 @@ class SubgraphSampler(object):
                 return False
             if edge2 is not None:
                 x2, y2 = self._sample_ordered_pair(*edge2)
-                # TODO: make sure rs1 and rs2 don't intersects
                 rs2 = self._sample_relation_statement(x2, y2, local_intervals, (rs1.begin, rs1.end))
                 if rs2 is None:
                     return False
@@ -205,13 +204,15 @@ class SubgraphSampler(object):
                 n_b_exists = (n, tail) in self.entity_pairs
                 assert not(n_a_exists and n_b_exists)
                 if not n_a_exists and not n_b_exists:
-                    sample_new_relation_statements((head, n), (n, tail))
+                    result = sample_new_relation_statements((head, n), (n, tail))
                 elif not n_a_exists:
-                    sample_new_relation_statements((head, n))
+                    result = sample_new_relation_statements((head, n))
                 elif not n_b_exists:
-                    sample_new_relation_statements((n, tail))
+                    result = sample_new_relation_statements((n, tail))
                 else:
                     raise Exception('Impossible state')
+                if not result:
+                    continue
 
                 num_neighbors_added += 1
                 if cur_tokens >= max_tokens or cur_sentences >= max_sentences:
@@ -235,7 +236,9 @@ class SubgraphSampler(object):
         self._update_coverage(new_relation_statements)
 
         for rs in new_relation_statements:
-            self._update_entities_scores(self.get_coverage(rs.head, rs.tail).both_edges_missing)
+            coverage = self.get_coverage(rs.head, rs.tail)
+            if coverage is not None:
+                self._update_entities_scores(coverage.both_edges_missing)
         self._add_entities_with_the_highest_score()
         self._update_coverage()
         if (head, tail) in self.relation_statements:
