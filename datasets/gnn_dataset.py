@@ -140,12 +140,17 @@ class GNNDataset(FairseqDataset):
         graph_sizes = []
         candidate_text_idx = []
 
+        num_mutual_neighbors, num_skipped = 0, 0
+        num_mutual_negatives, num_single_negatives, num_weak_negatives = 0, 0, 0
+
         for a, b in subgraph.get_covered_edges():
             coverage = subgraph.get_coverage(a, b)
             mutual_neighbors = coverage.both_edges_in_subgraph
 
             if len(mutual_neighbors) < 2:
+                num_skipped += 1
                 continue
+            num_mutual_neighbors += len(mutual_neighbors)
 
             edge_subgraphs = []
             edge_candidate_idx = []
@@ -180,6 +185,7 @@ class GNNDataset(FairseqDataset):
                 for negative_text_idx in total_subgraph[mutual_idx]:
                     edge_subgraphs.append(negative_neighbor_subgraph)
                     edge_candidate_idx.append(negative_text_idx)
+                    num_mutual_negatives += 1
 
             # If not enough mutual negatives, try negatives with only single neighbor
             if 2 * n_mutual < self.max_hard_negatives:
@@ -194,6 +200,7 @@ class GNNDataset(FairseqDataset):
                         if pair in subgraph.get_relation_statements():
                             edge_subgraphs.append(target_subgraph)
                             edge_candidate_idx.append(index[pair])
+                            num_single_negatives += 1
                             edge_found = True
                             break
                     assert edge_found
@@ -203,15 +210,16 @@ class GNNDataset(FairseqDataset):
                 0,
                 min(
                     self.total_negatives - len(edge_candidate_idx) + 1,
-                    len(index) - len(edge_candidate_idx)
-                    )
-                )
+                    len(index) - len(edge_candidate_idx),
+                ),
+            )
             weak_neg_options = [pair_text_idx for pair_text_idx in index.values() if pair_text_idx not in edge_candidate_idx]
             weak_neg_choices = np.random.choice(weak_neg_options, size=n_weak_negatives, replace=False)
 
             for pair_text_idx in weak_neg_choices:
                 edge_subgraphs.append(target_subgraph)
                 edge_candidate_idx.append(pair_text_idx)
+                num_weak_negatives += 1
 
             graph_sizes.extend([len(g) for g in edge_subgraphs])
             graph.append(torch.LongTensor(edge_subgraphs).reshape(-1, 2))
@@ -222,7 +230,16 @@ class GNNDataset(FairseqDataset):
         graph_sizes = torch.LongTensor(graph_sizes)
         candidate_text_idx = torch.LongTensor(candidate_text_idx)
 
-        return graph, graph_sizes, candidate_text_idx
+        num_positive_examples = float(len(candidate_text_idx))
+        logging_output = {
+            'n_mutual_neg': num_mutual_negatives / num_positive_examples,
+            'n_single_neg': num_single_negatives / num_positive_examples,
+            'n_weak_neg': num_weak_negatives / num_positive_examples,
+            'n_mutual_neighbors': num_mutual_neighbors / num_positive_examples,
+            'num_skipped': float(num_skipped),
+        }
+
+        return graph, graph_sizes, candidate_text_idx, logging_output
 
     def __getitem__(self, index):
         with numpy_seed('GNNDataset', self.seed, self.epoch, index):
@@ -237,9 +254,9 @@ class GNNDataset(FairseqDataset):
                 subgraph = self._sample_subgraph(text_index)
 
         sentences, text_index = self._get_all_sentences_and_index(subgraph)
-        graph, graph_sizes, candidate_text_idx = self._make_negatives(subgraph, text_index)
+        graph, graph_sizes, candidate_text_idx, logging_output = self._make_negatives(subgraph, text_index)
 
-        return {
+        item = {
             'text': sentences,
             'graph': graph,
             'graph_sizes': graph_sizes,
@@ -250,6 +267,8 @@ class GNNDataset(FairseqDataset):
             'nsentences': subgraph.nsentences,
             'ntokens': subgraph.ntokens,
         }
+        item.update(logging_output)
+        return item
 
     def __len__(self):
         return len(self.graph)

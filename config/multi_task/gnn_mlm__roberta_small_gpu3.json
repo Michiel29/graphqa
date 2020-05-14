@@ -21,6 +21,8 @@
             "max_entities_from_queue": 5,
             "num_text_chunks": 4,
             "min_common_neighbors_for_the_last_edge": 1,
+            "total_negatives": 100,
+            "max_hard_negatives": 50,
 
             "non_mask_rate": 0.1,
             "subsampling_strategy": "by_entity_pair",
@@ -85,6 +87,5 @@
     "update_freq": null,
     "max_tokens": 12000,
 
-    "fp16": true,
     "validate_before_training": false
 }

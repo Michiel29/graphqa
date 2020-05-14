@@ -190,13 +190,10 @@ class GNNTask(BaseTask):
 
     def get_sample_size(self, batch, sizes):
         if self.sample_sizes_mean is None:
-            try:
-                assert len(self.datasets['train']) >= self.NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE
-                sample_sizes = []
-                for i in range(self.NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE):
-                    current_sample_size = len(self.datasets['train'][i]['target_text_idx'])
-                    sample_sizes.append(current_sample_size)
-                self.sample_sizes_mean = float(sum(sample_sizes)) / len(sample_sizes)
-            except:
-                return len(batch)
+            assert len(self.datasets['train']) >= self.NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE
+            sample_sizes = []
+            for i in range(self.NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE):
+                current_sample_size = len(self.datasets['train'][i]['candidate_text_idx'])
+                sample_sizes.append(current_sample_size)
+            self.sample_sizes_mean = float(sum(sample_sizes)) / len(sample_sizes)
         return int(self.sample_sizes_mean * len(batch))

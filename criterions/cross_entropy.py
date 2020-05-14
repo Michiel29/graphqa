@@ -58,10 +58,9 @@ class CrossEntropy(FairseqCriterion):
         if 'ntokens_mem' in sample.keys():
             logging_output['ntokens_mem'] = sample['ntokens_mem']
         if 'yield' in sample.keys():
-            logging_output['yield'] = sample['yield']
-        if 'rel_cov' in sample.keys():
-            logging_output['rel_cov'] = sample['rel_cov']
-
+            keys = ['yield', 'rel_cov', 'n_mutual_neg', 'n_single_neg', 'n_weak_neg', 'n_mutual_neighbors', 'num_skipped']
+            for key in keys:
+                logging_output[key] = sample[key]
 
         logging_output = self.task.reporter(target, pred, logging_output)
 
@@ -87,21 +86,20 @@ class CrossEntropy(FairseqCriterion):
                 round=3,
             )
 
-        if 'yield' in logging_outputs[0].keys():
+        if prefix + 'yield' in logging_outputs[0].keys():
             def get_value(log, key):
                 if key not in log:
                     return None
                 else:
-                    return utils.item(log[key]) / utils.item(log['num_updates'])
+                    return utils.item(log[prefix + key]) / utils.item(log[prefix + 'num_updates'])
 
-            yield_pct = np.array(list(
-                filter(None, [get_value(log, 'yield') for log in logging_outputs])
-            ))
-            rel_cov = np.array(list(
-                filter(None, [get_value(log, 'rel_cov') for log in logging_outputs])
-            ))
-            metrics.log_scalar(prefix + 'yield', yield_pct.mean(), priority=100, round=3)
-            metrics.log_scalar(prefix + 'rel_cov', rel_cov.mean(), priority=100, round=3)
+            keys = ['yield', 'rel_cov', 'n_mutual_neg', 'n_single_neg', 'n_weak_neg', 'n_mutual_neighbors', 'num_skipped']
+            for key in keys:
+                value = np.array(list(
+                    filter(None, [get_value(log, key) for log in logging_outputs])
+                ))
+                if len(value) > 0:
+                    metrics.log_scalar(prefix + key, value.mean(), priority=100, round=3)
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
