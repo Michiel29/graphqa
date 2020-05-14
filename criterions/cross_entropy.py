@@ -87,8 +87,8 @@ class CrossEntropy(FairseqCriterion):
             )
 
         if prefix + 'yield' in logging_outputs[0].keys():
-            def get_value(log, key):
-                if key not in log:
+            def get_value(log, key, prefix):
+                if prefix + key not in log or log[prefix + 'num_updates'] == 0:
                     return None
                 else:
                     return utils.item(log[prefix + key]) / utils.item(log[prefix + 'num_updates'])
@@ -96,7 +96,7 @@ class CrossEntropy(FairseqCriterion):
             keys = ['yield', 'rel_cov', 'n_mutual_neg', 'n_single_neg', 'n_weak_neg', 'n_mutual_neighbors', 'num_skipped']
             for key in keys:
                 value = np.array(list(
-                    filter(None, [get_value(log, key) for log in logging_outputs])
+                    filter(None, [get_value(log, key, prefix) for log in logging_outputs])
                 ))
                 if len(value) > 0:
                     metrics.log_scalar(prefix + key, value.mean(), priority=100, round=3)

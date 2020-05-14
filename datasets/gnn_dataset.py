@@ -150,7 +150,9 @@ class GNNDataset(FairseqDataset):
             if len(mutual_neighbors) < 2:
                 num_skipped += 1
                 continue
-            num_mutual_neighbors += len(mutual_neighbors)
+
+            n_mutual = len(mutual_neighbors)
+            num_mutual_neighbors += n_mutual
 
             edge_subgraphs = []
             edge_candidate_idx = []
@@ -162,8 +164,6 @@ class GNNDataset(FairseqDataset):
                 ))
 
             total_subgraph = np.array(total_subgraph)
-
-            n_mutual = len(mutual_neighbors)
 
             target_leave_out = np.random.randint(n_mutual)
             target_text_idx = index[(a, b)]
@@ -225,19 +225,22 @@ class GNNDataset(FairseqDataset):
             graph.append(torch.LongTensor(edge_subgraphs).reshape(-1, 2))
             candidate_text_idx.append(edge_candidate_idx)
 
-        if len(graph) > 0:
-            graph = torch.cat(graph, dim=0)
+
         graph_sizes = torch.LongTensor(graph_sizes)
         candidate_text_idx = torch.LongTensor(candidate_text_idx)
-
         num_positive_examples = float(len(candidate_text_idx))
-        logging_output = {
-            'n_mutual_neg': num_mutual_negatives / num_positive_examples,
-            'n_single_neg': num_single_negatives / num_positive_examples,
-            'n_weak_neg': num_weak_negatives / num_positive_examples,
-            'n_mutual_neighbors': num_mutual_neighbors / num_positive_examples,
-            'num_skipped': float(num_skipped),
-        }
+
+        if len(graph) > 0:
+            graph = torch.cat(graph, dim=0)
+            logging_output = {
+                'n_mutual_neg': num_mutual_negatives / num_positive_examples,
+                'n_single_neg': num_single_negatives / num_positive_examples,
+                'n_weak_neg': num_weak_negatives / num_positive_examples,
+                'n_mutual_neighbors': num_mutual_neighbors / num_positive_examples,
+                'num_skipped': float(num_skipped),
+            }
+        else:
+            logging_output = {}
 
         return graph, graph_sizes, candidate_text_idx, logging_output
 
