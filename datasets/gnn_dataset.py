@@ -224,7 +224,6 @@ class GNNDataset(FairseqDataset):
 
         return graph, graph_sizes, candidate_text_idx
 
-    # @profile
     def __getitem__(self, index):
         with numpy_seed('GNNDataset', self.seed, self.epoch, index):
             subgraph = self._sample_subgraph(index)
@@ -251,50 +250,6 @@ class GNNDataset(FairseqDataset):
             'nsentences': subgraph.nsentences,
             'ntokens': subgraph.ntokens,
         }
-
-    # def __getitem__(self, index):
-
-    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
-    #         subgraph = self._sample_subgraph(index)
-    #         while subgraph is None:
-    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
-    #             #     self.seed,
-    #             #     self.epoch,
-    #             #     index,
-    #             # ))
-    #             text_index = np.random.randint(len(self.graph))
-    #             subgraph = self._sample_subgraph(text_index)
-
-    #     sentences, text_index = self._get_all_sentences_and_index(subgraph)
-    #     graph2, candidate_text_idx = self._make_negatives(subgraph, text_index)
-
-    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
-    #         subgraph = self._sample_subgraph(index)
-    #         while subgraph is None:
-    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
-    #             #     self.seed,
-    #             #     self.epoch,
-    #             #     index,
-    #             # ))
-    #             index = np.random.randint(len(self.graph))
-    #             subgraph = self._sample_subgraph(index)
-
-    #     sentences, index = self._get_all_sentences_and_index(subgraph)
-    #     graph, target_text_idx = self._get_edge_tuples(subgraph, index)
-
-    #     return {
-    #         'text': sentences,
-    #         'graph': graph,
-    #         'target_text_idx': target_text_idx,
-    #         'target': torch.arange(len(target_text_idx)),
-    #         'yield': subgraph.get_yield(),
-    #         'rel_cov': subgraph.get_relative_coverages_mean(),
-    #         'nsentences': subgraph.nsentences,
-    #         'ntokens': subgraph.ntokens,
-    #         'candidate_text_idx': candidate_text_idx,
-    #         'target2': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
-    #         'graph2': graph2,
-    #     }
 
     def __len__(self):
         return len(self.graph)
