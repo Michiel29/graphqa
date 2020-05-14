@@ -11,7 +11,6 @@
         "layer_norm": true,
         "n_gnn_layers": 1
     },
-    "neg_type": "graph_text",
     "layer_sizes": [[256, 1], [1, 1]],
     "gnn_mlp_layer_norm": true,
     "entity_dim": 256,

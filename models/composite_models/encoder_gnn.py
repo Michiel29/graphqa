@@ -27,7 +27,6 @@ class EncoderGNNModel(BaseFairseqModel):
         ])
         final_gnn_layer_dim = args.gnn_layer_args['layer_sizes'][-1][0]
         self.mlp = MLP_factory([[final_gnn_layer_dim, 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
-        self.neg_type = args.neg_type
 
     def encode_text(self, text_chunks):
         text_enc = []

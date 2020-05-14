@@ -16,7 +16,6 @@
                 "n_gnn_layers": 1
             },
             "gnn_mlp_layer_norm": true,
-            "neg_type": "graph_text",
             "layer_sizes": [[256, 1], [1, 1]],
             "min_common_neighbors": 10,
             "max_common_neighbors": 10,
