@@ -1,4 +1,6 @@
+from collections import namedtuple
 import heapq
+from intervaltree import IntervalTree
 import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -18,6 +20,9 @@ def item(tensor):
         return tensor.item()
     else:
         return tensor
+
+
+RelationStatement = namedtuple('RelationStatement', ['head', 'tail', 'sentence', 'begin', 'end'])
 
 
 class SubgraphSampler(object):
@@ -45,15 +50,19 @@ class SubgraphSampler(object):
 
         self.entity_score = []
         self.entity_coverage = {}
+        self.intervals = IntervalTree()
 
     def _update_coverage(self, new_relation_statements=None):
+        new_relation_statements_tmp = None
+        if new_relation_statements is not None:
+            new_relation_statements_tmp = [(rs.head, rs.tail) for rs in new_relation_statements]
         update_coverage(
             self.graph,
             self.entities,
             self.entity_pairs,
             self.coverage,
             self.min_common_neighbors,
-            new_relation_statements,
+            new_relation_statements_tmp,
         )
 
     def get_coverage(self, a, b):
@@ -81,11 +90,13 @@ class SubgraphSampler(object):
             heapq.heappush(self.entity_score, (-score, entity))
 
     def _add_relation_statements(self, relation_statements):
-        for (a, b, sentence) in relation_statements:
-            self.entities.update([a, b])
-            self.entity_pairs.update([(a, b), (b, a)])
-            self.relation_statements[(a, b)] = sentence
-            self.ntokens += len(sentence)
+        for rs in relation_statements:
+            self.entities.update([rs.head, rs.tail])
+            self.entity_pairs.update([(rs.head, rs.tail), (rs.tail, rs.head)])
+            self.relation_statements[(rs.head, rs.tail)] = rs.sentence
+            assert len(self.intervals.overlap(rs.begin, rs.end)) == 0
+            self.intervals.addi(rs.begin, rs.end, None)
+            self.ntokens += len(rs.sentence)
             self.nsentences += 1
 
     def add_initial_entity_pair(self, a, b, max_tokens, max_sentences, sentence):
@@ -95,14 +106,49 @@ class SubgraphSampler(object):
         coverage = self.get_coverage(a, b)
         if coverage.num_total_neighbors == 0:
             return False
-        return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1, sentence)
+        return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1)
 
-    def _sample_sentence(self, head_entity, tail_entity):
+    def intervals_overlap(self, i1, i2):
+        if i1[0] <= i2[0] and i2[0] < i1[1]:
+            return True
+        if i2[0] <= i1[0] and i1[0] < i2[1]:
+            return True
+        return False
+
+    def _sample_relation_statement(self, head_entity, tail_entity, local_intervals, local_interval=None):
         edges = self.graph.edges[head_entity].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
         left = np.searchsorted(edges[:, GraphDataset.TAIL_ENTITY], tail_entity, side='left')
         right = np.searchsorted(edges[:, GraphDataset.TAIL_ENTITY], tail_entity, side='right')
-        index = np.random.randint(left, right)
-        return self.annotated_text.annotate(*edges[index])
+        indices = np.arange(left, right)
+        np.random.shuffle(indices)
+
+        at_least_a_single_edge_exists = False
+        for index in indices:
+            begin = edges[index][GraphDataset.START_BLOCK]
+            end = edges[index][GraphDataset.END_BLOCK]
+            if len(self.intervals.overlap(begin, end)) > 0:
+                continue
+            at_least_a_single_edge_exists = True
+            if (
+                len(local_intervals.overlap(begin, end)) == 0
+                and (local_interval is None or not self.intervals_overlap((begin, end), local_interval))
+            ):
+                return RelationStatement(
+                    head=head_entity,
+                    tail=tail_entity,
+                    sentence=self.annotated_text.annotate(*edges[index]),
+                    begin=begin,
+                    end=end,
+                )
+
+        # TODO: Clean up some of the edges
+        # if not at_least_a_single_edge_exists:
+        #     # None of the edges between head and tail entities can be used.
+        #     # Therefore, we might as well drop their connection
+        #     x, y = min(head_entity, tail_entity), max(head_entity, tail_entity)
+        #     if (x, y) in self.coverage and not ((x, y) in self.relation_statements or (y, x) in self.relation_statements):
+        #         self.coverage[(x, y)] = None
+        return None
 
     def try_add_entity_pair_with_neighbors(
         self,
@@ -111,7 +157,6 @@ class SubgraphSampler(object):
         max_tokens,
         max_sentences,
         min_neighbors_to_add,
-        sentence=None,
     ):
         head, tail = item(head), item(tail)
         assert head in self.entities and tail in self.entities
@@ -119,56 +164,87 @@ class SubgraphSampler(object):
         coverage = self.get_coverage(head, tail)
         if coverage.num_total_neighbors == 0:
             return False
-
-        _, neighbors_to_add = coverage.cost()
-
         num_neighbors_added = len(coverage.both_edges_in_subgraph)
+
         cur_tokens, cur_sentences = 0, 0
         new_relation_statements = []
+        local_intervals = IntervalTree()
 
-        def sample_new_relation_statement(x, y, sentence=None, shall_sample_ordered_pair=True):
+        def sample_new_relation_statements(edge1, edge2=None):
             nonlocal cur_sentences
             nonlocal cur_tokens
-            if shall_sample_ordered_pair:
-                x, y = self._sample_ordered_pair(x, y)
-            if sentence is None:
-                sentence = self._sample_sentence(x, y)
-            new_relation_statements.append((x, y, sentence))
-            cur_tokens += len(sentence)
+            nonlocal local_intervals
+            x1, y1 = self._sample_ordered_pair(*edge1)
+            rs1 = self._sample_relation_statement(x1, y1, local_intervals)
+            if rs1 is None:
+                return False
+            if edge2 is not None:
+                x2, y2 = self._sample_ordered_pair(*edge2)
+                rs2 = self._sample_relation_statement(x2, y2, local_intervals, (rs1.begin, rs1.end))
+                if rs2 is None:
+                    return False
+            new_relation_statements.append(rs1)
+            cur_tokens += len(rs1.sentence)
             cur_sentences += 1
+            local_intervals.addi(rs1.begin, rs1.end, None)
+            if edge2 is not None:
+                new_relation_statements.append(rs2)
+                cur_tokens += len(rs2.sentence)
+                cur_sentences += 1
+                local_intervals.addi(rs2.begin, rs2.end, None)
+            return True
 
         if (head, tail) not in self.entity_pairs:
-            sample_new_relation_statement(head, tail, sentence, False)
+            if not sample_new_relation_statements((head, tail)):
+                return False
 
-        for n in neighbors_to_add:
-            n_a_exists = (head, n) in self.entity_pairs
-            n_b_exists = (n, tail) in self.entity_pairs
-            assert not(n_a_exists and n_b_exists)
-            if not n_a_exists:
-                sample_new_relation_statement(head, n)
-            if not n_b_exists:
-                sample_new_relation_statement(n, tail)
-            num_neighbors_added += 1
-            if cur_tokens >= max_tokens or cur_sentences >= max_sentences:
-                # NOTE: We keep the last (a, n) and (n, b) entity pairs
-                # even though it might to lead to more tokens than max_tokens
-                # and/or more sentences than max_sentences.
-                if num_neighbors_added < min_neighbors_to_add:
-                    # We have failed to add enough edges for the entity pair (a, b).
-                    # Thus, we discard all new_relation_statements
-                    return False
+        if num_neighbors_added < self.min_common_neighbors:
+            for n in self._generate_neighbors_to_add(head, tail):
+                n_a_exists = (head, n) in self.entity_pairs
+                n_b_exists = (n, tail) in self.entity_pairs
+                assert not(n_a_exists and n_b_exists)
+                if not n_a_exists and not n_b_exists:
+                    result = sample_new_relation_statements((head, n), (n, tail))
+                elif not n_a_exists:
+                    result = sample_new_relation_statements((head, n))
+                elif not n_b_exists:
+                    result = sample_new_relation_statements((n, tail))
                 else:
+                    raise Exception('Impossible state')
+                if not result:
+                    continue
+
+                num_neighbors_added += 1
+                if cur_tokens >= max_tokens or cur_sentences >= max_sentences:
+                    # NOTE: We keep the last (a, n) and (n, b) entity pairs
+                    # even though it might to lead to more tokens than max_tokens
+                    # and/or more sentences than max_sentences.
+                    if num_neighbors_added < min_neighbors_to_add:
+                        # We have failed to add enough edges for the entity pair (a, b).
+                        # Thus, we discard all new_relation_statements
+                        return False
+                    else:
+                        break
+
+                if num_neighbors_added >= self.min_common_neighbors:
                     break
 
-        assert num_neighbors_added >= min_neighbors_to_add
+        if num_neighbors_added < min_neighbors_to_add:
+            return False
+
         self._add_relation_statements(new_relation_statements)
         self._update_coverage(new_relation_statements)
 
-        for (a, b, _) in new_relation_statements:
-            self._update_entities_scores(self.get_coverage(a, b).both_edges_missing)
+        for rs in new_relation_statements:
+            coverage = self.get_coverage(rs.head, rs.tail)
+            if coverage is not None:
+                self._update_entities_scores(coverage.both_edges_missing)
         self._add_entities_with_the_highest_score()
         self._update_coverage()
-        self.covered_entity_pairs.add((head, tail))
+        if (head, tail) in self.relation_statements:
+            self.covered_entity_pairs.add((head, tail))
+        else:
+            self.covered_entity_pairs.add((tail, head))
         return True
 
     def _generate_entity_pair_candidates(self):
@@ -185,7 +261,7 @@ class SubgraphSampler(object):
         entity_pair_best, cost_to_add_best = [], None
 
         for entity_pair, coverage in self._generate_entity_pair_candidates():
-            current_cost, neighbors_to_add = coverage.cost()
+            current_cost = coverage.cost()
             if cost_to_add_best is None or cost_to_add_best > current_cost:
                 entity_pair_best = [entity_pair]
                 cost_to_add_best = current_cost
@@ -197,6 +273,17 @@ class SubgraphSampler(object):
         else:
             index = np.random.randint(len(entity_pair_best))
             return entity_pair_best[index], cost_to_add_best
+
+    def _generate_neighbors_to_add(self, a, b):
+        coverage = self.get_coverage(a, b)
+        neighbors = np.array([x for x in coverage.single_edge_missing], dtype=np.int64)
+        np.random.shuffle(neighbors)
+        for n in neighbors:
+            yield n
+        neighbors = np.array([x for x in coverage.both_edges_missing], dtype=np.int64)
+        np.random.shuffle(neighbors)
+        for n in neighbors:
+            yield n
 
     def _sample_ordered_pair(self, a_or_a_b, b=None):
         if b is None:
@@ -215,24 +302,25 @@ class SubgraphSampler(object):
             if only_accept_zero_cost and cost > 0:
                 break
 
-            a, b = self._sample_ordered_pair(entity_pair)
-
             successfully_added = self.try_add_entity_pair_with_neighbors(
-                a,
-                b,
+                entity_pair[0],
+                entity_pair[1],
                 max_tokens,
                 max_sentences,
                 min_common_neighbors_for_the_last_edge,
             )
-            if only_accept_zero_cost:
-                assert successfully_added
 
-            if (
-                not successfully_added
-                or self.ntokens >= max_tokens
-                or self.nsentences >= max_sentences
-            ):
+            # if only_accept_zero_cost:
+            #     assert successfully_added
+
+            if not successfully_added:
+                assert entity_pair in self.coverage
+                # We cannot consider this entity pair as possible target edge
+                self.coverage[entity_pair] = None
+
+            if self.ntokens >= max_tokens or self.nsentences >= max_sentences:
                 only_accept_zero_cost = True
+
         return True
 
     def relative_coverages(self):

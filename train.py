@@ -20,7 +20,7 @@ import numpy as np
 import torch
 # Workaround for the exception "RuntimeError: received 0 items of ancdata",
 # e.g. see https://github.com/pytorch/pytorch/issues/973
-torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 from fairseq import (
     checkpoint_utils, criterions, distributed_utils, metrics, options, progress_bar, tasks, utils
@@ -430,6 +430,8 @@ def cli_main():
         help='run training in the debugging mode',
     )
     parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
+    parser.add_argument('--torch-file-system', action='store_true')
+
     pre_parsed_args, unknown = parser.parse_known_args()
 
     config_dict = {}
@@ -441,6 +443,10 @@ def cli_main():
     args = options.parse_args_and_arch(parser, modify_parser=parser_modifier)
 
     update_namespace(args, config_dict)
+
+    # set sharing strategy file system in case /dev/shm/ limits are small
+    if args.torch_file_system:
+        torch.multiprocessing.set_sharing_strategy('file_system')
 
     training_name = get_training_name(args)
     base_save_dir = generate_save_dir(args, training_name, sys.argv[1:])
@@ -482,6 +488,8 @@ def cli_main():
             args=(args, ),
             nprocs=args.distributed_world_size,
         )
+
+
     else:
         # single GPU training
         main(args)

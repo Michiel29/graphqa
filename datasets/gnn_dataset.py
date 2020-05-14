@@ -26,6 +26,8 @@ class GNNDataset(FairseqDataset):
         min_common_neighbors_for_the_last_edge,
         max_entities_size,
         max_entities_from_queue,
+        total_negatives,
+        max_hard_negatives,
         max_tokens,
         max_sentences,
         num_text_chunks,
@@ -34,11 +36,16 @@ class GNNDataset(FairseqDataset):
         self.annotated_text = annotated_text
         self.graph = graph
         self.dictionary = dictionary
+
         self.min_common_neighbors = min_common_neighbors
         self.max_common_neighbors = max_common_neighbors
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
+
+        self.total_negatives = total_negatives
+        self.max_hard_negatives = max_hard_negatives
+
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.num_text_chunks = num_text_chunks
@@ -128,6 +135,96 @@ class GNNDataset(FairseqDataset):
         target_text_idx = torch.LongTensor(target_text_idx)
         return graph, target_text_idx
 
+    def _make_negatives(self, subgraph, index):
+        graph = []
+        graph_sizes = []
+        candidate_text_idx = []
+
+        for a, b in subgraph.get_covered_edges():
+            coverage = subgraph.get_coverage(a, b)
+            mutual_neighbors = coverage.both_edges_in_subgraph
+
+            if len(mutual_neighbors) < 2:
+                continue
+
+            edge_subgraphs = []
+            edge_candidate_idx = []
+            total_subgraph = []
+            for c in mutual_neighbors:
+                total_subgraph.append((
+                    index[self._get_ordered_edge(subgraph, a, c)],
+                    index[self._get_ordered_edge(subgraph, c, b)],
+                ))
+
+            total_subgraph = np.array(total_subgraph)
+
+            n_mutual = len(mutual_neighbors)
+
+            target_leave_out = np.random.randint(n_mutual)
+            target_text_idx = index[(a, b)]
+
+            target_neighbor_indices = [i for i in range(n_mutual) if i != target_leave_out]
+            target_subgraph = total_subgraph[target_neighbor_indices]
+            edge_subgraphs.append(target_subgraph)
+            edge_candidate_idx.append(target_text_idx)
+
+            if n_mutual * 2 > self.max_hard_negatives:
+                mutual_indices = np.random.choice(n_mutual, size=self.max_hard_negatives // 2, replace=False)
+            else:
+                mutual_indices = range(n_mutual)
+
+            for mutual_idx in mutual_indices:
+                negative_neighbor_indices = [i for i in range(n_mutual) if i != mutual_idx]
+                negative_neighbor_subgraph = total_subgraph[negative_neighbor_indices]
+
+                for negative_text_idx in total_subgraph[mutual_idx]:
+                    edge_subgraphs.append(negative_neighbor_subgraph)
+                    edge_candidate_idx.append(negative_text_idx)
+
+            # If not enough mutual negatives, try negatives with only single neighbor
+            if 2 * n_mutual < self.max_hard_negatives:
+
+                neighbors = list(coverage.single_edge_missing)
+                n_single_neighbor_negatives = max(0, min(len(neighbors), self.max_hard_negatives - 2 * n_mutual))
+
+                neighbor_choice = np.random.choice(neighbors, size=n_single_neighbor_negatives, replace=False)
+
+                for neighbor in neighbor_choice:
+                    for pair in [(a, neighbor), (b, neighbor), (neighbor, a), (neighbor, b)]:
+                        if pair in subgraph.get_relation_statements():
+                            edge_subgraphs.append(target_subgraph)
+                            edge_candidate_idx.append(index[pair])
+                            edge_found = True
+                            break
+                    assert edge_found
+
+            # Finally, add weak negatives
+            n_weak_negatives = max(
+                0,
+                min(
+                    self.total_negatives - len(edge_candidate_idx) + 1,
+                    len(index) - len(edge_candidate_idx)
+                    )
+                )
+            weak_neg_options = [pair_text_idx for pair_text_idx in index.values() if pair_text_idx not in edge_candidate_idx]
+            weak_neg_choices = np.random.choice(weak_neg_options, size=n_weak_negatives, replace=False)
+
+            for pair_text_idx in weak_neg_choices:
+                edge_subgraphs.append(target_subgraph)
+                edge_candidate_idx.append(pair_text_idx)
+
+            graph_sizes.extend([len(g) for g in edge_subgraphs])
+            graph.append(torch.LongTensor(edge_subgraphs).reshape(-1, 2))
+            candidate_text_idx.append(edge_candidate_idx)
+
+        if len(graph) > 0:
+            graph = torch.cat(graph, dim=0)
+        graph_sizes = torch.LongTensor(graph_sizes)
+        candidate_text_idx = torch.LongTensor(candidate_text_idx)
+
+        return graph, graph_sizes, candidate_text_idx
+
+    # @profile
     def __getitem__(self, index):
         with numpy_seed('GNNDataset', self.seed, self.epoch, index):
             subgraph = self._sample_subgraph(index)
@@ -137,22 +234,67 @@ class GNNDataset(FairseqDataset):
                 #     self.epoch,
                 #     index,
                 # ))
-                index = np.random.randint(len(self.graph))
-                subgraph = self._sample_subgraph(index)
+                text_index = np.random.randint(len(self.graph))
+                subgraph = self._sample_subgraph(text_index)
 
-        sentences, index = self._get_all_sentences_and_index(subgraph)
-        graph, target_text_idx = self._get_edge_tuples(subgraph, index)
+        sentences, text_index = self._get_all_sentences_and_index(subgraph)
+        graph, graph_sizes, candidate_text_idx = self._make_negatives(subgraph, text_index)
 
         return {
             'text': sentences,
             'graph': graph,
-            'target_text_idx': target_text_idx,
-            'target': torch.arange(len(target_text_idx)),
+            'graph_sizes': graph_sizes,
+            'candidate_text_idx': candidate_text_idx,
+            'target': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
             'yield': subgraph.get_yield(),
             'rel_cov': subgraph.get_relative_coverages_mean(),
             'nsentences': subgraph.nsentences,
             'ntokens': subgraph.ntokens,
         }
+
+    # def __getitem__(self, index):
+
+    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
+    #         subgraph = self._sample_subgraph(index)
+    #         while subgraph is None:
+    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
+    #             #     self.seed,
+    #             #     self.epoch,
+    #             #     index,
+    #             # ))
+    #             text_index = np.random.randint(len(self.graph))
+    #             subgraph = self._sample_subgraph(text_index)
+
+    #     sentences, text_index = self._get_all_sentences_and_index(subgraph)
+    #     graph2, candidate_text_idx = self._make_negatives(subgraph, text_index)
+
+    #     with numpy_seed('GNNDataset', self.seed, self.epoch, index):
+    #         subgraph = self._sample_subgraph(index)
+    #         while subgraph is None:
+    #             # logging.warning('Failed to sample subgraph for [seed=%d, epoch=%d, index=%d]' % (
+    #             #     self.seed,
+    #             #     self.epoch,
+    #             #     index,
+    #             # ))
+    #             index = np.random.randint(len(self.graph))
+    #             subgraph = self._sample_subgraph(index)
+
+    #     sentences, index = self._get_all_sentences_and_index(subgraph)
+    #     graph, target_text_idx = self._get_edge_tuples(subgraph, index)
+
+    #     return {
+    #         'text': sentences,
+    #         'graph': graph,
+    #         'target_text_idx': target_text_idx,
+    #         'target': torch.arange(len(target_text_idx)),
+    #         'yield': subgraph.get_yield(),
+    #         'rel_cov': subgraph.get_relative_coverages_mean(),
+    #         'nsentences': subgraph.nsentences,
+    #         'ntokens': subgraph.ntokens,
+    #         'candidate_text_idx': candidate_text_idx,
+    #         'target2': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
+    #         'graph2': graph2,
+    #     }
 
     def __len__(self):
         return len(self.graph)
@@ -168,4 +310,6 @@ class GNNDataset(FairseqDataset):
         if len(samples) == 0:
             return None
         assert len(samples) == 1
+        if len(samples[0]['graph']) == 0:
+            return None
         return samples[0]

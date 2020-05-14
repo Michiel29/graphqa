@@ -26,7 +26,6 @@ cdef class NeighborhoodCoverage(object):
     cdef public set both_edges_missing
 
     cdef int _cost
-    cdef DTYPE_t[:] neighbors_to_add
 
     def __init__(
         self,
@@ -97,7 +96,6 @@ cdef class NeighborhoodCoverage(object):
 
     cdef _reset_cost(self):
         self._cost = -1
-        self.neighbors_to_add = np.array([], dtype=np.int64)
 
     cdef _update_neighbor(self, n):
             if n in self.both_edges_missing:
@@ -124,7 +122,6 @@ cdef class NeighborhoodCoverage(object):
             self._update_neighbor(next(iter(n)))
 
     cdef _compute_cost(self):
-        cdef int neighbors_to_add_tmp
         cdef int target_num_of_common_neighbors
         cdef int num_common_neighbors_to_cover
 
@@ -138,35 +135,20 @@ cdef class NeighborhoodCoverage(object):
             0,
         )
 
-        if num_common_neighbors_to_cover == 0:
-            self.neighbors_to_add = np.array([], dtype=np.int64)
-        else:
-            self.neighbors_to_add = np.array([x for x in self.single_edge_missing], dtype=np.int64)
-            self._cost = len(self.single_edge_missing)
-            if self.neighbors_to_add.size > num_common_neighbors_to_cover:
-                self.neighbors_to_add = np.random.choice(
-                    self.neighbors_to_add,
-                    num_common_neighbors_to_cover,
-                    replace=False,
-                )
+        if num_common_neighbors_to_cover > 0:
+            if len(self.single_edge_missing) > num_common_neighbors_to_cover:
                 self._cost = num_common_neighbors_to_cover
-            elif self.neighbors_to_add.size < num_common_neighbors_to_cover:
-                neighbors_to_add_tmp = num_common_neighbors_to_cover - len(self.neighbors_to_add)
-                self.neighbors_to_add = np.concatenate([
-                    self.neighbors_to_add,
-                    np.random.choice(
-                        np.array([x for x in self.both_edges_missing], dtype=np.int64),
-                        neighbors_to_add_tmp,
-                        replace=False,
-                    ),
-                ])
+            else:
+                self._cost = len(self.single_edge_missing)
+                neighbors_to_add_tmp = num_common_neighbors_to_cover - len(self.single_edge_missing)
                 self._cost += 2 * neighbors_to_add_tmp
+
         self._cost += int(self.head_tail_in_subgraph)
 
     def cost(self):
         if self._cost == -1:
             self._compute_cost()
-        return self._cost, self.neighbors_to_add
+        return self._cost
 
     def relative_coverage(self):
         if self.num_total_neighbors == 0:
@@ -205,5 +187,5 @@ def update_coverage(
                         min_common_neighbors=min_common_neighbors,
                     )
             elif coverage_dict[(a, b)] is not None and new_relation_statements is not None:
-                for (new_a, new_b, _) in new_relation_statements:
+                for new_a, new_b in new_relation_statements:
                     coverage_dict[(a, b)].add_entity_pair(set([new_a, new_b]))
