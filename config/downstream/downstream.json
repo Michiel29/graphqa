@@ -4,9 +4,19 @@
     "mask_type": "start_end",
 
     "n_train_examples": null,
+    // "n_train_examples": 5000,
     "n_valid_examples": null,
+    // "n_valid_examples": 5000,
 
     "epoch_interval": 1,
+    // "max_epoch": 10,
+    "max_epoch": 2,
+    // "pct_train_examples": [1, 10, 20, 50, 100],
+    "pct_train_examples": [1, 10],
+    // "n_train_relations": [5, 16, 32, 64],
+    "n_train_relations": [5, 6],
+    // "n_train_examples_per_relation": [5, 20, 80, 320, 700],
+    "n_train_examples_per_relation": [5, 6],
 
     "multi_class": "multinomial",
     "solver": "saga",
@@ -21,5 +31,6 @@
     "mp_verbose": 1,
 
     "num_workers_sklearn": 10,
-    "num_workers": 2
+    // "num_workers": 2
+    "num_workers": 0
 }

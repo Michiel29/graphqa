@@ -259,7 +259,10 @@ def train(args, trainer, task, epoch_itr):
 
     # log end-of-epoch stats
     stats = get_training_stats(agg.get_smoothed_values())
-    progress.print(stats, tag='train', step=num_updates)
+    try:
+        progress.print(stats, tag='train', step=num_updates, log=False)
+    except:
+        progress.print(stats, tag='train', step=num_updates)
 
     # reset epoch-level meters
     metrics.reset_meters('train')

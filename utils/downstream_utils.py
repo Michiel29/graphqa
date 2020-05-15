@@ -4,6 +4,7 @@ import copy
 from collections import defaultdict
 from itertools import chain
 from typing import List, Dict, Any
+from math import ceil
 
 import numpy as np
 import torch
@@ -28,8 +29,8 @@ def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
     downstream_task = tasks.setup_task(downstream_args)
 
     # Load downstream datasets
-    downstream_valid_subset = downstream_args.valid_subset.split(',')
-    for split in ['train'] + downstream_valid_subset:
+    downstream_valid_subsets = downstream_args.valid_subset.split(',')
+    for split in ['train'] + downstream_valid_subsets:
         downstream_task.load_dataset(split, combine=False, epoch=1)
 
     # Set up downstream eval model
@@ -43,30 +44,50 @@ def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
         downstream_model.to('cpu')
         downstream_criterion.to('cpu')
 
-    return {
+    # Build downstream dict
+    downstream_dict = {
         'args': downstream_args,
         'task': downstream_task,
         'model': downstream_model,
         'criterion': downstream_criterion,
-        'valid_subset': downstream_valid_subset
+        'valid_subset': downstream_valid_subsets
     }
 
-def create_ft_prefixes(downstream_name, global_epoch):
-    ft_train_prefix = '_'.join([downstream_name, 'ft', 'train', 'epoch{:03d}'.format(global_epoch)])
-    ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid', 'epoch{:03d}'.format(global_epoch)])
+    return downstream_dict
+
+def create_ft_prefixes(downstream_name, global_epoch=None):
+    if global_epoch is not None:
+        ft_train_prefix = '_'.join([downstream_name, 'ft', 'train', 'epoch{:03d}'.format(global_epoch)])
+        ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid', 'epoch{:03d}'.format(global_epoch)])
+    else:
+        ft_train_prefix = '_'.join([downstream_name, 'ft', 'train'])
+        ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid'])
     global_ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid'])
     return ft_train_prefix, ft_valid_prefix, global_ft_valid_prefix
 
-def setup_ft_args(pct_train_examples, downstream_args, downstream_task):
+def setup_ft_args(params, param_type, downstream_args, downstream_task=None):
+    assert param_type in ['pct_train_examples', 'n_train_relations', 'n_train_examples_per_relation']
     # Set up ft_args -- i.e., copy of downstream_args with n_train_examples updated
     ft_args_list = []
-    for pct in pct_train_examples:
+    for param in params:
         ft_args = copy.deepcopy(downstream_args)
-        ft_args.n_train_examples = round(pct / 100 * len(downstream_task.datasets['train']))
+        if param_type == 'pct_train_examples':
+            pct = param / 100
+            downstream_task.datasets['train'].set_epoch(0)
+            n_train_examples = round(pct * len(downstream_task.datasets['train']))
+            ft_args.n_train_examples = n_train_examples
+        elif param_type == 'n_train_relations':
+            ft_args.n_train_relations = param
+            n_train_examples = param * 700
+        elif param_type == 'n_train_examples_per_relation':
+            ft_args.n_train_examples_per_relation = param
+            n_train_examples = param * 64
+        n_updates = ceil(n_train_examples / ft_args.max_sentences)
+        ft_args.warmup_updates = round(n_updates * 0.06)
         ft_args_list.append(ft_args)
     return ft_args_list
     
-def setup_ft_tasks(pct_train_examples, ft_args_list, downstream_valid_subset):
+def setup_ft_tasks(ft_args_list, downstream_valid_subset):
     # Set up ft_task, using ft_args
     ft_task_list = []
     for ft_args in ft_args_list:
@@ -83,6 +104,7 @@ def setup_ft_model(args, downstream_model, use_cuda):
         ft_model.to('cuda:{}'.format(args.device_id)) # Move ft_model (and optimizer) to gpu
     else:
         ft_model = copy.deepcopy(downstream_model)
+
     return ft_model
 
 def setup_ft_criterion(args, downstream_criterion, use_cuda):

@@ -45,10 +45,13 @@ logging.basicConfig(
 logger = logging.getLogger('fairseq_cli.train')
 
 
-def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, pct, global_epoch, valid_subset):
+def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, param_prefix, param, global_epoch=None):
     """Fine-tune PyTorch classifier on downstream training set for one epoch"""
     task.split = 'train'
-    train_prefix = '_'.join([train_prefix, 'pct{:03d}'.format(pct)])
+    if param_prefix == 'rel':
+        train_prefix = '_'.join([train_prefix, '{}{:02d}'.format(param_prefix, param)])
+    else:
+        train_prefix = '_'.join([train_prefix, '{}{:03d}'.format(param_prefix, param)])
 
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
@@ -66,10 +69,11 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, pct, 
     )
 
     # Add global epoch to beginning of progress bar description
-    try:
-        progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.wrapped_bar.prefix), refresh=True)
-    except:
-        progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.tqdm.desc), refresh=True)
+    if global_epoch is not None:
+        try:
+            progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.wrapped_bar.prefix), refresh=True)
+        except:
+            progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.tqdm.desc), refresh=True)
 
     progress = maybe_wrap_neptune_logging(progress, args)
 
@@ -95,7 +99,10 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, pct, 
 
     # Log end-of-epoch stats
     stats = get_ft_train_stats(agg.get_smoothed_values())
-    progress.print(stats, tag=train_prefix, step=num_updates)
+    try:
+        progress.print(stats, tag='train', step=num_updates, log=False)
+    except:
+        progress.print(stats, tag='train', step=num_updates)
 
     # Reset epoch-level meters
     metrics.reset_meters(train_prefix)
