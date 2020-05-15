@@ -26,6 +26,7 @@ class GNNDataset(FairseqDataset):
         min_common_neighbors_for_the_last_edge,
         max_entities_size,
         max_entities_from_queue,
+        cover_random_prob,
         total_negatives,
         max_hard_negatives,
         max_tokens,
@@ -42,6 +43,7 @@ class GNNDataset(FairseqDataset):
         self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
+        self.cover_random_prob = cover_random_prob
 
         self.total_negatives = total_negatives
         self.max_hard_negatives = max_hard_negatives
@@ -67,6 +69,7 @@ class GNNDataset(FairseqDataset):
             min_common_neighbors=self.min_common_neighbors,
             max_entities_size=self.max_entities_size,
             max_entities_from_queue=self.max_entities_from_queue,
+            cover_random_prob=self.cover_random_prob,
         )
         sentence = self.annotated_text.annotate(*(edge.numpy()))
 

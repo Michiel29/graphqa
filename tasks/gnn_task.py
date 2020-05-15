@@ -48,6 +48,8 @@ class GNNTask(BaseTask):
         parser.add_argument('--num-text-chunks', type=int, default=None)
         parser.add_argument('--max-entities-size', type=int, default=None)
         parser.add_argument('--max-entities-from-queue', type=int, default=None)
+        parser.add_argument('--cover-random-prob', type=float, default=None)
+
         parser.add_argument('--total-negatives', type=int, default=None)
         parser.add_argument('--max_hard_negatives', type=int, default=None)
 
@@ -85,6 +87,7 @@ class GNNTask(BaseTask):
             min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
             max_entities_size=self.args.max_entities_size,
             max_entities_from_queue=self.args.max_entities_from_queue,
+            cover_random_prob=self.args.cover_random_prob,
             total_negatives=self.args.total_negatives,
             max_hard_negatives=self.args.max_hard_negatives,
             max_tokens=self.args.max_tokens - 1, # for bos

@@ -34,12 +34,14 @@ class SubgraphSampler(object):
         min_common_neighbors,
         max_entities_size,
         max_entities_from_queue,
+        cover_random_prob,
     ):
         self.graph = graph
         self.annotated_text = annotated_text
         self.min_common_neighbors = min_common_neighbors
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
+        self.cover_random_prob = cover_random_prob
         self.entities = set([])
         self.entity_pairs = set([])
         self.covered_entity_pairs = set([])
@@ -259,6 +261,14 @@ class SubgraphSampler(object):
 
     def sample_min_cost_entity_pair(self):
         entity_pair_best, cost_to_add_best = [], None
+
+        cover_random = bool(np.random.binomial(1, self.cover_random_prob))
+        if cover_random:
+            all_pairs = list(self._generate_entity_pair_candidates())
+            entity_pair_idx = np.random.randint(len(all_pairs))
+            entity_pair_random = all_pairs[entity_pair_idx][0]
+            cost_to_add_random = all_pairs[entity_pair_idx][1].cost()
+            return entity_pair_random, cost_to_add_random
 
         for entity_pair, coverage in self._generate_entity_pair_candidates():
             current_cost = coverage.cost()

@@ -196,6 +196,7 @@ class MultiTask(BaseTask):
         assert args.update_freq is None
         args.update_freq = [self.update_freq]
 
+
     @classmethod
     def setup_task(cls, args, **kwargs):
         dict_path = os.path.join(args.data_path, 'dict.txt')
