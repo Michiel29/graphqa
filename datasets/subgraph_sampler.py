@@ -43,7 +43,6 @@ class SubgraphSampler(object):
         self.max_entities_from_queue = max_entities_from_queue
         self.cover_random_prob = cover_random_prob
         self.entities = set([])
-        self.entity_pairs = set([])
         self.covered_entity_pairs = set([])
         self.coverage = {}
         self.relation_statements = {}
@@ -61,14 +60,11 @@ class SubgraphSampler(object):
         update_coverage(
             self.graph,
             self.entities,
-            self.entity_pairs,
+            self.relation_statements,
             self.coverage,
             self.min_common_neighbors,
             new_relation_statements_tmp,
         )
-
-    def get_coverage(self, a, b):
-        return self.coverage.get((min(a, b), max(a, b)), None)
 
     def _add_entities_with_the_highest_score(self):
         counter = 0
@@ -94,7 +90,6 @@ class SubgraphSampler(object):
     def _add_relation_statements(self, relation_statements):
         for rs in relation_statements:
             self.entities.update([rs.head, rs.tail])
-            self.entity_pairs.update([(rs.head, rs.tail), (rs.tail, rs.head)])
             self.relation_statements[(rs.head, rs.tail)] = rs.sentence
             assert len(self.intervals.overlap(rs.begin, rs.end)) == 0
             self.intervals.addi(rs.begin, rs.end, None)
@@ -105,7 +100,7 @@ class SubgraphSampler(object):
         a, b = item(a), item(b)
         self.entities.update([a, b])
         self._update_coverage()
-        coverage = self.get_coverage(a, b)
+        coverage = self.coverage[(a, b)]
         if coverage.num_total_neighbors == 0:
             return False
         return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1)
@@ -163,7 +158,7 @@ class SubgraphSampler(object):
         head, tail = item(head), item(tail)
         assert head in self.entities and tail in self.entities
 
-        coverage = self.get_coverage(head, tail)
+        coverage = self.coverage[(head, tail)]
         if coverage.num_total_neighbors == 0:
             return False
         num_neighbors_added = len(coverage.both_edges_in_subgraph)
@@ -176,12 +171,12 @@ class SubgraphSampler(object):
             nonlocal cur_sentences
             nonlocal cur_tokens
             nonlocal local_intervals
-            x1, y1 = self._sample_ordered_pair(*edge1)
+            x1, y1 = edge1
             rs1 = self._sample_relation_statement(x1, y1, local_intervals)
             if rs1 is None:
                 return False
             if edge2 is not None:
-                x2, y2 = self._sample_ordered_pair(*edge2)
+                x2, y2 = edge2
                 rs2 = self._sample_relation_statement(x2, y2, local_intervals, (rs1.begin, rs1.end))
                 if rs2 is None:
                     return False
@@ -196,14 +191,14 @@ class SubgraphSampler(object):
                 local_intervals.addi(rs2.begin, rs2.end, None)
             return True
 
-        if (head, tail) not in self.entity_pairs:
+        if (head, tail) not in self.relation_statements:
             if not sample_new_relation_statements((head, tail)):
                 return False
 
         if num_neighbors_added < self.min_common_neighbors:
             for n in self._generate_neighbors_to_add(head, tail):
-                n_a_exists = (head, n) in self.entity_pairs
-                n_b_exists = (n, tail) in self.entity_pairs
+                n_a_exists = (head, n) in self.relation_statements
+                n_b_exists = (n, tail) in self.relation_statements
                 assert not(n_a_exists and n_b_exists)
                 if not n_a_exists and not n_b_exists:
                     result = sample_new_relation_statements((head, n), (n, tail))
@@ -238,15 +233,12 @@ class SubgraphSampler(object):
         self._update_coverage(new_relation_statements)
 
         for rs in new_relation_statements:
-            coverage = self.get_coverage(rs.head, rs.tail)
+            coverage = self.coverage[(rs.head, rs.tail)]
             if coverage is not None:
                 self._update_entities_scores(coverage.both_edges_missing)
         self._add_entities_with_the_highest_score()
         self._update_coverage()
-        if (head, tail) in self.relation_statements:
-            self.covered_entity_pairs.add((head, tail))
-        else:
-            self.covered_entity_pairs.add((tail, head))
+        self.covered_entity_pairs.add((head, tail))
         return True
 
     def _generate_entity_pair_candidates(self):
@@ -254,7 +246,8 @@ class SubgraphSampler(object):
             if coverage is None:
                 # There is no edge between entity_pair[0] and entity_pair[1]
                 continue
-            if entity_pair in self.covered_entity_pairs:
+            reverse_entity_pair = entity_pair[1], entity_pair[0]
+            if entity_pair in self.covered_entity_pairs or reverse_entity_pair in self.covered_entity_pairs:
                 # This entity pair has already been selected
                 continue
             yield (entity_pair, coverage)
@@ -287,7 +280,7 @@ class SubgraphSampler(object):
             return entity_pair_best[index], cost_to_add_best
 
     def _generate_neighbors_to_add(self, a, b):
-        coverage = self.get_coverage(a, b)
+        coverage = self.coverage[(a, b)]
         neighbors = np.array([x for x in coverage.single_edge_missing], dtype=np.int64)
         np.random.shuffle(neighbors)
         for n in neighbors:
@@ -296,13 +289,6 @@ class SubgraphSampler(object):
         np.random.shuffle(neighbors)
         for n in neighbors:
             yield n
-
-    def _sample_ordered_pair(self, a_or_a_b, b=None):
-        if b is None:
-            a, b = a_or_a_b
-        else:
-            a, b = a_or_a_b, b
-        return (a, b) if bool(np.random.randint(2, size=1)[0]) else (b, a)
 
     def fill(self, max_tokens, max_sentences, min_common_neighbors_for_the_last_edge):
         only_accept_zero_cost = False
@@ -337,7 +323,7 @@ class SubgraphSampler(object):
 
     def relative_coverages(self):
         return np.array([
-            self.get_coverage(a, b).relative_coverage()
+            self.coverage[(a, b)].relative_coverage()
             for a, b in self.covered_entity_pairs
         ])
 
@@ -351,7 +337,7 @@ class SubgraphSampler(object):
         return self.relation_statements
 
     def is_covered(self, a_b):
-        assert a_b in self.entity_pairs
+        assert a_b in self.relation_statements
         return a_b in self.covered_entity_pairs
 
     def get_covered_edges(self):

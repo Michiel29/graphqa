@@ -20,7 +20,6 @@ cdef class NeighborhoodCoverage(object):
 
     cdef public bool head_tail_in_subgraph
 
-    cdef public set head_tail_set
     cdef public set both_edges_in_subgraph
     cdef public set single_edge_missing
     cdef public set both_edges_missing
@@ -33,7 +32,7 @@ cdef class NeighborhoodCoverage(object):
         int tail,
         np.ndarray[DTYPE_t, ndim=1] head_neighbors,
         np.ndarray[DTYPE_t, ndim=1] tail_neighbors,
-        set entity_pairs_in_subgraph,
+        dict entity_pairs_in_subgraph,
         int min_common_neighbors,
     ):
         self.INF_COST = 100000000
@@ -41,12 +40,11 @@ cdef class NeighborhoodCoverage(object):
         self.tail = tail
         self.min_common_neighbors = min_common_neighbors
 
-        self.head_tail_set = set([head, tail])
         self.both_edges_in_subgraph = set()
         self.single_edge_missing = set()
         self.both_edges_missing = set()
 
-        self.head_tail_in_subgraph = (min(self.head, self.tail), max(self.head, self.tail)) in entity_pairs_in_subgraph
+        self.head_tail_in_subgraph = (self.head, self.tail) in entity_pairs_in_subgraph
 
         self._update_neighbors_sets(head_neighbors, tail_neighbors, entity_pairs_in_subgraph)
         self._reset_cost()
@@ -55,7 +53,7 @@ cdef class NeighborhoodCoverage(object):
         self,
         np.ndarray[DTYPE_t, ndim=1] head_neighbors,
         np.ndarray[DTYPE_t, ndim=1] tail_neighbors,
-        set entity_pairs_in_subgraph,
+        dict entity_pairs_in_subgraph,
     ):
         cdef int n
         cdef int head_index = 0
@@ -85,7 +83,7 @@ cdef class NeighborhoodCoverage(object):
             tail_index += 1
 
             n_head_exists = (self.head, n) in entity_pairs_in_subgraph
-            n_tail_exists = (self.tail, n) in entity_pairs_in_subgraph
+            n_tail_exists = (n, self.tail) in entity_pairs_in_subgraph
 
             if n_head_exists and n_tail_exists:
                 self.both_edges_in_subgraph.add(n)
@@ -113,13 +111,13 @@ cdef class NeighborhoodCoverage(object):
                 return
             self._reset_cost()
 
-    def add_entity_pair(self, a_b_set):
-        if len(self.head_tail_set.intersection(a_b_set)) == 2:
+    def add_entity_pair(self, a, b):
+        if self.head == a and self.tail == b:
             self.head_tail_in_subgraph = True
-        elif len(self.head_tail_set.intersection(a_b_set)) == 1:
-            n = a_b_set.difference(self.head_tail_set)
-            assert len(n) == 1
-            self._update_neighbor(next(iter(n)))
+        elif self.head == a:
+            self._update_neighbor(b)
+        elif self.tail == b:
+            self._update_neighbor(a)
 
     cdef _compute_cost(self):
         cdef int target_num_of_common_neighbors
@@ -159,7 +157,7 @@ cdef class NeighborhoodCoverage(object):
 def update_coverage(
     graph,
     set entities,
-    set entity_pairs,
+    dict entity_pairs,
     dict coverage_dict,
     int min_common_neighbors,
     list new_relation_statements=None,
@@ -167,7 +165,7 @@ def update_coverage(
     for a in entities:
         a_neighbors = None
         for b in entities:
-            if a >= b:
+            if a == b:
                 continue
             if (a, b) not in coverage_dict:
                 if a_neighbors is None:
@@ -188,4 +186,4 @@ def update_coverage(
                     )
             elif coverage_dict[(a, b)] is not None and new_relation_statements is not None:
                 for new_a, new_b in new_relation_statements:
-                    coverage_dict[(a, b)].add_entity_pair(set([new_a, new_b]))
+                    coverage_dict[(a, b)].add_entity_pair(new_a, new_b)

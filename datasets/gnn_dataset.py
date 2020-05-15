@@ -108,14 +108,6 @@ class GNNDataset(FairseqDataset):
         sentences = self._split(sentences)
         return sentences, index
 
-    def _get_ordered_edge(self, subgraph, a, b):
-        if (a, b) in subgraph.get_relation_statements():
-            assert (b, a) not in subgraph.get_relation_statements()
-            return a, b
-        else:
-            assert (b, a) in subgraph.get_relation_statements()
-            return b, a
-
     def _make_negatives(self, subgraph, index):
         graph = []
         graph_sizes = []
@@ -126,7 +118,7 @@ class GNNDataset(FairseqDataset):
         num_mutual_negatives, num_single_negatives, num_weak_negatives = 0, 0, 0
 
         for a, b in subgraph.get_covered_edges():
-            coverage = subgraph.get_coverage(a, b)
+            coverage = subgraph.coverage[(a, b)]
             mutual_neighbors = coverage.both_edges_in_subgraph
 
             n_mutual = len(mutual_neighbors)
@@ -137,10 +129,7 @@ class GNNDataset(FairseqDataset):
             edge_candidate_idx = []
             total_subgraph = []
             for c in mutual_neighbors:
-                total_subgraph.append((
-                    index[self._get_ordered_edge(subgraph, a, c)],
-                    index[self._get_ordered_edge(subgraph, c, b)],
-                ))
+                total_subgraph.append((index[(a, c)], index[(c, b)]))
 
             total_subgraph = np.array(total_subgraph)
 

@@ -28,7 +28,6 @@ def save_subgraph(subgraph, dictionary, entity_dictionary, path, shall_add_text)
 
     G = pgv.AGraph(strict=True, directed=True)
     for (h, t), sentence in subgraph.relation_statements.items():
-        assert (t, h) not in subgraph.covered_entity_pairs
         if (h, t) in subgraph.covered_entity_pairs:
             color = 'red'
         else:
@@ -51,6 +50,7 @@ def sample_subgraph(graph, annotated_text, index, args):
         min_common_neighbors=args.min_common_neighbors,
         max_entities_size=args.max_entities_size,
         max_entities_from_queue=args.max_entities_from_queue,
+        cover_random_prob=0,
     )
     edge = graph[index]
     head = edge[GraphDataset.HEAD_ENTITY]

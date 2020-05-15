@@ -31,7 +31,7 @@
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 1,
 
-            "update_freq": 15,
+            "update_freq": 16,
             "epoch_size": 12000,
             "n_valid_examples": 400,
 
@@ -54,7 +54,7 @@
             "mask_whole_words": true,
 
             "update_freq": 7,
-            "epoch_size": 442400,
+            "epoch_size": 414750,
             "n_valid_examples": 20000,
 
             "max_sentences": 79,
@@ -89,6 +89,5 @@
     "update_freq": null,
     "max_tokens": 12000,
 
-    "fp16": true,
     "validate_before_training": false
 }
