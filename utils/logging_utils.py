@@ -80,8 +80,9 @@ class NeptuneWrapper(BaseProgressBar):
         self._log_to_neptune(stats, tag=tag, step=step)
         self.progress_bar.log(stats, tag=tag, step=step)
 
-    def print(self, stats, tag=None, step=None):
-        self._log_to_neptune(stats, tag=tag, step=step)
+    def print(self, stats, tag=None, step=None, log=True):
+        if log:
+            self._log_to_neptune(stats, tag=tag, step=step)
         self.progress_bar.print(stats, tag=tag, step=step)
 
     def _get_log_name(self, tag, key):

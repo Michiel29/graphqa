@@ -1,0 +1,37 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json", "downstream_small.json"],
+
+    "task": "triplet_inference",
+    "arch": "encoder_triplet__roberta_small",
+    "triplet_type": "concat_linear_dot",
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_start_linear",
+    "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+
+    "k_negative": 100,
+    "negative_split_probs": [0.25, 0.25, 0.25],
+    "mask_type": "start_end",
+    "non_mask_rate": 0,
+    "subsampling_strategy": "by_entity_pair",
+    "subsampling_cap": 100,
+    "epoch_size": 4e6,
+
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    // "num_workers": 0,
+    "required_batch_size_multiple": 1,
+
+    "checkpoint_list": [
+        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt", 
+        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt",
+        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt"
+        // "debug_True/05m_13d_16h_23m_04s/checkpoints/checkpoint1.pt", 
+        // "debug_True/05m_13d_16h_29m_20s/checkpoints/checkpoint1.pt"
+    ],
+
+    "checkpoint_dir": "../save/triplet_inference/small",
+
+    "criterion": "cross_entropy_custom"
+}
