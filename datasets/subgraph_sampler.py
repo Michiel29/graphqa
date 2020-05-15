@@ -254,7 +254,7 @@ class SubgraphSampler(object):
             if coverage is None:
                 # There is no edge between entity_pair[0] and entity_pair[1]
                 continue
-            if entity_pair in self.entity_pairs:
+            if entity_pair in self.covered_entity_pairs:
                 # This entity pair has already been selected
                 continue
             yield (entity_pair, coverage)
@@ -265,6 +265,8 @@ class SubgraphSampler(object):
         cover_random = bool(np.random.binomial(1, self.cover_random_prob))
         if cover_random:
             all_pairs = list(self._generate_entity_pair_candidates())
+            if len(all_pairs) == 0:
+                return None, None
             entity_pair_idx = np.random.randint(len(all_pairs))
             entity_pair_random = all_pairs[entity_pair_idx][0]
             cost_to_add_random = all_pairs[entity_pair_idx][1].cost()
