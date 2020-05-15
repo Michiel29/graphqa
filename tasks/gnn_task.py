@@ -154,6 +154,9 @@ class GNNTask(BaseTask):
         # initialize the dataset with the correct starting epoch
         global_start_time = time.time()
         dataset.set_epoch(epoch)
+
+        # Horrible hack because fairseq wrapper doesn't set epoch for itself. TODO: take ownership of wrapper
+        dataset.epoch = epoch
         set_epoch_time = time.time() - global_start_time
 
         # get indices ordered by example size
@@ -191,7 +194,11 @@ class GNNTask(BaseTask):
         )
         return epoch_iter
 
+    # This is a crime against man and god
     def get_sample_size(self, batch, sizes):
+        # Needed to allow validate before training. Help.
+        if not hasattr(self.datasets['train'], 'epoch'):
+            return 1
         if self.sample_sizes_mean is None:
             assert len(self.datasets['train']) >= self.NUM_SAMPLES_TO_COMPUTE_SAMPLE_SIZE
             sample_sizes = []

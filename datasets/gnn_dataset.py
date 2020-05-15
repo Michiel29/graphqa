@@ -143,19 +143,17 @@ class GNNDataset(FairseqDataset):
         graph_sizes = []
         candidate_text_idx = []
 
-        num_mutual_neighbors, num_skipped = 0, 0
+        target_degree = 0
+        num_mutual_neighbors = 0
         num_mutual_negatives, num_single_negatives, num_weak_negatives = 0, 0, 0
 
         for a, b in subgraph.get_covered_edges():
             coverage = subgraph.get_coverage(a, b)
             mutual_neighbors = coverage.both_edges_in_subgraph
 
-            if len(mutual_neighbors) < 2:
-                num_skipped += 1
-                continue
-
             n_mutual = len(mutual_neighbors)
             num_mutual_neighbors += n_mutual
+            target_degree += (self.graph.get_degree(a) + self.graph.get_degree(b))
 
             edge_subgraphs = []
             edge_candidate_idx = []
@@ -168,30 +166,36 @@ class GNNDataset(FairseqDataset):
 
             total_subgraph = np.array(total_subgraph)
 
-            target_leave_out = np.random.randint(n_mutual)
-            target_text_idx = index[(a, b)]
+            # TODO: check if matters, add as param
+            min_mutual_for_hard_negatives = 3
+            if not n_mutual < min_mutual_for_hard_negatives:
 
-            target_neighbor_indices = [i for i in range(n_mutual) if i != target_leave_out]
-            target_subgraph = total_subgraph[target_neighbor_indices]
-            edge_subgraphs.append(target_subgraph)
-            edge_candidate_idx.append(target_text_idx)
+                target_leave_out = np.random.randint(n_mutual)
+                target_text_idx = index[(a, b)]
 
-            if n_mutual * 2 > self.max_hard_negatives:
-                mutual_indices = np.random.choice(n_mutual, size=self.max_hard_negatives // 2, replace=False)
+                target_neighbor_indices = [i for i in range(n_mutual) if i != target_leave_out]
+                target_subgraph = total_subgraph[target_neighbor_indices]
+                edge_subgraphs.append(target_subgraph)
+                edge_candidate_idx.append(target_text_idx)
+
+                if n_mutual * 2 > self.max_hard_negatives:
+                    mutual_indices = np.random.choice(n_mutual, size=self.max_hard_negatives // 2, replace=False)
+                else:
+                    mutual_indices = range(n_mutual)
+
+                for mutual_idx in mutual_indices:
+                    negative_neighbor_indices = [i for i in range(n_mutual) if i != mutual_idx]
+                    negative_neighbor_subgraph = total_subgraph[negative_neighbor_indices]
+
+                    for negative_text_idx in total_subgraph[mutual_idx]:
+                        edge_subgraphs.append(negative_neighbor_subgraph)
+                        edge_candidate_idx.append(negative_text_idx)
+                        num_mutual_negatives += 1
             else:
-                mutual_indices = range(n_mutual)
-
-            for mutual_idx in mutual_indices:
-                negative_neighbor_indices = [i for i in range(n_mutual) if i != mutual_idx]
-                negative_neighbor_subgraph = total_subgraph[negative_neighbor_indices]
-
-                for negative_text_idx in total_subgraph[mutual_idx]:
-                    edge_subgraphs.append(negative_neighbor_subgraph)
-                    edge_candidate_idx.append(negative_text_idx)
-                    num_mutual_negatives += 1
+                target_subgraph = total_subgraph
 
             # If not enough mutual negatives, try negatives with only single neighbor
-            if 2 * n_mutual < self.max_hard_negatives:
+            if len(edge_candidate_idx) < self.max_hard_negatives:
 
                 neighbors = list(coverage.single_edge_missing)
                 n_single_neighbor_negatives = max(0, min(len(neighbors), self.max_hard_negatives - 2 * n_mutual))
@@ -229,21 +233,18 @@ class GNNDataset(FairseqDataset):
             candidate_text_idx.append(edge_candidate_idx)
 
 
+        graph = torch.cat(graph, dim=0)
         graph_sizes = torch.LongTensor(graph_sizes)
         candidate_text_idx = torch.LongTensor(candidate_text_idx)
         num_positive_examples = float(len(candidate_text_idx))
 
-        if len(graph) > 0:
-            graph = torch.cat(graph, dim=0)
-            logging_output = {
-                'n_mutual_neg': num_mutual_negatives / num_positive_examples,
-                'n_single_neg': num_single_negatives / num_positive_examples,
-                'n_weak_neg': num_weak_negatives / num_positive_examples,
-                'n_mutual_neighbors': num_mutual_neighbors / num_positive_examples,
-                'num_skipped': float(num_skipped),
-            }
-        else:
-            logging_output = {}
+        logging_output = {
+            'target_degree': target_degree / num_positive_examples / 2,
+            'n_mutual_neg': num_mutual_negatives / num_positive_examples,
+            'n_single_neg': num_single_negatives / num_positive_examples,
+            'n_weak_neg': num_weak_negatives / num_positive_examples,
+            'n_mutual_neighbors': num_mutual_neighbors / num_positive_examples,
+        }
 
         return graph, graph_sizes, candidate_text_idx, logging_output
 
@@ -290,6 +291,4 @@ class GNNDataset(FairseqDataset):
         if len(samples) == 0:
             return None
         assert len(samples) == 1
-        if len(samples[0]['graph']) == 0:
-            return None
         return samples[0]
