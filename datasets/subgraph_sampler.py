@@ -254,7 +254,7 @@ class SubgraphSampler(object):
             if coverage is None:
                 # There is no edge between entity_pair[0] and entity_pair[1]
                 continue
-            if entity_pair in self.covered_entity_pairs:
+            if entity_pair in self.entity_pairs:
                 # This entity pair has already been selected
                 continue
             yield (entity_pair, coverage)
