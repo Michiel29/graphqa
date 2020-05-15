@@ -116,28 +116,6 @@ class GNNDataset(FairseqDataset):
             assert (b, a) in subgraph.get_relation_statements()
             return b, a
 
-    def _get_edge_tuples(self, subgraph, index):
-        graph = []
-        target_text_idx = []
-        for a, b in subgraph.get_covered_edges():
-            current_target_graph = []
-            mutual_neighbors = subgraph.get_coverage(a, b).both_edges_in_subgraph
-            for c in mutual_neighbors:
-                current_target_graph.append((
-                    index[self._get_ordered_edge(subgraph, a, c)],
-                    index[self._get_ordered_edge(subgraph, c, b)],
-                ))
-            assert len(current_target_graph) > 0
-            if len(current_target_graph) > self.max_common_neighbors:
-                current_target_graph = [
-                    current_target_graph[x]
-                    for x in np.random.permutation(len(current_target_graph))[:self.max_common_neighbors]
-                ]
-            graph.append(torch.LongTensor(current_target_graph))
-            target_text_idx.append(index[(a, b)])
-        target_text_idx = torch.LongTensor(target_text_idx)
-        return graph, target_text_idx
-
     def _make_negatives(self, subgraph, index):
         graph = []
         graph_sizes = []
@@ -166,29 +144,22 @@ class GNNDataset(FairseqDataset):
 
             total_subgraph = np.array(total_subgraph)
 
-            # TODO: check if matters, add as param
-            min_mutual_for_hard_negatives = 3
-            if not n_mutual < min_mutual_for_hard_negatives:
-
-                target_leave_out = np.random.randint(n_mutual)
-                target_text_idx = index[(a, b)]
-
-                target_neighbor_indices = [i for i in range(n_mutual) if i != target_leave_out]
+            if n_mutual > self.max_common_neighbors:
+                target_neighbor_indices = np.random.choice(n_mutual, size=self.max_common_neighbors, replace=False)
                 target_subgraph = total_subgraph[target_neighbor_indices]
                 edge_subgraphs.append(target_subgraph)
-                edge_candidate_idx.append(target_text_idx)
+                edge_candidate_idx.append(index[(a, b)])
 
-                if n_mutual * 2 > self.max_hard_negatives:
-                    mutual_indices = np.random.choice(n_mutual, size=self.max_hard_negatives // 2, replace=False)
+                possible_hard_negatives = np.array([idx for idx in range(n_mutual) if idx not in target_neighbor_indices])
+
+                if len(possible_hard_negatives) * 2 > self.max_hard_negatives:
+                    hard_negatives = np.random.choice(possible_hard_negatives, size=self.max_hard_negatives // 2, replace=False)
                 else:
-                    mutual_indices = range(n_mutual)
+                    hard_negatives = possible_hard_negatives
 
-                for mutual_idx in mutual_indices:
-                    negative_neighbor_indices = [i for i in range(n_mutual) if i != mutual_idx]
-                    negative_neighbor_subgraph = total_subgraph[negative_neighbor_indices]
-
-                    for negative_text_idx in total_subgraph[mutual_idx]:
-                        edge_subgraphs.append(negative_neighbor_subgraph)
+                for hard_negative in hard_negatives:
+                    for negative_text_idx in total_subgraph[hard_negative]:
+                        edge_subgraphs.append(target_subgraph)
                         edge_candidate_idx.append(negative_text_idx)
                         num_mutual_negatives += 1
             else:
