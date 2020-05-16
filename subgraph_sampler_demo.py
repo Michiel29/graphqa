@@ -50,7 +50,7 @@ def sample_subgraph(graph, annotated_text, index, args):
         min_common_neighbors=args.min_common_neighbors,
         max_entities_size=args.max_entities_size,
         max_entities_from_queue=args.max_entities_from_queue,
-        cover_random_prob=0,
+        cover_random_prob=args.cover_random_prob,
     )
     edge = graph[index]
     head = edge[GraphDataset.HEAD_ENTITY]
@@ -150,6 +150,7 @@ def cli_main():
     parser.add_argument('--split', type=str, default='train', help='which data split to use: train (default) or validation')
     parser.add_argument('--mask-type', type=str, default='start_end', help='Mask type for the text annotations')
     parser.add_argument('--non-mask-rate', type=float, default=0, help='How often we keep the entity\'s surface form')
+    parser.add_argument('--cover-random-prob', type=float, default=0.2)
     parser.add_argument('--subsampling-strategy', type=str, default='by_entity_pair')
     parser.add_argument('--subsampling-cap', type=int, default=1)
     parser.add_argument('--seed', type=int, default=31415)

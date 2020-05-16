@@ -16,9 +16,10 @@
             "layer_sizes": [[256, 1], [1, 1]],
 
             "min_common_neighbors": 10,
-            "max_common_neighbors": 10,
+            "max_common_neighbors": 1,
             "max_entities_size": 600,
             "max_entities_from_queue": 5,
+            "cover_random_prob": 0.2,
             "num_text_chunks": 4,
             "min_common_neighbors_for_the_last_edge": 1,
             "total_negatives": 100,
@@ -28,7 +29,7 @@
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 1,
 
-            "update_freq": 22,
+            "update_freq": 32,
             "epoch_size": 12000,
             "n_valid_examples": 400,
 
@@ -51,8 +52,7 @@
             "mask_whole_words": true,
 
             "update_freq": 7,
-            // gnn_epoch_size=12000 / gnn_update_freq=22 * mlm_update_freq=7 * mlm_max_sentences=79
-            "epoch_size": 301636,
+            "epoch_size": 207375,
             "n_valid_examples": 20000,
 
             "max_sentences": 79,
