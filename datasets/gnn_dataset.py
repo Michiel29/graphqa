@@ -164,6 +164,7 @@ class GNNDataset(FairseqDataset):
                         num_mutual_negatives += 1
             else:
                 target_subgraph = total_subgraph
+                edge_subgraphs.append(target_subgraph)
                 edge_candidate_idx.append(index[(a, b)])
 
             # If not enough mutual negatives, try negatives with only single neighbor
