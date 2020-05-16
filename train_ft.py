@@ -70,6 +70,13 @@ logger = logging.getLogger('fairseq_cli.train')
 NEPTUNE_PROJECT_NAME = 'selfinference/sandbox'
 is_neptune_initialized = False
 
+# Create param prefix dict
+param_prefix_dict = {
+    'pct_train_examples': 'pct',
+    'n_train_relations': 'rel',
+    'n_train_examples_per_relation': 'epr'
+}
+
 
 def main(args, init_distributed=False):
     utils.import_user_module(args)
@@ -89,13 +96,6 @@ def main(args, init_distributed=False):
     # Print args
     logger.info(args)
 
-    # Create param prefix dict
-    param_prefix_dict = {
-        'pct_train_examples': 'pct',
-        'n_train_relations': 'rel',
-        'n_train_examples_per_relation': 'epr'
-    }
-
     # Setup tasks, e.g., translation, language modeling, etc.
     task = tasks.setup_task(args)
 
@@ -109,218 +109,178 @@ def main(args, init_distributed=False):
         sum(p.numel() for p in model.parameters() if p.requires_grad),
     ))
 
-    # Build trainer
-    trainer = Trainer(args, task, model, criterion)
-    
-    # Add checkpoints from args.checkpoint_dir to args.checkpoint_list
-    args.checkpoint_list += ['/'.join(x.split('/')[-3:]) for x in list(glob.glob(os.path.join(args.checkpoint_dir, '*/checkpoints/*.pt'), recursive=True))]
-
-    # Get training_name
+    # Get base path
     training_name = get_training_name(args)
+    base_path = os.path.join(args.save_dir, training_name)
 
-    # Evaluate each checkpoint
-    for ckpt in args.checkpoint_list:
+    # Iterate through each item in ckpt dict
+    for ckpt_id, ckpt_item in args.checkpoint_dict.items():
 
-        # Make checkpoint path
-        ckpt_path = os.path.join(args.save_dir, training_name, ckpt)
-        setattr(args, 'restore_file', ckpt_path)
-
-        # Build trainer
-        # trainer = Trainer(args, task, model, criterion)
-
-        # Load the latest checkpoint if one is available and restore the
-        # corresponding train iterator
-        # checkpoint_utils.load_checkpoint(args, trainer)
-        # trainer.load_checkpoint(
-        #     ckpt_path,
-        #     args.reset_optimizer,
-        #     args.reset_lr_scheduler,
-        #     eval(args.optimizer_overrides),
-        #     reset_meters=args.reset_meters,
-        # )
-        state = checkpoint_utils.load_checkpoint_to_cpu(ckpt_path)
-        trainer.get_model().load_state_dict(
-            state["model"], strict=True, args=args
-        )
-        trainer.get_model().cpu()
-        ckpt_encoder_params = copy.deepcopy([p for p in trainer.get_model().encoder.parameters()])
+        # Set up trainer
+        trainer = Trainer(args, task, model, criterion)
 
         # Intialize neptune experiment
-        ckpt_dir = ckpt.split('/')[-3]
-        ckpt_file = ckpt.split('/')[-1]
-        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_dir, ckpt_file))
+        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_id))
         if distributed_utils.is_master(args) and not args.debug:
             initialize_neptune(trainer, None, args)
 
-        # Create ft dict
-        ft_dict = {}
-        for ft_name, ft_kwargs in args.downstream_dict.items():
-            ft_dict[ft_name] = create_downstream_dict(args, ft_name, ft_kwargs, trainer.get_model())
+        # Create list of ckpt paths for current ckpt_item
+        ckpt_base_path = os.path.join(base_path, ckpt_id)
+        if 'checkpoints' not in ckpt_item.keys():
+            ckpt_list = list(glob.glob(os.path.join(ckpt_base_path, 'checkpoints/*.pt'), recursive=True))
+        else:
+            ckpt_list = [os.path.join(ckpt_base_path, 'checkpoints', x) for x in ckpt_item['checkpoints']]
 
-        # Fine-tune model on each downstream task    
-        for ft_name in ft_dict: 
-            ft_args_orig = ft_dict[ft_name]['args']
-            ft_task_orig = ft_dict[ft_name]['task']
-            ft_valid_subsets = ft_dict[ft_name]['valid_subset']
-            ft_max_epoch = ft_args_orig.max_epoch or math.inf
-
-            logger.info('training on {} GPUs'.format(args.distributed_world_size))
-            logger.info('max tokens per GPU = {} and max sentences per GPU = {}'.format(
-                ft_args_orig.max_tokens,
-                ft_args_orig.max_sentences,
-            ))
-
-            # Set up ft prefixes
-            ft_train_prefix, ft_valid_prefix, _ = create_ft_prefixes(ft_name)
-
-            if ft_name in ['semeval2010task8', 'kbp37', 'tacred']:
-
-                # Set up list of training subset percentages (pct) to use for ft
-                pct_train_examples = sorted(list(set(ft_args_orig.pct_train_examples)))
-                assert all([x > 0 and x <= 100 for x in pct_train_examples]) # make sure pct_train_examples vals are inside (0, 100] 
-
-                # Set up ft_args_list and ft_task_list for each pct value
-                ft_args_list = setup_ft_args(pct_train_examples, 'pct_train_examples', ft_args_orig, ft_task_orig)
-                ft_task_list = setup_ft_tasks(ft_args_list, ft_valid_subsets)
-
-                # Iterate through pct values
-                for pct_idx, pct in enumerate(pct_train_examples):
-
-                    # Get ft_args and ft_task for current pct
-                    ft_args = ft_args_list[pct_idx]
-                    ft_task = ft_task_list[pct_idx]
-
-                    # Get ft_model for current pct
-                    ft_model = setup_ft_model(args, ft_dict[ft_name]['model'], use_cuda).cpu()
-                    ft_encoder_params = [p for p in ft_model.encoder.parameters()]
-                    assert all([(ft_encoder_params[i] == ckpt_encoder_params[i]).all().item() for i in range(len(ft_encoder_params))])
-                    ft_model.cuda()
-
-                    # Get ft_criterion for current pct
-                    ft_criterion = setup_ft_criterion(args, ft_dict[ft_name]['criterion'], use_cuda)
-
-                    # Instantiate ft_trainer -- which includes the ft optimizer -- for current pct
-                    ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
-
-                    # Set up epoch iterator for current pct
-                    ft_epoch_itr = ft_trainer.get_train_iterator(1)
-
-                    train_meter = StopwatchMeter()
-                    train_meter.start()
-                    while ft_epoch_itr.next_epoch_idx <= ft_max_epoch:
-
-                        # Fine-tune PyTorch classifier on ft_task training set
-                        downstream_train_pytorch(
-                            ft_args, 
-                            ft_trainer, 
-                            ft_task, 
-                            ft_epoch_itr, 
-                            ft_train_prefix,
-                            param_prefix_dict['pct_train_examples'],
-                            pct
-                        )
-
-                        # Validate PyTorch classifier on ft_task validation set
-                        cur_ft_valid_prefix = '_'.join([ft_valid_prefix, '{}{:03d}'.format(param_prefix_dict['pct_train_examples'], pct)])
-                        ft_valid_losses = validate(
-                            ft_args, 
-                            ft_trainer, 
-                            ft_task, 
-                            ft_epoch_itr.epoch, 
-                            ft_valid_subsets, 
-                            cur_ft_valid_prefix
-                        )
-
-                        # only use first validation loss to update the learning rate
-                        ft_trainer.lr_step(ft_epoch_itr.epoch, ft_valid_losses[0])
-
-                        # sharded data: get train iterator for next epoch
-                        reload_dataset = getattr(ft_args, 'reload', False)
-                        ft_epoch_itr = ft_trainer.get_train_iterator(ft_epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
-
-                    train_meter.stop()
-                    logger.info('done training {} in {:.1f} seconds'.format(ft_name, train_meter.sum))
+        # Iterate through each ckpt path for current ckpt_item
+        for ckpt in ckpt_list:
+            evaluate_checkpoint(args, ckpt, trainer)
 
 
-            elif ft_name in ['fewrel_0', 'fewrel_1']:
+def evaluate_checkpoint(args, ckpt, trainer):
+    use_cuda = torch.cuda.is_available() and not args.cpu
+    ckpt_file = ckpt.split('/')[-1][:-3]
 
-                for param_type in ['n_train_relations', 'n_train_examples_per_relation']:
+    # Set checkpoint path in args
+    setattr(args, 'restore_file', ckpt)
 
-                    # Set up param list
-                    if param_type == 'n_train_relations':
-                        params = sorted(list(set(ft_args_orig.n_train_relations)))
-                        assert all([x >= 5 and x <= 64 for x in params]) # make sure n_train_relations vals are within [5, 64]
-                    elif param_type == 'n_train_examples_per_relation':
-                        params = sorted(list(set(ft_args_orig.n_train_examples_per_relation)))
-                        assert all([x >= 5 and x <= 700 for x in params]) # make sure n_train_examples_per_relation vals are within [5, 700]
+    # Load the latest checkpoint if one is available and restore the
+    # corresponding train iterator
+    checkpoint_utils.load_checkpoint(args, trainer)
 
-                    # Set up ft_args_list and ft_task_list for each param value
-                    ft_args_list = setup_ft_args(params, param_type, ft_args_orig)
-                    ft_task_list = setup_ft_tasks(ft_args_list, ft_valid_subsets)
+    # Create ft dict
+    ft_dict = {}
+    for ft_name, ft_kwargs in args.downstream_dict.items():
+        # Set random seed
+        np.random.seed(args.seed); torch.manual_seed(args.seed) 
 
-                    # Iterate through params
-                    for param_idx, param in enumerate(params):
+        # Get task_dict for current task
+        ft_dict[ft_name] = create_downstream_dict(args, ft_name, ft_kwargs, trainer.get_model()) 
 
-                        # Get ft_args and ft_task for current param
-                        ft_args = ft_args_list[param_idx]
-                        ft_task = ft_task_list[param_idx]
+    # Fine-tune model on each downstream task    
+    for ft_name in ft_dict:
+        # Set random seed
+        np.random.seed(args.seed); torch.manual_seed(args.seed)
 
-                        # Get ft_model for current param
-                        ft_model = setup_ft_model(args, ft_dict[ft_name]['model'], use_cuda)
-                        ft_encoder_params = [p for p in ft_model.encoder.parameters()]
-                        assert all([(ft_encoder_params[i] == ckpt_encoder_params[i]).all().item() for i in range(len(ft_encoder_params))])
+        # Set up param_types list
+        if ft_name in ['semeval2010task8', 'kbp37', 'tacred']:
+            param_types = ['pct_train_examples']
+        elif ft_name in ['fewrel_0', 'fewrel_1']:
+            param_types = ['n_train_relations', 'n_train_examples_per_relation']
+        else:
+            raise NotImplementedError
+        
+        # Run fine-tuning for current task
+        run_ft(args, ft_dict, ft_name, param_types, ckpt_file)
 
-                        # Get ft_criterion for current param
-                        ft_criterion = setup_ft_criterion(args, ft_dict[ft_name]['criterion'], use_cuda)
 
-                        # Instantiate ft_trainer -- which includes the ft optimizer -- for current param
-                        ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
+def run_ft(args, ft_dict, ft_name, param_types, ckpt_file):
+    ft_task_dict = ft_dict[ft_name]
+    ft_args_orig = ft_task_dict['args']
+    ft_task_orig = ft_task_dict['task']
+    ft_valid_subsets = ft_task_dict['valid_subset']
+    
+    logger.info('training on {} GPUs'.format(args.distributed_world_size))
+    logger.info('max tokens per GPU = {} and max sentences per GPU = {}'.format(
+        ft_args_orig.max_tokens,
+        ft_args_orig.max_sentences,
+    ))
 
-                        # Load train dataset for ft_trainer
-                        logger.info("loading train data for {} ({}={})".format(ft_name, param_type, param))
-                        ft_trainer.task.load_dataset('train', param_type, param)
+    # Iterate through each param type
+    for param_type in param_types:
+        # Set random seed
+        np.random.seed(args.seed); torch.manual_seed(args.seed)
 
-                        # Set up epoch iterator for current param
-                        ft_epoch_itr = ft_trainer.get_train_iterator(1, load_dataset=False)
+        # Set up param list
+        if param_type == 'pct_train_examples':
+            params = sorted(list(set(ft_args_orig.pct_train_examples)))
+            params = ft_args_orig.pct_train_examples
+            assert all([x > 0 and x <= 100 for x in params]) # make sure pct_train_examples vals are inside (0, 100]
+        elif param_type == 'n_train_relations':
+            params = sorted(list(set(ft_args_orig.n_train_relations)))
+            assert all([x >= 5 and x <= 64 for x in params]) # make sure n_train_relations vals are within [5, 64]
+        elif param_type == 'n_train_examples_per_relation':
+            params = sorted(list(set(ft_args_orig.n_train_examples_per_relation)))
+            assert all([x >= 5 and x <= 700 for x in params]) # make sure n_train_examples_per_relation vals are within [5, 700]
 
-                        train_meter = StopwatchMeter()
-                        train_meter.start()
-                        while ft_epoch_itr.next_epoch_idx <= ft_max_epoch:
+        # Set up ft_args_list and ft_task_list for each param value
+        ft_args_list = setup_ft_args(params, param_type, ft_args_orig, ft_task_orig)
+        ft_task_list = setup_ft_tasks(ft_args_list, ft_valid_subsets)
+    
+        # Iterate through params
+        for param_idx, param in enumerate(params):
+            # Set random seed
+            np.random.seed(args.seed); torch.manual_seed(args.seed)
 
-                            # Fine-tune PyTorch classifier on ft_task training set
-                            downstream_train_pytorch(
-                                ft_args, 
-                                ft_trainer, 
-                                ft_task, 
-                                ft_epoch_itr, 
-                                ft_train_prefix, 
-                                param_prefix_dict[param_type],
-                                param
-                            )
+            # Get ft_args and ft_task for current param
+            ft_args = ft_args_list[param_idx]
+            ft_task = ft_task_list[param_idx]
+            
+            # Train and validate model for given task and param
+            ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_file)
 
-                            # Validate PyTorch classifier on ft_task validation set
-                            if param_type == 'n_train_relations':
-                                cur_ft_valid_prefix = '_'.join([ft_valid_prefix, 'rel{:02d}'.format(param)])
-                            elif param_type == 'n_train_examples_per_relation':
-                                cur_ft_valid_prefix = '_'.join([ft_valid_prefix, 'epr{:03d}'.format(param)])
-                            ft_valid_losses = validate(
-                                ft_args, 
-                                ft_trainer, 
-                                ft_task, 
-                                ft_epoch_itr.epoch, 
-                                ft_valid_subsets, 
-                                cur_ft_valid_prefix
-                            )
 
-                            # only use first validation loss to update the learning rate
-                            ft_trainer.lr_step(ft_epoch_itr.epoch, ft_valid_losses[0])
+def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_file):
+    use_cuda = torch.cuda.is_available() and not ft_args.cpu
+    ft_max_epoch = ft_args.max_epoch or math.inf
+    ft_valid_subsets = ft_task_dict['valid_subset']
 
-                            # sharded data: get train iterator for next epoch
-                            reload_dataset = getattr(ft_args, 'reload', False)
-                            ft_epoch_itr = ft_trainer.get_train_iterator(ft_epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
+    # Set up ft prefixes
+    ft_train_prefix, ft_valid_prefix = create_ft_prefixes(
+        ft_task_dict['name'], 
+        param, 
+        param_prefix_dict[param_type],
+        ckpt_file
+    )
 
-                        train_meter.stop()
-                        logger.info('done training {} in {:.1f} seconds'.format(ft_name, train_meter.sum))
+    # Get ft_model for current param
+    ft_model = setup_ft_model(ft_args, ft_task_dict['model'], use_cuda)
+
+    # Get ft_criterion for current pct
+    ft_criterion = setup_ft_criterion(ft_args, ft_task_dict['criterion'], use_cuda)
+
+    # Instantiate ft_trainer -- which includes the ft optimizer -- for current param
+    ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
+
+    # Set up epoch iterator for current param
+    ft_epoch_itr = ft_trainer.get_train_iterator(1)
+
+    # Start training timer
+    train_meter = StopwatchMeter()
+    train_meter.start()
+
+    # Start training loop
+    while ft_epoch_itr.next_epoch_idx <= ft_max_epoch:
+
+        # Fine-tune PyTorch classifier on ft_task training set
+        downstream_train_pytorch(
+            ft_args, 
+            ft_trainer, 
+            ft_task, 
+            ft_epoch_itr, 
+            ft_train_prefix,
+            param
+        )
+
+        # Validate PyTorch classifier on ft_task validation set
+        ft_valid_losses = validate(
+            ft_args, 
+            ft_trainer, 
+            ft_task, 
+            ft_epoch_itr.epoch, 
+            ft_valid_subsets, 
+            ft_valid_prefix
+        )
+
+        # only use first validation loss to update the learning rate
+        ft_trainer.lr_step(ft_epoch_itr.epoch, ft_valid_losses[0])
+
+        # sharded data: get train iterator for next epoch
+        reload_dataset = getattr(ft_args, 'reload', False)
+        ft_epoch_itr = ft_trainer.get_train_iterator(ft_epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
+
+    # Stop training timer
+    train_meter.stop()
+    logger.info('done training {} in {:.1f} seconds'.format(ft_task_dict['name'], train_meter.sum))
 
 
 def validate(args, trainer, task, epoch_for_logging, subsets, valid_name=None, num_updates=None):

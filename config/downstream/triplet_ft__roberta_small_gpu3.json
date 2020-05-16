@@ -23,15 +23,16 @@
     // "num_workers": 0,
     "required_batch_size_multiple": 1,
 
-    "checkpoint_list": [
-        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt", 
-        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt",
-        "05m_13d_16h_30m_52s/checkpoints/checkpoint1.pt"
-        // "debug_True/05m_13d_16h_23m_04s/checkpoints/checkpoint1.pt", 
-        // "debug_True/05m_13d_16h_29m_20s/checkpoints/checkpoint1.pt"
-    ],
-
-    "checkpoint_dir": "../save/triplet_inference/small",
+    "checkpoint_dict": {
+        "05m_13d_16h_30m_52s": {
+        },
+        "debug_True/05m_15d_12h_54m_14s": {
+            "checkpoints": [
+                "checkpoint1.pt",
+                "checkpoint_best.pt"
+            ]
+        }
+    },
 
     "criterion": "cross_entropy_custom"
 }
