@@ -308,8 +308,8 @@ class SubgraphSampler(object):
                 min_common_neighbors_for_the_last_edge,
             )
 
-            # if only_accept_zero_cost:
-            #     assert successfully_added
+            if cost == 0:
+                assert successfully_added
 
             if not successfully_added:
                 assert entity_pair in self.coverage
