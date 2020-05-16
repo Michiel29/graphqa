@@ -45,13 +45,9 @@ logging.basicConfig(
 logger = logging.getLogger('fairseq_cli.train')
 
 
-def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, param_prefix, param, global_epoch=None):
+def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, global_epoch=None):
     """Fine-tune PyTorch classifier on downstream training set for one epoch"""
     task.split = 'train'
-    if param_prefix == 'rel':
-        train_prefix = '_'.join([train_prefix, '{}{:02d}'.format(param_prefix, param)])
-    else:
-        train_prefix = '_'.join([train_prefix, '{}{:03d}'.format(param_prefix, param)])
 
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
