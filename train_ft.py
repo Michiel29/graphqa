@@ -120,7 +120,7 @@ def main(args, init_distributed=False):
         trainer = Trainer(args, task, model, criterion)
 
         # Intialize neptune experiment
-        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_id))
+        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_id.split('/')[-1]))
         if distributed_utils.is_master(args) and not args.debug:
             initialize_neptune(trainer, None, args)
 
@@ -128,17 +128,22 @@ def main(args, init_distributed=False):
         ckpt_base_path = os.path.join(base_path, ckpt_id)
         if 'checkpoints' not in ckpt_item.keys():
             ckpt_list = list(glob.glob(os.path.join(ckpt_base_path, 'checkpoints/*.pt'), recursive=True))
+        elif len(ckpt_item['checkpoints']) == 0:
+            ckpt_list = list(glob.glob(os.path.join(ckpt_base_path, 'checkpoints/*.pt'), recursive=True))
         else:
             ckpt_list = [os.path.join(ckpt_base_path, 'checkpoints', x) for x in ckpt_item['checkpoints']]
 
+        # Filter checkpoint_best and checkpoint_last out of ckpt_list
+        ckpt_list = [x for x in ckpt_list if x.split('/')[-1][-7:-3] != 'best' and x.split('/')[-1][-7:-3] != 'last']
+
         # Iterate through each ckpt path for current ckpt_item
         for ckpt in ckpt_list:
-            evaluate_checkpoint(args, ckpt, trainer)
+            ckpt_idx = int(ckpt[-4])
+            evaluate_checkpoint(args, ckpt, ckpt_idx, trainer)
 
 
-def evaluate_checkpoint(args, ckpt, trainer):
+def evaluate_checkpoint(args, ckpt, ckpt_idx, trainer):
     use_cuda = torch.cuda.is_available() and not args.cpu
-    ckpt_file = ckpt.split('/')[-1][:-3]
 
     # Set checkpoint path in args
     setattr(args, 'restore_file', ckpt)
@@ -170,10 +175,10 @@ def evaluate_checkpoint(args, ckpt, trainer):
             raise NotImplementedError
         
         # Run fine-tuning for current task
-        run_ft(args, ft_dict, ft_name, param_types, ckpt_file)
+        run_ft(args, ft_dict, ft_name, param_types, ckpt_idx)
 
 
-def run_ft(args, ft_dict, ft_name, param_types, ckpt_file):
+def run_ft(args, ft_dict, ft_name, param_types, ckpt_idx):
     ft_task_dict = ft_dict[ft_name]
     ft_args_orig = ft_task_dict['args']
     ft_task_orig = ft_task_dict['task']
@@ -216,20 +221,18 @@ def run_ft(args, ft_dict, ft_name, param_types, ckpt_file):
             ft_task = ft_task_list[param_idx]
             
             # Train and validate model for given task and param
-            ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_file)
+            ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_idx)
 
 
-def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_file):
+def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_idx):
     use_cuda = torch.cuda.is_available() and not ft_args.cpu
     ft_max_epoch = ft_args.max_epoch or math.inf
-    ft_valid_subsets = ft_task_dict['valid_subset']
 
     # Set up ft prefixes
     ft_train_prefix, ft_valid_prefix = create_ft_prefixes(
         ft_task_dict['name'], 
         param, 
-        param_prefix_dict[param_type],
-        ckpt_file
+        param_prefix_dict[param_type]
     )
 
     # Get ft_model for current param
@@ -244,6 +247,9 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_fi
     # Set up epoch iterator for current param
     ft_epoch_itr = ft_trainer.get_train_iterator(1)
 
+    # Initialize list of validation scores
+    ft_valid_scores = []
+
     # Start training timer
     train_meter = StopwatchMeter()
     train_meter.start()
@@ -257,81 +263,78 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_fi
             ft_trainer, 
             ft_task, 
             ft_epoch_itr, 
-            ft_train_prefix,
-            param
+            ft_train_prefix
         )
 
         # Validate PyTorch classifier on ft_task validation set
-        ft_valid_losses = validate(
+        ft_valid_loss, ft_valid_score, progress = validate(
             ft_args, 
             ft_trainer, 
             ft_task, 
             ft_epoch_itr.epoch, 
-            ft_valid_subsets, 
-            ft_valid_prefix
+            ft_valid_prefix,
+            ckpt_idx
         )
+        ft_valid_scores.append(ft_valid_score)
 
         # only use first validation loss to update the learning rate
-        ft_trainer.lr_step(ft_epoch_itr.epoch, ft_valid_losses[0])
+        ft_trainer.lr_step(ft_epoch_itr.epoch, ft_valid_loss)
 
         # sharded data: get train iterator for next epoch
         reload_dataset = getattr(ft_args, 'reload', False)
         ft_epoch_itr = ft_trainer.get_train_iterator(ft_epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
+    
+    progress.print({ft_args.eval_metric: max(ft_valid_scores)}, tag=ft_valid_prefix, step=ckpt_idx)
 
     # Stop training timer
     train_meter.stop()
     logger.info('done training {} in {:.1f} seconds'.format(ft_task_dict['name'], train_meter.sum))
 
 
-def validate(args, trainer, task, epoch_for_logging, subsets, valid_name=None, num_updates=None):
+def validate(args, trainer, task, epoch_for_logging, valid_name, ckpt_idx):
     """Evaluate the model on the validation set(s) and return the losses."""
     task.split = 'valid'
-    valid_name_ = valid_name if valid_name is not None else 'valid'
-    num_updates = trainer.get_num_updates() if num_updates is None else num_updates
 
     if args.fixed_validation_seed is not None:
         # Set fixed seed for every validation
         utils.set_torch_seed(args.fixed_validation_seed)
 
-    valid_losses = []
-    for subset in subsets:
-        # Initialize data iterator
-        itr = task.get_batch_iterator(
-            dataset=task.dataset(subset),
-            max_tokens=args.max_tokens_valid,
-            max_sentences=args.max_sentences_valid,
-            max_positions=utils.resolve_max_positions(
-                task.max_positions(),
-                trainer.get_model().max_positions(),
-            ),
-            ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-            required_batch_size_multiple=args.required_batch_size_multiple,
-            seed=args.seed,
-            num_shards=args.distributed_world_size,
-            shard_id=args.distributed_rank,
-            num_workers=args.num_workers,
-            epoch=1,
-        ).next_epoch_itr(shuffle=False)
-        progress = progress_bar.build_progress_bar(
-            args, itr, epoch_for_logging,
-            prefix='valid on \'{}\' subset'.format(valid_name_),
-            no_progress_bar='simple'
-        )
-        progress = maybe_wrap_neptune_logging(progress, args)
+    # Initialize data iterator
+    itr = task.get_batch_iterator(
+        dataset=task.dataset('valid'),
+        max_tokens=args.max_tokens_valid,
+        max_sentences=args.max_sentences_valid,
+        max_positions=utils.resolve_max_positions(
+            task.max_positions(),
+            trainer.get_model().max_positions(),
+        ),
+        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+        required_batch_size_multiple=args.required_batch_size_multiple,
+        seed=args.seed,
+        num_shards=args.distributed_world_size,
+        shard_id=args.distributed_rank,
+        num_workers=args.num_workers,
+        epoch=1,
+    ).next_epoch_itr(shuffle=False)
+    progress = progress_bar.build_progress_bar(
+        args, itr, epoch_for_logging,
+        prefix='valid on \'{}\' subset'.format(valid_name),
+        no_progress_bar='simple'
+    )
+    progress = maybe_wrap_neptune_logging(progress, args)
 
-        # Reset validation meters
-        metrics.reset_meters(valid_name_)
+    # Reset validation meters
+    metrics.reset_meters(valid_name)
 
-        with metrics.aggregate(valid_name) as agg:
-            for sample in progress:
-                trainer.valid_step(sample)
+    with metrics.aggregate(valid_name) as agg:
+        for sample in progress:
+            trainer.valid_step(sample)
 
-        # Log validation stats
-        stats = get_valid_stats(args, trainer, agg.get_smoothed_values())
-        progress.print(stats, tag=valid_name_, step=num_updates)
+    # Get validation stats
+    stats = get_valid_stats(args, trainer, agg.get_smoothed_values())
 
-        valid_losses.append(stats[args.best_checkpoint_metric])
-    return valid_losses
+    # Return validations score
+    return stats[args.best_checkpoint_metric], stats[args.eval_metric], progress
 
 
 def get_valid_stats(args, trainer, stats):

@@ -56,7 +56,7 @@ def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
 
     return downstream_dict
 
-def create_ft_prefixes(downstream_name, param=None, param_prefix=None, ckpt_file=None, global_epoch=None):
+def create_ft_prefixes(downstream_name, param=None, param_prefix=None, global_epoch=None):
     if global_epoch is not None:
         ft_train_prefix = '_'.join([downstream_name, 'ft', 'train', 'epoch{:03d}'.format(global_epoch)])
         ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid', 'epoch{:03d}'.format(global_epoch)])
@@ -72,10 +72,6 @@ def create_ft_prefixes(downstream_name, param=None, param_prefix=None, ckpt_file
             ft_train_prefix = '_'.join([ft_train_prefix, '{}{:03d}'.format(param_prefix, param)])
             ft_valid_prefix = '_'.join([ft_valid_prefix, '{}{:03d}'.format(param_prefix, param)])
     
-    if ckpt_file is not None:
-        ft_train_prefix = '__'.join([ft_train_prefix, ckpt_file])
-        ft_valid_prefix = '__'.join([ft_valid_prefix, ckpt_file])
-
     if global_epoch is not None:
         global_ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid'])
         return ft_train_prefix, ft_valid_prefix, global_ft_valid_prefix
