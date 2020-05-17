@@ -41,7 +41,7 @@
             "num_workers": 4,
 
             "criterion": "cross_entropy_custom",
-            "weight": 0.5
+            "weight": 0.33
         },
         "mtb": {
             "task": "mtb",
@@ -60,7 +60,7 @@
 
 
             "criterion": "cross_entropy_custom",
-            "weight": 0.5
+            "weight": 0.33
         },        
 
         "mlm": {
@@ -83,7 +83,7 @@
             "num_workers": 1,
 
             "criterion": "masked_lm_custom",
-            "weight": 0.5
+            "weight": 0.33
         }
     },
 
