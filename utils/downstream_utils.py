@@ -56,7 +56,7 @@ def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
 
     return downstream_dict
 
-def create_ft_prefixes(downstream_name, param=None, param_prefix=None, global_epoch=None):
+def create_ft_prefixes(downstream_name, param=None, param_prefix=None, ckpt_idx=None, global_epoch=None):
     if global_epoch is not None:
         ft_train_prefix = '_'.join([downstream_name, 'ft', 'train', 'epoch{:03d}'.format(global_epoch)])
         ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid', 'epoch{:03d}'.format(global_epoch)])
@@ -66,10 +66,10 @@ def create_ft_prefixes(downstream_name, param=None, param_prefix=None, global_ep
 
     if param is not None and param_prefix is not None:
         if param_prefix == 'rel':
-            ft_train_prefix = '_'.join([ft_train_prefix, '{}{:02d}'.format(param_prefix, param)])
+            ft_train_prefix = '_'.join([ft_train_prefix, '{}{:02d}'.format(param_prefix, param), 'ckpt{}'.format(ckpt_idx)])
             ft_valid_prefix = '_'.join([ft_valid_prefix, '{}{:02d}'.format(param_prefix, param)])
         else:
-            ft_train_prefix = '_'.join([ft_train_prefix, '{}{:03d}'.format(param_prefix, param)])
+            ft_train_prefix = '_'.join([ft_train_prefix, '{}{:03d}'.format(param_prefix, param), 'ckpt{}'.format(ckpt_idx)])
             ft_valid_prefix = '_'.join([ft_valid_prefix, '{}{:03d}'.format(param_prefix, param)])
     
     if global_epoch is not None:

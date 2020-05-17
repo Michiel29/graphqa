@@ -48,6 +48,7 @@ logger = logging.getLogger('fairseq_cli.train')
 def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix):
     """Fine-tune PyTorch classifier on downstream training set for one epoch"""
     task.split = 'train'
+    num_updates = trainer.get_num_updates()
 
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
@@ -79,8 +80,19 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix):
             if log_output is None:
                 continue
 
+            # log mid-epoch stats
+            stats = get_ft_train_stats(agg.get_smoothed_values())
+            progress.log(stats, tag=train_prefix, step=num_updates)
+
             if num_updates >= max_update:
                 break
+
+    # log end-of-epoch stats
+    stats = get_ft_train_stats(agg.get_smoothed_values())
+    try:
+        progress.print(stats, tag=train_prefix, step=num_updates, log=False)
+    except:
+        progress.print(stats, tag=train_prefix, step=num_updates)
 
     # Reset epoch-level meters
     metrics.reset_meters(train_prefix)

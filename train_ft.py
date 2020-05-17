@@ -232,7 +232,8 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_id
     ft_train_prefix, ft_valid_prefix = create_ft_prefixes(
         ft_task_dict['name'], 
         param, 
-        param_prefix_dict[param_type]
+        param_prefix_dict[param_type],
+        ckpt_idx
     )
 
     # Get ft_model for current param
@@ -314,7 +315,7 @@ def validate(args, trainer, task, epoch_for_logging, valid_name, ckpt_idx):
         num_shards=args.distributed_world_size,
         shard_id=args.distributed_rank,
         num_workers=args.num_workers,
-        epoch=1,
+        epoch=epoch_for_logging,
     ).next_epoch_itr(shuffle=False)
     progress = progress_bar.build_progress_bar(
         args, itr, epoch_for_logging,
