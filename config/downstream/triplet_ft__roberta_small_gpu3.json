@@ -20,7 +20,6 @@
     "lr": [1e-4],
 
     "num_workers": 4,
-    // "num_workers": 0,
     "required_batch_size_multiple": 1,
 
     "checkpoint_dict": {
@@ -29,7 +28,9 @@
         "debug_True/05m_15d_12h_54m_14s": {
             "checkpoints": [
                 "checkpoint1.pt",
-                "checkpoint_best.pt"
+                "checkpoint3.pt",
+                "checkpoint5.pt",
+                "checkpoint7.pt"
             ]
         }
     },

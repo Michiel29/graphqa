@@ -45,7 +45,7 @@ logging.basicConfig(
 logger = logging.getLogger('fairseq_cli.train')
 
 
-def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, global_epoch=None):
+def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix):
     """Fine-tune PyTorch classifier on downstream training set for one epoch"""
     task.split = 'train'
 
@@ -64,13 +64,6 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, globa
         args, itr, epoch_itr.epoch, no_progress_bar='simple',
     )
 
-    # Add global epoch to beginning of progress bar description
-    if global_epoch is not None:
-        try:
-            progress.wrapped_bar.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.wrapped_bar.prefix), refresh=True)
-        except:
-            progress.tqdm.set_description(desc='epoch {:03d} | \'{}\' {}'.format(global_epoch, train_prefix, progress.tqdm.desc), refresh=True)
-
     progress = maybe_wrap_neptune_logging(progress, args)
 
     # Task specific setup per epoch
@@ -86,19 +79,8 @@ def downstream_train_pytorch(args, trainer, task, epoch_itr, train_prefix, globa
             if log_output is None:
                 continue
 
-            # Log mid-epoch stats
-            stats = get_ft_train_stats(agg.get_smoothed_values())
-            progress.log(stats, tag=train_prefix, step=num_updates)
-
             if num_updates >= max_update:
                 break
-
-    # Log end-of-epoch stats
-    stats = get_ft_train_stats(agg.get_smoothed_values())
-    try:
-        progress.print(stats, tag='train', step=num_updates, log=False)
-    except:
-        progress.print(stats, tag='train', step=num_updates)
 
     # Reset epoch-level meters
     metrics.reset_meters(train_prefix)
