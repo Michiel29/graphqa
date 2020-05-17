@@ -79,6 +79,7 @@
             "lr": [2e-5],
             "warmup_updates": 2553,
             "max_sentences": 16,
+            "update_freq": [1],
             "max_tokens": 1.5e4,
 
             "max_sentences_valid": 200,

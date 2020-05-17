@@ -5,46 +5,85 @@
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
             "arch": "encoder_fewrel__roberta_base",
-            "max_sentences_valid": 96,
-            "max_tokens_valid": 6e3,
             "non_mask_rate": 0,
-            "epoch_interval": 1
+
+            "lr": [1e-4],
+            "warmup_updates": 600,
+            "max_sentences": 16,
+            "update_freq": [4],
+            "max_tokens": 1.5e3,
+
+            "max_sentences_valid": 96,
+            "max_tokens_valid": 6e3
         },
         "fewrel_1": {
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
             "arch": "encoder_fewrel__roberta_base",
-            "max_sentences_valid": 96,
-            "max_tokens_valid": 6e3,
             "non_mask_rate": 1,
-            "epoch_interval": 1
+
+            "lr": [1e-4],
+            "warmup_updates": 600,
+            "max_sentences": 16,
+            "update_freq": [4],
+            "max_tokens": 1.5e3,
+
+            "max_sentences_valid": 96,
+            "max_tokens_valid": 6e3
         },
         "semeval2010task8": {
             "add_configs": ["semeval2010task8/semeval2010task8.json", "downstream/downstream.json"],
             "task_type": "supervised",
             "arch": "encoder_semeval2010task8__roberta_base",
             "non_mask_rate": 1,
-            "epoch_interval": 1,
-            "max_sentences_sklearn": 96,
-            "max_tokens_sklearn": 6e3
+
+            "max_sentences_sklearn": 200,
+            "max_tokens_sklearn": 2e4,
+
+            "lr": [1e-5],
+            "warmup_updates": 300,
+            "max_sentences": 16,
+            "update_freq": [1],
+            "max_tokens": 2e3,
+
+            "max_sentences_valid": 96,
+            "max_tokens_valid": 6e3
         },
         "kbp37": {
             "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
             "task_type": "supervised",
             "arch": "encoder_kbp37__roberta_base",
             "non_mask_rate": 1,
-            "epoch_interval": 1,
+
             "max_sentences_sklearn": 96,
-            "max_tokens_sklearn": 6e3
+            "max_tokens_sklearn": 6e3,
+
+            "lr": [1e-5],
+            "warmup_updates": 600,
+            "max_sentences": 16,
+            "update_freq": [1],
+            "max_tokens": 2e3,
+
+            "max_sentences_valid": 96,
+            "max_tokens_valid": 6e3
         },
         "tacred": {
             "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
             "task_type": "supervised",
             "arch": "encoder_tacred__roberta_base",
             "non_mask_rate": 1,
-            "epoch_interval": 1,
+
             "max_sentences_sklearn": 80,
-            "max_tokens_sklearn": 5000
+            "max_tokens_sklearn": 5000,
+
+            "lr": [2e-5],
+            "warmup_updates": 2553,
+            "max_sentences": 16,
+            "update_freq": [1],
+            "max_tokens": 2e3,
+
+            "max_sentences_valid": 80,
+            "max_tokens_valid": 5e3
         }
     }
 }
