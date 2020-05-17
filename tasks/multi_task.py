@@ -143,7 +143,7 @@ class ListTaskIterator(object):
         return next(self.itr)
 
     def has_next(self):
-        return self.count < len(self)
+        return self.count < self.length
 
     def __len__(self):
         return self.length * self.total_update_freq
