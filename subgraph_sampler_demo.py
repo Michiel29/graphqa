@@ -1,9 +1,11 @@
 import argparse
+from collections import Counter
 import numpy as np
 import os
 import pygraphviz as pgv
 from tqdm import trange
 import logging
+from scipy.stats import wasserstein_distance
 
 from datasets import AnnotatedText, GraphDataset, SubgraphSampler
 from utils.data_utils import numpy_seed, safe_load_indexed_dataset
@@ -120,6 +122,7 @@ def main(args):
             num_subgraphs, total_edges, total_covered_edges = 0, 0, 0
             total_relative_coverage_mean, total_relative_coverage_median = 0, 0
             total_full_batch = 0
+            entity_pair_counter, relation_statement_counter = Counter(), Counter()
             with trange(len(graph), desc='Subgraph sampling') as progress_bar:
                 for i in progress_bar:
                     subgraph, fill_successfully = sample_subgraph(graph, annotated_text, random_perm[i], args)
@@ -127,6 +130,8 @@ def main(args):
                         continue
 
                     num_subgraphs += 1
+                    relation_statement_counter.update([hash(x) for x in subgraph.relation_statements.values()])
+                    entity_pair_counter.update([(min(h, t), max(h, t)) for (h, t) in subgraph.relation_statements.keys()])
                     total_edges += len(subgraph.relation_statements)
                     total_covered_edges += len(subgraph.covered_entity_pairs)
                     relative_coverages = subgraph.relative_coverages()
@@ -134,13 +139,21 @@ def main(args):
                     total_relative_coverage_median += np.median(relative_coverages)
                     total_full_batch += int(fill_successfully)
 
+                    entity_pairs_counts = np.array(list(entity_pair_counter.values()))
+                    relation_statement_counts = np.array(list(relation_statement_counter.values()))
+
                     progress_bar.set_postfix(
-                        n=num_subgraphs,
-                        edges=total_edges / num_subgraphs,
-                        cov_edges=total_covered_edges / num_subgraphs,
-                        rel_cov_mean=total_relative_coverage_mean / num_subgraphs,
-                        rel_cov_median=total_relative_coverage_median / num_subgraphs,
-                        full_batch=total_full_batch / num_subgraphs,
+                        # n=num_subgraphs,
+                        m_r=relation_statement_counter.most_common(1)[0][1],
+                        m_e=entity_pair_counter.most_common(1)[0][1],
+                        w_e=wasserstein_distance(entity_pairs_counts, np.ones_like(entity_pairs_counts)),
+                        w_r=wasserstein_distance(relation_statement_counts, np.ones_like(relation_statement_counts)),
+                        y=total_covered_edges / total_edges,
+                        e=total_edges / num_subgraphs,
+                        cov_e=total_covered_edges / num_subgraphs,
+                        rel_cov=total_relative_coverage_mean / num_subgraphs,
+                        # rel_cov_median=total_relative_coverage_median / num_subgraphs,
+                        f=total_full_batch / num_subgraphs,
                     )
 
 
@@ -149,15 +162,15 @@ def cli_main():
     parser.add_argument('--data-path', type=str, help='path to data directory')
     parser.add_argument('--split', type=str, default='train', help='which data split to use: train (default) or validation')
     parser.add_argument('--mask-type', type=str, default='start_end', help='Mask type for the text annotations')
-    parser.add_argument('--non-mask-rate', type=float, default=0, help='How often we keep the entity\'s surface form')
+    parser.add_argument('--non-mask-rate', type=float, default=1, help='How often we keep the entity\'s surface form')
     parser.add_argument('--cover-random-prob', type=float, default=0.2)
     parser.add_argument('--subsampling-strategy', type=str, default='by_entity_pair')
     parser.add_argument('--subsampling-cap', type=int, default=1)
     parser.add_argument('--seed', type=int, default=31415)
     parser.add_argument('--min-common-neighbors', type=int, default=10)
     parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
-    parser.add_argument('--max-tokens', type=int, default=2e4)
-    parser.add_argument('--max-sentences', type=int, default=100000)
+    parser.add_argument('--max-tokens', type=int, default=18000)
+    parser.add_argument('--max-sentences', type=int, default=1000)
     parser.add_argument('--max-entities-size', type=int, default=600)
     parser.add_argument('--max-entities-from-queue', type=int, default=5)
     parser.add_argument('--save-subgraph', type=str)
