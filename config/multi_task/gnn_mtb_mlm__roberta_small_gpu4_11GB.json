@@ -21,7 +21,7 @@
             "max_common_neighbors": 1,
             "max_entities_size": 600,
             "max_entities_from_queue": 5,
-            "cover_random_prob": 0.2,
+            "cover_random_prob": 0.0,
             "num_text_chunks": 4,
             "min_common_neighbors_for_the_last_edge": 1,
             "total_negatives": 100,
@@ -53,7 +53,7 @@
             "n_valid_examples": 20000,
 
             "update_freq": 7,
-            "epoch_size": 4e6,
+            "epoch_size": 252000,
             "max_sentences": 66,
             "max_tokens": 2e4,
             "num_workers": 2,
@@ -110,5 +110,6 @@
     "max_tokens": 12000,
 
     "fp16": false,
+    "no_epoch_checkpoints": true,
     "validate_before_training": false
 }
