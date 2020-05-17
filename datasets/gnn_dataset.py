@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 import math
 import numpy as np
 import torch
@@ -6,7 +7,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 from fairseq.data import FairseqDataset
 
-from datasets import AnnotatedText, GraphDataset
+from datasets import GraphDataset
 from datasets.subgraph_sampler import SubgraphSampler
 from utils.data_utils import numpy_seed
 
@@ -32,6 +33,8 @@ class GNNDataset(FairseqDataset):
         max_tokens,
         max_sentences,
         num_text_chunks,
+        entity_pair_counter_cap,
+        num_workers,
         seed,
     ):
         self.annotated_text = annotated_text
@@ -54,6 +57,15 @@ class GNNDataset(FairseqDataset):
         self.seed = seed
         self.epoch = None
 
+        self.num_workers = num_workers
+        self.entity_pair_counter_cap = entity_pair_counter_cap
+        if self.entity_pair_counter_cap is not None:
+            self.entity_pair_counter = Counter()
+            self.entity_pair_counter_sum = 0
+        else:
+            self.entity_pair_counter = None
+            self.entity_pair_counter_sum = None
+
     def set_epoch(self, epoch):
         self.graph.set_epoch(epoch)
         self.epoch = epoch
@@ -70,13 +82,20 @@ class GNNDataset(FairseqDataset):
             max_entities_size=self.max_entities_size,
             max_entities_from_queue=self.max_entities_from_queue,
             cover_random_prob=self.cover_random_prob,
+            entity_pair_counter=self.entity_pair_counter,
+            entity_pair_counter_sum=self.entity_pair_counter_sum,
+            entity_pair_counter_cap=self.entity_pair_counter_cap,
         )
         sentence = self.annotated_text.annotate(*(edge.numpy()))
 
         if not subgraph.add_initial_entity_pair(head, tail, self.max_tokens, self.max_sentences, sentence):
             return None
 
-        subgraph.fill(self.max_tokens, self.max_sentences, self.min_common_neighbors_for_the_last_edge)
+        subgraph.fill(
+            self.max_tokens,
+            self.max_sentences,
+            self.min_common_neighbors_for_the_last_edge,
+        )
 
         return subgraph
 
@@ -231,6 +250,7 @@ class GNNDataset(FairseqDataset):
             'graph_sizes': graph_sizes,
             'candidate_text_idx': candidate_text_idx,
             'target': torch.zeros(len(candidate_text_idx), dtype=torch.int64),
+            'all_entity_pairs': torch.tensor(list(text_index.keys()), dtype=torch.int32),
             'yield': subgraph.get_yield(),
             'rel_cov': subgraph.get_relative_coverages_mean(),
             'nsentences': subgraph.nsentences,
@@ -253,4 +273,12 @@ class GNNDataset(FairseqDataset):
         if len(samples) == 0:
             return None
         assert len(samples) == 1
+
+        if self.entity_pair_counter_cap is not None and self.num_workers > 0:
+            self.entity_pair_counter.update([
+                (entity_pair[0].item(), entity_pair[1].item())
+                for entity_pair in samples[0]['all_entity_pairs']
+            ])
+            self.entity_pair_counter_sum += len(samples[0]['all_entity_pairs'])
+
         return samples[0]

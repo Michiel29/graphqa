@@ -27,6 +27,8 @@ RelationStatement = namedtuple('RelationStatement', ['head', 'tail', 'sentence',
 
 class SubgraphSampler(object):
 
+    BIG_PENALTY = 1000000
+
     def __init__(
         self,
         graph,
@@ -35,6 +37,9 @@ class SubgraphSampler(object):
         max_entities_size,
         max_entities_from_queue,
         cover_random_prob,
+        entity_pair_counter=None,
+        entity_pair_counter_sum=None,
+        entity_pair_counter_cap=None,
     ):
         self.graph = graph
         self.annotated_text = annotated_text
@@ -52,6 +57,15 @@ class SubgraphSampler(object):
         self.entity_score = []
         self.entity_coverage = {}
         self.intervals = IntervalTree()
+
+        self.entity_pair_counter = entity_pair_counter
+        self.entity_pair_counter_sum = entity_pair_counter_sum
+        self.entity_pair_counter_cap = entity_pair_counter_cap
+
+    @property
+    def entity_pair_counter_mean(self):
+        return self.entity_pair_counter_sum / len(self.graph)
+
 
     def _update_coverage(self, new_relation_statements=None):
         new_relation_statements_tmp = None
@@ -91,10 +105,17 @@ class SubgraphSampler(object):
         for rs in relation_statements:
             self.entities.update([rs.head, rs.tail])
             self.relation_statements[(rs.head, rs.tail)] = rs.sentence
+            self.entity_pair_counter
             assert len(self.intervals.overlap(rs.begin, rs.end)) == 0
             self.intervals.addi(rs.begin, rs.end, None)
             self.ntokens += len(rs.sentence)
             self.nsentences += 1
+        if self.entity_pair_counter is not None:
+            self.entity_pair_counter.update([
+                (rs.head, rs.tail)
+                for rs in relation_statements
+            ])
+            self.entity_pair_counter_sum += len(relation_statements)
 
     def add_initial_entity_pair(self, a, b, max_tokens, max_sentences, sentence):
         a, b = item(a), item(b)
@@ -267,6 +288,13 @@ class SubgraphSampler(object):
 
         for entity_pair, coverage in self._generate_entity_pair_candidates():
             current_cost = coverage.cost()
+            if (
+                self.entity_pair_counter is not None
+                and self.entity_pair_counter_cap is not None
+                and self.entity_pair_counter[entity_pair] > self.entity_pair_counter_cap * self.entity_pair_counter_mean
+            ):
+                current_cost += self.BIG_PENALTY
+
             if cost_to_add_best is None or cost_to_add_best > current_cost:
                 entity_pair_best = [entity_pair]
                 cost_to_add_best = current_cost
@@ -279,18 +307,48 @@ class SubgraphSampler(object):
             index = np.random.randint(len(entity_pair_best))
             return entity_pair_best[index], cost_to_add_best
 
-    def _generate_neighbors_to_add(self, a, b):
-        coverage = self.coverage[(a, b)]
+    def _generate_neighbors_to_add(self, head, tail):
+        filtered_neighbors = []
+        coverage = self.coverage[(head, tail)]
         neighbors = np.array([x for x in coverage.single_edge_missing], dtype=np.int64)
         np.random.shuffle(neighbors)
         for n in neighbors:
-            yield n
+            head_n = (head, n)
+            tail_n = (n, tail)
+            if (
+                self.entity_pair_counter is not None and self.entity_pair_counter_cap is not None
+                and (
+                    self.entity_pair_counter[head_n] > self.entity_pair_counter_cap * self.entity_pair_counter_mean
+                    or self.entity_pair_counter[tail_n] > self.entity_pair_counter_cap * self.entity_pair_counter_mean
+                )
+            ):
+                filtered_neighbors.append(n)
+            else:
+                yield n
         neighbors = np.array([x for x in coverage.both_edges_missing], dtype=np.int64)
         np.random.shuffle(neighbors)
         for n in neighbors:
+            head_n = (head, n)
+            tail_n = (n, tail)
+            if (
+                self.entity_pair_counter is not None and self.entity_pair_counter_cap is not None
+                and (
+                    self.entity_pair_counter[head_n] > self.entity_pair_counter_cap * self.entity_pair_counter_mean
+                    or self.entity_pair_counter[tail_n] > self.entity_pair_counter_cap * self.entity_pair_counter_mean
+                )
+            ):
+                filtered_neighbors.append(n)
+            else:
+                yield n
+        for n in filtered_neighbors:
             yield n
 
-    def fill(self, max_tokens, max_sentences, min_common_neighbors_for_the_last_edge):
+    def fill(
+        self,
+        max_tokens,
+        max_sentences,
+        min_common_neighbors_for_the_last_edge,
+    ):
         only_accept_zero_cost = False
         while True:
             entity_pair, cost = self.sample_min_cost_entity_pair()

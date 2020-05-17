@@ -52,6 +52,7 @@ class GNNTask(BaseTask):
 
         parser.add_argument('--total-negatives', type=int, default=None)
         parser.add_argument('--max_hard_negatives', type=int, default=None)
+        parser.add_argument('--entity-pair-counter-cap', type=int, default=None)
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(
@@ -93,6 +94,8 @@ class GNNTask(BaseTask):
             max_tokens=self.args.max_tokens - 1, # for bos
             max_sentences=self.args.max_sentences,
             num_text_chunks=self.args.num_text_chunks,
+            entity_pair_counter_cap=self.args.entity_pair_counter_cap,
+            num_workers=self.args.num_workers,
             seed=self.args.seed,
         )
         if split == 'train' and self.args.epoch_size is not None:
