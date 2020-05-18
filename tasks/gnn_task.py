@@ -94,7 +94,7 @@ class GNNTask(BaseTask):
             max_tokens=self.args.max_tokens - 1, # for bos
             max_sentences=self.args.max_sentences,
             num_text_chunks=self.args.num_text_chunks,
-            entity_pair_counter_cap=self.args.entity_pair_counter_cap,
+            entity_pair_counter_cap=getattr(self.args, 'entity_pair_counter_cap', None),
             num_workers=self.args.num_workers,
             seed=self.args.seed,
         )
