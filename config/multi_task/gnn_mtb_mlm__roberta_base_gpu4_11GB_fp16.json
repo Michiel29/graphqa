@@ -1,0 +1,113 @@
+{
+    "add_configs": ["../roberta/base.json", "../base.json", "../downstream/downstream_base.json"],
+
+    "tasks": {
+        "gnn": {
+            "task": "gnn",
+            "arch": "encoder_gnn__roberta_base",
+            "gnn_layer_type": "mlp_concat",
+            "gnn_layer_args": {
+                "enc_dim": 256,
+                "layer_sizes": [[256, 2]],
+                "layer_norm": true,
+                "n_gnn_layers": 1
+            },
+            "gnn_mlp_layer_norm": true,
+            "layer_sizes": [[256, 1], [1, 1]],
+
+            "min_common_neighbors": 10,
+            "max_common_neighbors": 1,
+            "max_entities_size": 600,
+            "max_entities_from_queue": 5,
+            "cover_random_prob": 0,
+            "num_text_chunks": 4,
+            "min_common_neighbors_for_the_last_edge": 1,
+            "total_negatives": 100,
+            "max_hard_negatives": 50,
+	    "entity_pair_counter_cap": 10,
+
+            "non_mask_rate": 0.1,
+            "subsampling_strategy": "by_entity_pair",
+            "subsampling_cap": 1,
+
+            "update_freq": 36,
+            "epoch_size": 12000,
+            "n_valid_examples": 400,
+
+            "max_sentences": 1000,
+            "max_tokens": 14000,
+
+            "num_workers": 4,
+
+            "criterion": "cross_entropy_custom",
+            "weight": 0.33
+        },
+        "mtb": {
+            "task": "mtb",
+            "k_weak_negs": 100,
+            "n_tries_entity": 100,
+            "non_mask_rate": 0.7,
+            "subsampling_strategy": "by_entity_pair",
+            "subsampling_cap": 100,
+            "n_valid_examples": 20000,
+
+            "update_freq": 7,
+            "epoch_size": 184334,
+            "max_sentences": 79,
+            "max_tokens": 2e4,
+            "num_workers": 2,
+
+
+            "criterion": "cross_entropy_custom",
+            "weight": 0.33
+        },        
+
+        "mlm": {
+            "task": "masked_lm_em",
+            "non_mask_rate": 0.5,
+
+            "mask_prob": 0.15,
+            "leave_unmasked_prob": 0.1,
+            "random_token_prob": 0.1,
+            "freq_weighted_replacement": false,
+            "mask_whole_words": true,
+
+            "update_freq": 7,
+            "epoch_size": 184334,
+            "n_valid_examples": 20000,
+
+            "max_sentences": 79,
+            "max_tokens": 1e5,
+
+            "num_workers": 1,
+
+            "criterion": "masked_lm_custom",
+            "weight": 0.34
+        }
+    },
+
+    "task": "multi_task",
+    "arch": "multi_model",
+    "use_sentence_negatives": false,
+    "entity_dim": 256,
+    "triplet_type": "concat_linear_dot",
+    "encoder_output_layer_type": "entity_start_linear",
+
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+
+    "mask_type": "start_end",
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    "max_sentences": 1336,
+    "update_freq": null,
+    "max_tokens": 12000,
+
+    "fp16": true,
+    "validate_before_training": false
+}
