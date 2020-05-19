@@ -90,5 +90,6 @@
     "max_tokens": 12000,
 
     "fp16": true,
-    "validate_before_training": false
+    "validate_before_training": false,
+    "no_epoch_checkpoints": true
 }
