@@ -6,7 +6,13 @@ from modules.mlp import MLP_factory
 class BaseLayer(nn.Module):
     def forward(self, candidate_rep, graph_rep, graph_sizes, put_indices, **unused):
         candidate_rep_repeat = torch.repeat_interleave(candidate_rep, graph_sizes, dim=0) # (sum(m_i), 1, d)
-        candidate_update, graph_rep = self.update(candidate_rep_repeat, graph_rep, graph_sizes, put_indices, **unused)
+        candidate_update, graph_rep = self.update(
+            candidate=candidate_rep_repeat,
+            graph=graph_rep,
+            graph_sizes=graph_sizes,
+            put_indices=put_indices,
+            **unused,
+        )
         candidate_rep = candidate_rep.index_put(put_indices, candidate_update, accumulate=True)
 
         return candidate_rep, graph_rep
