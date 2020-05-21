@@ -25,8 +25,7 @@ class EncoderGNNModel(BaseFairseqModel):
             gnn_layer_dict[args.gnn_layer_type](args.gnn_layer_args)
             for i in range(args.gnn_layer_args['n_gnn_layers'])
         ])
-        final_gnn_layer_dim = args.gnn_layer_args['layer_sizes'][-1][0]
-        self.mlp = MLP_factory([[final_gnn_layer_dim, 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
+        self.mlp = MLP_factory([[args.gnn_layer_args['enc_dim'], 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
 
     def encode_text(self, text_chunks):
         text_enc = []
@@ -62,12 +61,12 @@ class EncoderGNNModel(BaseFairseqModel):
         put_indices = tuple(torch.repeat_interleave(candidate_idx_range, graph_sizes, dim=0).unsqueeze(0)) # (sum(m_i))
 
         graph_rep = text_enc[graph_idx] # (sum(m_i), 2, d)
-        candidate_rep = text_enc[candidate_text_idx].unsqueeze(1) # (n_targets * n_candidates, 1, d)
+        candidate_rep = text_enc[candidate_text_idx] # (n_targets * n_candidates, d)
 
         for layer in self.gnn_layers:
-            candidate_rep_repeat = torch.repeat_interleave(candidate_rep, graph_sizes, dim=0) # (sum(m_i), 1, d)
-            layer_output = layer(candidate_rep_repeat, graph_rep).unsqueeze(-2) # (sum(m_i), d)
-            candidate_rep = candidate_rep.index_put(put_indices, layer_output, accumulate=True) # (n_targets * n_candidates, d)
+            candidate_rep, graph_rep = layer(candidate_rep, graph_rep,
+            graph_sizes, put_indices) # (sum(m_i), d)
+
 
         scores = self.mlp(candidate_rep) # (n_targets * n_candidates)
         scores = scores.reshape(n_targets, n_candidates) # (n_targets, n_candidates)
