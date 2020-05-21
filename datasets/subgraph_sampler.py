@@ -33,6 +33,7 @@ class SubgraphSampler(object):
         self,
         graph,
         annotated_text,
+        required_min_common_neighbors,
         min_common_neighbors,
         max_entities_size,
         max_entities_from_queue,
@@ -44,6 +45,7 @@ class SubgraphSampler(object):
         self.graph = graph
         self.annotated_text = annotated_text
         self.min_common_neighbors = min_common_neighbors
+        self.required_min_common_neighbors = required_min_common_neighbors
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
         self.cover_random_prob = cover_random_prob
@@ -77,6 +79,7 @@ class SubgraphSampler(object):
             self.relation_statements,
             self.coverage,
             self.min_common_neighbors,
+            self.required_min_common_neighbors,
             new_relation_statements_tmp,
         )
 
@@ -124,7 +127,7 @@ class SubgraphSampler(object):
         coverage = self.coverage[(a, b)]
         if coverage.num_total_neighbors == 0:
             return False
-        return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences, 1)
+        return self.try_add_entity_pair_with_neighbors(a, b, max_tokens, max_sentences)
 
     def intervals_overlap(self, i1, i2):
         if i1[0] <= i2[0] and i2[0] < i1[1]:
@@ -174,13 +177,12 @@ class SubgraphSampler(object):
         tail,
         max_tokens,
         max_sentences,
-        min_neighbors_to_add,
     ):
         head, tail = item(head), item(tail)
         assert head in self.entities and tail in self.entities
 
         coverage = self.coverage[(head, tail)]
-        if coverage.num_total_neighbors == 0:
+        if coverage.num_total_neighbors < self.required_min_common_neighbors:
             return False
         num_neighbors_added = len(coverage.both_edges_in_subgraph)
 
@@ -237,7 +239,7 @@ class SubgraphSampler(object):
                     # NOTE: We keep the last (a, n) and (n, b) entity pairs
                     # even though it might to lead to more tokens than max_tokens
                     # and/or more sentences than max_sentences.
-                    if num_neighbors_added < min_neighbors_to_add:
+                    if num_neighbors_added < self.required_min_common_neighbors:
                         # We have failed to add enough edges for the entity pair (a, b).
                         # Thus, we discard all new_relation_statements
                         return False
@@ -247,7 +249,7 @@ class SubgraphSampler(object):
                 if num_neighbors_added >= self.min_common_neighbors:
                     break
 
-        if num_neighbors_added < min_neighbors_to_add:
+        if num_neighbors_added < self.required_min_common_neighbors:
             return False
 
         self._add_relation_statements(new_relation_statements)
@@ -347,7 +349,6 @@ class SubgraphSampler(object):
         self,
         max_tokens,
         max_sentences,
-        min_common_neighbors_for_the_last_edge,
     ):
         only_accept_zero_cost = False
         while True:
@@ -363,7 +364,6 @@ class SubgraphSampler(object):
                 entity_pair[1],
                 max_tokens,
                 max_sentences,
-                min_common_neighbors_for_the_last_edge,
             )
 
             if cost == 0:

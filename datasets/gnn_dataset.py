@@ -24,7 +24,7 @@ class GNNDataset(FairseqDataset):
         dictionary,
         min_common_neighbors,
         max_common_neighbors,
-        min_common_neighbors_for_the_last_edge,
+        required_min_common_neighbors,
         max_entities_size,
         max_entities_from_queue,
         cover_random_prob,
@@ -43,7 +43,7 @@ class GNNDataset(FairseqDataset):
 
         self.min_common_neighbors = min_common_neighbors
         self.max_common_neighbors = max_common_neighbors
-        self.min_common_neighbors_for_the_last_edge = min_common_neighbors_for_the_last_edge
+        self.required_min_common_neighbors = required_min_common_neighbors
         self.max_entities_size = max_entities_size
         self.max_entities_from_queue = max_entities_from_queue
         self.cover_random_prob = cover_random_prob
@@ -79,6 +79,7 @@ class GNNDataset(FairseqDataset):
             graph=self.graph,
             annotated_text=self.annotated_text,
             min_common_neighbors=self.min_common_neighbors,
+            required_min_common_neighbors=self.required_min_common_neighbors,
             max_entities_size=self.max_entities_size,
             max_entities_from_queue=self.max_entities_from_queue,
             cover_random_prob=self.cover_random_prob,
@@ -91,12 +92,7 @@ class GNNDataset(FairseqDataset):
         if not subgraph.add_initial_entity_pair(head, tail, self.max_tokens, self.max_sentences, sentence):
             return None
 
-        subgraph.fill(
-            self.max_tokens,
-            self.max_sentences,
-            self.min_common_neighbors_for_the_last_edge,
-        )
-
+        subgraph.fill(self.max_tokens, self.max_sentences)
         return subgraph
 
     def _split(self, sentences):

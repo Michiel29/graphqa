@@ -17,6 +17,7 @@ cdef class NeighborhoodCoverage(object):
     cdef public int tail
     cdef public int num_total_neighbors
     cdef public int min_common_neighbors
+    cdef public int required_min_common_neighbors
 
     cdef public bool head_tail_in_subgraph
 
@@ -34,11 +35,13 @@ cdef class NeighborhoodCoverage(object):
         np.ndarray[DTYPE_t, ndim=1] tail_neighbors,
         dict entity_pairs_in_subgraph,
         int min_common_neighbors,
+        int required_min_common_neighbors,
     ):
         self.INF_COST = 100000000
         self.head = head
         self.tail = tail
         self.min_common_neighbors = min_common_neighbors
+        self.required_min_common_neighbors = required_min_common_neighbors
 
         self.both_edges_in_subgraph = set()
         self.single_edge_missing = set()
@@ -123,7 +126,7 @@ cdef class NeighborhoodCoverage(object):
         cdef int target_num_of_common_neighbors
         cdef int num_common_neighbors_to_cover
 
-        if self.num_total_neighbors == 0:
+        if self.num_total_neighbors < self.required_min_common_neighbors:
             self._cost = self.INF_COST
             return
 
@@ -160,6 +163,7 @@ def update_coverage(
     dict entity_pairs,
     dict coverage_dict,
     int min_common_neighbors,
+    int required_min_common_neighbors,
     list new_relation_statements=None,
 ):
     for a in entities:
@@ -183,6 +187,7 @@ def update_coverage(
                         tail_neighbors=b_neighbors,
                         entity_pairs_in_subgraph=entity_pairs,
                         min_common_neighbors=min_common_neighbors,
+                        required_min_common_neighbors=required_min_common_neighbors,
                     )
             elif coverage_dict[(a, b)] is not None and new_relation_statements is not None:
                 for new_a, new_b in new_relation_statements:

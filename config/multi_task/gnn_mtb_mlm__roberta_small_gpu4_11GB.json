@@ -24,7 +24,7 @@
             "cover_random_prob": 0.0,
             "entity_pair_counter_cap": null,
             "num_text_chunks": 4,
-            "min_common_neighbors_for_the_last_edge": 1,
+            "required_min_common_neighbors": 1,
             "total_negatives": 100,
             "max_hard_negatives": 50,
 
@@ -62,7 +62,7 @@
 
             "criterion": "cross_entropy_custom",
             "weight": 0.33
-        },        
+        },
 
         "mlm": {
             "task": "masked_lm_em",

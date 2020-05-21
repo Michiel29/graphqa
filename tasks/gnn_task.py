@@ -44,7 +44,7 @@ class GNNTask(BaseTask):
                             help='probability of not masking the entity with a [BLANK] token')
         parser.add_argument('--min-common-neighbors', type=int, default=None)
         parser.add_argument('--max-common-neighbors', type=int, default=None)
-        parser.add_argument('--min-common-neighbors-for-the-last-edge', type=int, default=1)
+        parser.add_argument('--required-min-common-neighbors', type=int, default=1)
         parser.add_argument('--num-text-chunks', type=int, default=None)
         parser.add_argument('--max-entities-size', type=int, default=None)
         parser.add_argument('--max-entities-from-queue', type=int, default=None)
@@ -85,7 +85,7 @@ class GNNTask(BaseTask):
             dictionary=self.dictionary,
             min_common_neighbors=self.args.min_common_neighbors,
             max_common_neighbors=self.args.max_common_neighbors,
-            min_common_neighbors_for_the_last_edge=self.args.min_common_neighbors_for_the_last_edge,
+            required_min_common_neighbors=getattr(self.args, 'required_min_common_neighbors', 1),
             max_entities_size=self.args.max_entities_size,
             max_entities_from_queue=self.args.max_entities_from_queue,
             cover_random_prob=self.args.cover_random_prob,
