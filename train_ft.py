@@ -138,7 +138,7 @@ def main(args, init_distributed=False):
 
         # Iterate through each ckpt path for current ckpt_item
         for ckpt in ckpt_list:
-            ckpt_idx = int(ckpt[-4])
+            ckpt_idx = int(ckpt.split('/')[-1][10:].split('.')[0])
             evaluate_checkpoint(args, ckpt, ckpt_idx, trainer)
 
 
@@ -209,7 +209,7 @@ def run_ft(args, ft_dict, ft_name, param_types, ckpt_idx):
 
         # Set up ft_args_list and ft_task_list for each param value
         ft_args_list = setup_ft_args(params, param_type, ft_args_orig, ft_task_orig)
-        ft_task_list = setup_ft_tasks(ft_args_list, ft_valid_subsets)
+        ft_task_list = setup_ft_tasks(params, param_type, ft_args_list, ft_valid_subsets)
     
         # Iterate through params
         for param_idx, param in enumerate(params):
@@ -246,7 +246,7 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_id
     ft_trainer = Trainer(ft_args, ft_task, ft_model, ft_criterion)
 
     # Set up epoch iterator for current param
-    ft_epoch_itr = ft_trainer.get_train_iterator(1)
+    ft_epoch_itr = ft_trainer.get_train_iterator(1, load_dataset=False)
 
     # Initialize list of validation scores
     ft_valid_scores = []
