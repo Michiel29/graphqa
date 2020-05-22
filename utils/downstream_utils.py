@@ -100,12 +100,14 @@ def setup_ft_args(params, param_type, downstream_args, downstream_task=None):
         ft_args_list.append(ft_args)
     return ft_args_list
     
-def setup_ft_tasks(ft_args_list, downstream_valid_subset):
+def setup_ft_tasks(params, param_type, ft_args_list, ft_valid_subsets):
     # Set up ft_task, using ft_args
     ft_task_list = []
-    for ft_args in ft_args_list:
+    for i, ft_args in enumerate(ft_args_list):
         ft_task = tasks.setup_task(ft_args)
-        for valid_sub_split in downstream_valid_subset:
+        if param_type in ['n_train_relations', 'n_train_examples_per_relation']:
+            ft_task.load_dataset('train', combine=False, epoch=1, prune_type=param_type, prune_param=params[i])
+        for valid_sub_split in ft_valid_subsets:
             ft_task.load_dataset(valid_sub_split, combine=False, epoch=0)
         ft_task_list.append(ft_task)
     return ft_task_list
