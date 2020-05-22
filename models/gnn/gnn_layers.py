@@ -144,7 +144,6 @@ class AttentionLayer(nn.Module):
         candidate_rep = torch.repeat_interleave(candidate_input, graph_sizes, dim=0) # (sum(m_i), 1, d)
         enc_dim = candidate_rep.shape[-1]
         graph = graph.reshape(-1, 2 * enc_dim)
-        device = candidate_rep.device
 
         candidate_q = self.q_linear(candidate_rep).view(-1, self.heads, self.head_dim) # (n_targets * sum(m_i), h, d_h)
         graph_v = self.v_linear(graph).view(-1, self.heads, self.head_dim) # (n_targets * sum(m_i), h, d_h)
@@ -152,7 +151,7 @@ class AttentionLayer(nn.Module):
 
         scores = (candidate_q * graph_k).sum(dim=-1) / math.sqrt(self.head_dim)
         exp_scores = scores.exp()
-        score_denominator = torch.zeros((len(graph_sizes), self.heads), device=device)
+        score_denominator = scores.new_zeros(size=(len(graph_sizes), self.heads))
         score_denominator = score_denominator.index_put(put_indices, exp_scores, accumulate=True)
         score_denominator = score_denominator.repeat_interleave(graph_sizes, dim=0)
         normalized_scores = exp_scores / score_denominator
