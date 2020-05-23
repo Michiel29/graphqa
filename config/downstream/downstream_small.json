@@ -1,21 +1,21 @@
 {
     "eval_downstream": true,
     "downstream_dict": {
-        "fewrel_0": {
-            "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
-            "task_type": "few_shot",
-            "arch": "encoder_fewrel__roberta_small",
-            "non_mask_rate": 0,
+        // "fewrel_0": {
+        //     "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
+        //     "task_type": "few_shot",
+        //     "arch": "encoder_fewrel__roberta_small",
+        //     "non_mask_rate": 0,
 
-            "lr": [1e-4],
-            "warmup_updates": 600,
-            "max_sentences": 32,
-            "update_freq": [8],
-            "max_tokens": 1.5e4,
+        //     "lr": [1e-4],
+        //     "warmup_updates": 600,
+        //     "max_sentences": 32,
+        //     "update_freq": [8],
+        //     "max_tokens": 1.5e4,
 
-            "max_sentences_valid": 200,
-            "max_tokens_valid": 2e4
-        },
+        //     "max_sentences_valid": 150,
+        //     "max_tokens_valid": 2e4
+        // },
         "fewrel_1": {
             "add_configs": ["fewrel/5_way_1_shot.json", "downstream/downstream.json"],
             "task_type": "few_shot",
@@ -28,7 +28,7 @@
             "update_freq": [8],
             "max_tokens": 1.5e4,
 
-            "max_sentences_valid": 200,
+            "max_sentences_valid": 150,
             "max_tokens_valid": 2e4
         },
         "semeval2010task8": {
@@ -53,6 +53,7 @@
             "add_configs": ["kbp37/kbp37.json", "downstream/downstream.json"],
             "task_type": "supervised",
             "arch": "encoder_kbp37__roberta_small",
+            "encoder_output_layer_type": "entity_start_mlp",
             "non_mask_rate": 1,
 
             "max_sentences_sklearn": 150,
@@ -71,6 +72,7 @@
             "add_configs": ["tacred/tacred.json", "downstream/downstream.json"],
             "task_type": "supervised",
             "arch": "encoder_tacred__roberta_small",
+            "encoder_output_layer_type": "entity_start_mlp",
             "non_mask_rate": 1,
 
             "max_sentences_sklearn": 150,
