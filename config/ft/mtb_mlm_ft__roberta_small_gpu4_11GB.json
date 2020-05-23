@@ -52,7 +52,7 @@
     "encoder_output_layer_type": "entity_start_mlp",
     "mlp_args": {
         "n_hidden_dim": 1024,
-        "n_hidden_layers": 2,
+        "n_hidden_layers": 1,
         "layer_norm": true,
         "dropout": true
     },
