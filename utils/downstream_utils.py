@@ -107,6 +107,8 @@ def setup_ft_tasks(params, param_type, ft_args_list, ft_valid_subsets):
         ft_task = tasks.setup_task(ft_args)
         if param_type in ['n_train_relations', 'n_train_examples_per_relation']:
             ft_task.load_dataset('train', combine=False, epoch=1, prune_type=param_type, prune_param=params[i])
+        else:
+            ft_task.load_dataset('train', combine=False, epoch=1)
         for valid_sub_split in ft_valid_subsets:
             ft_task.load_dataset(valid_sub_split, combine=False, epoch=0)
         ft_task_list.append(ft_task)
