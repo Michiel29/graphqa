@@ -18,8 +18,10 @@ class RobertaWrapper(RobertaModel):
         super().__init__(args, encoder)
 
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
+        pretrain_load_prefix = getattr(args, 'pretrain_load_prefix', None)
+
         if pretrain_encoder_path is not None:
-            self.load_from_pretrained(pretrain_encoder_path, args)
+            self.load_from_pretrained(pretrain_encoder_path, pretrain_load_prefix, args)
 
         encoder_head_dropout_rate = getattr(args, 'encoder_head_dropout', 0)
         if encoder_head_dropout_rate > 0:
@@ -88,9 +90,12 @@ class RobertaWrapper(RobertaModel):
         encoder = RobertaEncoderCustom(args, task.source_dictionary)
         return cls(args, encoder)
 
-    def load_from_pretrained(self, filename, args):
+    def load_from_pretrained(self, filename, prefix, args):
 
         state_dict = load_checkpoint_to_cpu(filename)['model']
+
+        if prefix:
+            state_dict = {key[len(prefix):]: value for key, value in state_dict.items() if key.startswith(prefix)}
 
         model_vocab_size = self.decoder.sentence_encoder.embed_tokens.weight.shape[0]
         ckpt_vocab_size = state_dict['decoder.sentence_encoder.embed_tokens.weight'].shape[0]
