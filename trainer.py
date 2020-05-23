@@ -164,6 +164,8 @@ class Trainer(object):
     def _build_optimizer(self):
         # TODO: Rename 'optimizers' to param_groups
         use_param_groups = hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0
+        optimize_prefix = getattr(self.args, 'freeze_prefix', None)
+        optimize_prefix = 'encoder'
 
         if use_param_groups:
             params = list(
@@ -173,6 +175,16 @@ class Trainer(object):
                 )
             )
             params = self._get_param_groups(params)
+        elif optimize_prefix:
+            params = list(
+                filter(
+                    lambda np: np[1].requires_grad and not np[0].startswith(optimize_prefix),
+                    chain(self.model.named_parameters(), self.criterion.named_parameters()),
+                )
+            )
+
+            params = [param[1] for param in params]
+
         else:
             params = list(
                 filter(
