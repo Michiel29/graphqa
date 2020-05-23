@@ -165,7 +165,6 @@ class Trainer(object):
         # TODO: Rename 'optimizers' to param_groups
         use_param_groups = hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0
         optimize_prefix = getattr(self.args, 'freeze_prefix', None)
-        optimize_prefix = 'encoder'
 
         if use_param_groups:
             params = list(
