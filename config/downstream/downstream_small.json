@@ -9,8 +9,8 @@
 
             "lr": [1e-4],
             "warmup_updates": 600,
-            "max_sentences": 16,
-            "update_freq": [4],
+            "max_sentences": 32,
+            "update_freq": [8],
             "max_tokens": 1.5e4,
 
             "max_sentences_valid": 200,
@@ -24,8 +24,8 @@
 
             "lr": [1e-4],
             "warmup_updates": 600,
-            "max_sentences": 16,
-            "update_freq": [4],
+            "max_sentences": 32,
+            "update_freq": [8],
             "max_tokens": 1.5e4,
 
             "max_sentences_valid": 200,
