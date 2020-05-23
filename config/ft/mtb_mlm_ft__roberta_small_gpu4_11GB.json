@@ -49,7 +49,13 @@
     "task": "multi_task",
     "arch": "multi_model",
     "entity_dim": 256,
-    "encoder_output_layer_type": "entity_start_linear",
+    "encoder_output_layer_type": "entity_start_mlp",
+    "mlp_args": {
+        "n_hidden_dim": 1024,
+        "n_hidden_layers": 2,
+        "layer_norm": true,
+        "dropout": true
+    },
 
     "data_path": "../data/nki/bin-v5-threshold20-small",
     // "data_path": "../data/nki/bin-v5-threshold20",

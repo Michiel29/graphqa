@@ -48,7 +48,8 @@ from utils.downstream_utils import (
     setup_ft_args,
     setup_ft_tasks,
     setup_ft_model,
-    setup_ft_criterion
+    setup_ft_criterion,
+    load_ft_checkpoint
 )
 from utils.logging_utils import (
     compute_sklearn_stats,
@@ -145,12 +146,8 @@ def main(args, init_distributed=False):
 def evaluate_checkpoint(args, ckpt, ckpt_idx, trainer):
     use_cuda = torch.cuda.is_available() and not args.cpu
 
-    # Set checkpoint path in args
-    setattr(args, 'restore_file', ckpt)
-
-    # Load the latest checkpoint if one is available and restore the
-    # corresponding train iterator
-    checkpoint_utils.load_checkpoint(args, trainer)
+    # Load checkpoint
+    load_ft_checkpoint(args, ckpt, trainer.get_model())
 
     # Create ft dict
     ft_dict = {}

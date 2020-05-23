@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+from modules.mlp import MLP_factory
 
 
 class BoW(nn.Module):
@@ -194,12 +195,10 @@ class EntityStartMLP(nn.Module):
             self.head_idx = dictionary.e1_start()
             self.tail_idx = dictionary.e2_start()
         else:
-            raise Exception('EntityStarMLP is unsupported for the mask type %s' % str(args.mask_type))
+            raise Exception('EntityStartMLP is unsupported for the mask type %s' % str(args.mask_type))
 
-        self.linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
-        self.activation_fn = nn.Tanh()
-        # self.dropout = nn.Dropout()
-        self.out_proj = nn.Linear(args.entity_dim, args.entity_dim)
+        layer_sizes = [[2 * args.encoder_embed_dim, 1], [args.mlp_args['n_hidden_dim'], args.mlp_args['n_hidden_layers']], [args.entity_dim, 1]]
+        self.mlp = MLP_factory(layer_sizes, dropout=args.mlp_args['dropout'], layer_norm=args.mlp_args['layer_norm'])
 
     def forward(self, x, src_tokens, **unused):
         # x: [batch_size, length, enc_dim]
@@ -212,11 +211,8 @@ class EntityStartMLP(nn.Module):
 
         head_tail_concat = torch.cat((head_sum, tail_sum), dim=-1) # [batch_size, 2 * enc_dim]
 
-        # x = self.dropout(head_tail_concat)
-        x = self.linear(head_tail_concat)
-        x = self.activation_fn(x)
-        # x = self.dropout(x)
-        x = self.out_proj(x)
+        x = self.mlp(head_tail_concat)
+
         return x
 
 

@@ -11,6 +11,7 @@ import torch
 from fairseq import utils, tasks, metrics, distributed_utils, checkpoint_utils
 from fairseq.trainer import Trainer
 from fairseq.models import ARCH_MODEL_REGISTRY
+from fairseq.file_io import PathManager
 
 from utils.config import update_namespace, compose_configs, update_config
 
@@ -185,7 +186,22 @@ def load_downstream_data(args, samples, model, split, scaler=None, scaler_type=N
         if scaler != None:
             features = scaler.transform(features)
         return features, targets
-            
+
+def load_ft_checkpoint(args, filename, model):
+    bexists = PathManager.isfile(filename)
+    if bexists:
+        state = checkpoint_utils.load_checkpoint_to_cpu(filename)
+
+        # load model parameters
+        try:
+            model.load_state_dict(
+                state["model"], strict=False, args=args
+            )
+        except Exception:
+            raise Exception(
+                "Cannot load model parameters from checkpoint {}; "
+                "please ensure that the architectures match.".format(filename)
+            )
 
 def prepare_sample(args, sample):
     if sample == "DUMMY":
