@@ -1,5 +1,5 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json", "ft.json"],
     // "add_configs": ["../roberta/small.json", "../base.json"],
     // "eval_downstream": false,
 
