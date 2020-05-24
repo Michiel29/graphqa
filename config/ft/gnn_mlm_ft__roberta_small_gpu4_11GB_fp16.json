@@ -106,5 +106,5 @@
 
     "fp16": true,
     "validate_before_training": false,
-    "no_epoch_checkpoints": true
+    "no_epoch_checkpoints": false
 }
