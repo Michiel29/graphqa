@@ -39,9 +39,9 @@ def get_model_str(args):
         return args.arch
 
 
-def get_training_name(args):
+def get_training_name(args, append_exp_name=True):
     s = [get_task_str(args), get_model_str(args)]
-    if len(args.exp_name) > 0:
+    if len(args.exp_name) > 0 and append_exp_name:
         s.append(args.exp_name)
     return '/'.join(s)
 

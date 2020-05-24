@@ -40,6 +40,8 @@ from utils.config import update_namespace, modify_factory, compose_configs, upda
 from utils.checkpoint_utils import (
     generate_save_dir,
     get_training_name,
+    get_task_str,
+    get_model_str,
     save_checkpoint,
 )
 from utils.downstream_utils import (
@@ -112,7 +114,7 @@ def main(args, init_distributed=False):
     ))
 
     # Get base path
-    training_name = get_training_name(args)
+    training_name = get_training_name(args, False)
     base_path = os.path.join(args.save_dir, training_name)
 
     # Iterate through each item in ckpt dict
