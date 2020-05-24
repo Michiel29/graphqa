@@ -94,7 +94,7 @@
     "checkpoint_dict": {
         "total_negatives=25.max_hard_negatives=25.required_min_common_neighbors=10/05m_22d_02h_18m_34s": {
             "checkpoints": [
-                "checkpoint14.pt"
+                "checkpoint_best.pt"
             ]
         }
     },
