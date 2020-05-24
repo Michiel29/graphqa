@@ -335,8 +335,15 @@ def validate(args, trainer, task, epoch_for_logging, valid_name, ckpt_idx):
         for sample in progress:
             trainer.valid_step(sample)
 
-    # Get validation stats
+    # Log validation stats
     stats = get_valid_stats(args, trainer, agg.get_smoothed_values())
+    if args.log_valid_progress:
+        valid_progress_prefix = '{}_ckpt{}'.format(valid_name, ckpt_idx)
+        progress.print(
+            {args.eval_metric: stats[args.eval_metric]}, 
+            tag=valid_progress_prefix, 
+            step=epoch_for_logging
+        )
 
     # Return validations score
     return stats[args.best_checkpoint_metric], stats[args.eval_metric], progress

@@ -1,3 +1,4 @@
 {
-    "filter_best_last_ckpts": false
+    "filter_best_last_ckpts": false,
+    "log_valid_progress": true
 }
