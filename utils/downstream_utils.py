@@ -218,7 +218,7 @@ def load_ft_checkpoint(args, filename, model):
         )
     else:
         raise Exception(
-                "Cannot load checkpoint {}.".format(filename)
+                "Cannot load checkpoint {}; path does not exist.".format(filename)
             )
 
 
