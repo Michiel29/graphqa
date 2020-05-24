@@ -81,8 +81,8 @@
         "dropout": false
     },
 
-    // "data_path": "../data/nki/bin-v5-threshold20-small",
-    "data_path": "../data/nki/bin-v5-threshold20",
+    "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
 
