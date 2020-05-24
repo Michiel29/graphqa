@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import copy
@@ -17,6 +18,13 @@ from utils.config import update_namespace, compose_configs, update_config
 
 from sklearn.preprocessing import StandardScaler
 
+logging.basicConfig(
+    format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO,
+    stream=sys.stdout,
+)
+logger = logging.getLogger('fairseq_cli.train')
 
 def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
     # Create downstream_args, by overwriting a copy of args with downstream args
@@ -202,6 +210,12 @@ def load_ft_checkpoint(args, filename, model):
                 "Cannot load model parameters from checkpoint {}; "
                 "please ensure that the architectures match.".format(filename)
             )
+
+        extra_state = state["extra_state"]
+        epoch = extra_state["train_iterator"]["epoch"]
+        logger.info(
+            "loaded checkpoint {} (epoch {})".format(filename, epoch)
+        )
 
 def prepare_sample(args, sample):
     if sample == "DUMMY":
