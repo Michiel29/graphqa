@@ -114,8 +114,8 @@ def main(args, init_distributed=False):
     ))
 
     # Get base path
-    training_name = get_training_name(args, False)
-    base_path = os.path.join(args.save_dir, training_name)
+    training_name = get_training_name(args)
+    base_path = os.path.join(args.save_dir, get_training_name(args, False))
 
     # Iterate through each item in ckpt dict
     for ckpt_id, ckpt_item in args.checkpoint_dict.items():
