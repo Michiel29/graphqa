@@ -216,6 +216,11 @@ def load_ft_checkpoint(args, filename, model):
         logger.info(
             "loaded checkpoint {} (epoch {})".format(filename, epoch)
         )
+    else:
+        raise Exception(
+                "Cannot load checkpoint {}.".format(filename)
+            )
+
 
 def get_checkpoint_epoch(filename):
     bexists = PathManager.isfile(filename)
