@@ -49,7 +49,8 @@ from utils.downstream_utils import (
     setup_ft_tasks,
     setup_ft_model,
     setup_ft_criterion,
-    load_ft_checkpoint
+    load_ft_checkpoint,
+    get_checkpoint_epoch
 )
 from utils.logging_utils import (
     compute_sklearn_stats,
@@ -140,7 +141,10 @@ def main(args, init_distributed=False):
 
         # Iterate through each ckpt path for current ckpt_item
         for ckpt in ckpt_list:
-            ckpt_idx = int(ckpt.split('/')[-1][10:].split('.')[0])
+            try:
+                ckpt_idx = int(ckpt.split('/')[-1][10:].split('.')[0])
+            except:
+                ckpt_idx = get_checkpoint_epoch(ckpt)
             evaluate_checkpoint(args, ckpt, ckpt_idx, trainer)
 
 

@@ -217,6 +217,13 @@ def load_ft_checkpoint(args, filename, model):
             "loaded checkpoint {} (epoch {})".format(filename, epoch)
         )
 
+def get_checkpoint_epoch(filename):
+    bexists = PathManager.isfile(filename)
+    if bexists:
+        state = checkpoint_utils.load_checkpoint_to_cpu(filename)
+        extra_state = state["extra_state"]
+        return extra_state["train_iterator"]["epoch"]
+
 def prepare_sample(args, sample):
     if sample == "DUMMY":
         raise Exception(
