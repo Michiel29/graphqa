@@ -1,5 +1,7 @@
 {
     "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json", "ft.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json"],
+    // "eval_downstream": false,
 
     "tasks": {
         "gnn": {
@@ -24,20 +26,20 @@
             "required_min_common_neighbors": 1,
             "total_negatives": 100,
             "max_hard_negatives": 50,
-            "entity_pair_counter_cap": 10,
+	    "entity_pair_counter_cap": 10,
 
             "non_mask_rate": 0.1,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 1,
 
-            "update_freq": 21,
+            "update_freq": 16,
             "epoch_size": 12000,
             "n_valid_examples": 400,
 
             "max_sentences": 1000,
-            "max_tokens": 18000,
+            "max_tokens": 19000,
 
-            "num_workers": 5,
+            "num_workers": 4,
 
             "criterion": "cross_entropy_custom",
             "weight": 0.5
@@ -52,8 +54,8 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 9,
-            "epoch_size": 406286,
+            "update_freq": 7,
+            "epoch_size": 414750,
             "n_valid_examples": 20000,
 
             "max_sentences": 79,
@@ -79,8 +81,8 @@
         "dropout": false
     },
 
-    "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
 
     "mask_type": "start_end",
 
@@ -90,7 +92,7 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        "total_negatives=25.max_hard_negatives=0.required_min_common_neighbors=10/05m_21d_23h_46m_28s": {
+        "total_negatives=25.max_hard_negatives=25.required_min_common_neighbors=10/05m_22d_02h_18m_34s": {
             "checkpoints": [
                 "checkpoint14.pt"
             ]
@@ -102,5 +104,7 @@
     "update_freq": null,
     "max_tokens": 12000,
 
-    "validate_before_training": false
+    "fp16": true,
+    "validate_before_training": false,
+    "no_epoch_checkpoints": true
 }

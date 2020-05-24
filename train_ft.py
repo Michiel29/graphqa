@@ -135,7 +135,8 @@ def main(args, init_distributed=False):
             ckpt_list = [os.path.join(ckpt_base_path, 'checkpoints', x) for x in ckpt_item['checkpoints']]
 
         # Filter checkpoint_best and checkpoint_last out of ckpt_list
-        ckpt_list = [x for x in ckpt_list if x.split('/')[-1][-7:-3] != 'best' and x.split('/')[-1][-7:-3] != 'last']
+        if args.filter_best_last_ckpts:
+            ckpt_list = [x for x in ckpt_list if x.split('/')[-1][-7:-3] != 'best' and x.split('/')[-1][-7:-3] != 'last']
 
         # Iterate through each ckpt path for current ckpt_item
         for ckpt in ckpt_list:
