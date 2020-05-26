@@ -18,7 +18,7 @@ class EncoderTACREDModel(BaseFairseqModel):
         self.encoder = encoder
         if args.encoder_output_layer_type in ['entity_start', 'entity_start_layer_norm', 'entity_pooling_first_token']:
             self.classifier = nn.Linear(2*args.encoder_embed_dim, args.num_classes)
-        elif args.encoder_output_layer_type in ['entity_start_linear']:
+        elif args.encoder_output_layer_type in ['entity_start_linear', 'entity_start_mlp']:
             self.classifier = nn.Linear(args.entity_dim, args.num_classes)
         else:
             self.classifier = nn.Linear(args.encoder_embed_dim, args.num_classes)

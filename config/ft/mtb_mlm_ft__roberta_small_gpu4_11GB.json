@@ -1,12 +1,12 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json", "ft.json"],
+    "add_configs": ["../roberta/base.json", "../base.json", "../downstream/downstream_base.json", "ft.json"],
     // "add_configs": ["../roberta/small.json", "../base.json"],
     // "eval_downstream": false,
 
     "tasks": {
         "mtb": {
             "task": "mtb",
-            "arch": "encoder_mtb__roberta_small",
+            "arch": "encoder_mtb__roberta_base",
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
@@ -68,9 +68,9 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        "baseline/05m_22d_02h_43m_32s": {
+        "163_best": {
             "checkpoints": [
-                "checkpoint5.pt"
+                "/root/checkpoints/SAN-163/checkpoint_best.pt"
             ]
         }
     },
