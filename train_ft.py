@@ -124,18 +124,19 @@ def main(args, init_distributed=False):
         trainer = Trainer(args, task, model, criterion)
 
         # Intialize neptune experiment
-        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_id.split('/')[-1]))
+        setattr(args, 'training_name', os.path.join(training_name, 'ft', ckpt_id))
         if distributed_utils.is_master(args) and not args.debug:
             initialize_neptune(trainer, None, args)
 
         # Create list of ckpt paths for current ckpt_item
-        ckpt_base_path = os.path.join(base_path, ckpt_id)
         if 'checkpoints' not in ckpt_item.keys():
+            ckpt_base_path = os.path.join(base_path, ckpt_id)
             ckpt_list = list(glob.glob(os.path.join(ckpt_base_path, 'checkpoints/*.pt'), recursive=True))
         elif len(ckpt_item['checkpoints']) == 0:
+            ckpt_base_path = os.path.join(base_path, ckpt_id)
             ckpt_list = list(glob.glob(os.path.join(ckpt_base_path, 'checkpoints/*.pt'), recursive=True))
         else:
-            ckpt_list = [os.path.join(ckpt_base_path, 'checkpoints', x) for x in ckpt_item['checkpoints']]
+            ckpt_list = ckpt_item['checkpoints']
 
         # Filter checkpoint_best and checkpoint_last out of ckpt_list
         if args.filter_best_last_ckpts:
