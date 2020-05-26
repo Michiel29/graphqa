@@ -164,7 +164,7 @@ class Trainer(object):
     def _build_optimizer(self):
         # TODO: Rename 'optimizers' to param_groups
         use_param_groups = hasattr(self.args, 'optimizers') and len(self.args.optimizers) > 0
-        optimize_prefix = getattr(self.args, 'freeze_prefix', None)
+        freeze_prefix = getattr(self.args, 'freeze_prefix', None)
 
         if use_param_groups:
             params = list(
@@ -174,13 +174,28 @@ class Trainer(object):
                 )
             )
             params = self._get_param_groups(params)
-        elif optimize_prefix:
+        elif freeze_prefix:
             params = list(
                 filter(
-                    lambda np: np[1].requires_grad and not np[0].startswith(optimize_prefix),
+                    lambda np: np[1].requires_grad and not (np[0].startswith(freeze_prefix) or np[0].startswith("module." + freeze_prefix)),
                     chain(self.model.named_parameters(), self.criterion.named_parameters()),
                 )
             )
+            frozen_params = list(
+                filter(
+                    lambda np: np[1].requires_grad and (np[0].startswith(freeze_prefix) or np[0].startswith("module." + freeze_prefix)),
+                    chain(self.model.named_parameters(), self.criterion.named_parameters()),
+                )
+            )
+            print('The following parameters are NOT FROZEN: %s' % (
+                ','.join([param[0] for param in params]),
+            ))
+            print('The following parameters are FROZEN by prefix "%s": %s' % (
+                freeze_prefix,
+                ','.join([param[0] for param in frozen_params]),
+            ))
+            assert len(params) > 0
+            assert len(frozen_params) > 0
 
             params = [param[1] for param in params]
 
