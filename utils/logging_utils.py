@@ -44,15 +44,17 @@ def initialize_neptune(trainer, extra_state, args):
             log_dict[name] = experiment.get_numeric_channels_values(name).values
             experiment.reset_log(name)
 
-        if experiment.state != 'running':
-            experiment.append_tag('trash')
+        if experiment.state == 'running':
+            for name in exp_logs:
+                experiment.reset_log(name)
+        else:
             experiment = project.create_experiment(
                 name=args.training_name,
                 params=params,
                 tags=generate_tags(args)
             )
 
-        logger.info('Replacing neptune experiment logs up to checkpoint of {0}'.format(experiment.name))
+        logger.info('Copying neptune experiment logs up to checkpoint of {0}'.format(experiment.name))
         for name, log in log_dict.items():
             for i, x in enumerate(log[:, 0]):
                 if x <= trainer.get_num_updates():
