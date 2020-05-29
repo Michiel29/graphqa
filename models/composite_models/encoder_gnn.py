@@ -25,7 +25,12 @@ class EncoderGNNModel(BaseFairseqModel):
             gnn_layer_dict[args.gnn_layer_type](args.gnn_layer_args)
             for i in range(args.gnn_layer_args['n_gnn_layers'])
         ])
-        self.mlp = MLP_factory([[args.gnn_layer_args['enc_dim'], 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
+
+        if args.placeholder_input:
+            self.placeholder_input = nn.Parameter(torch.ones(args.entity_dim))
+        else:
+            self.mlp = MLP_factory([[args.gnn_layer_args['enc_dim'], 1]] + args.layer_sizes, layer_norm=args.gnn_mlp_layer_norm)
+
 
     def encode_text(self, text_chunks):
         text_enc = []
@@ -63,12 +68,20 @@ class EncoderGNNModel(BaseFairseqModel):
         graph_rep = text_enc[graph_idx] # (sum(m_i), 2, d)
         candidate_rep = text_enc[candidate_text_idx] # (n_targets * n_candidates, d)
 
+        if self.args.placeholder_input:
+            layer_candidate_rep = self.placeholder_input.unsqueeze(0).expand(n_targets * n_candidates, -1)
+        else:
+            layer_candidate_rep = candidate_rep
+
+
         for layer in self.gnn_layers:
-            candidate_rep, graph_rep = layer(candidate_rep, graph_rep,
+            layer_candidate_rep, graph_rep = layer(layer_candidate_rep, graph_rep,
             graph_sizes, put_indices) # (sum(m_i), d)
 
-
-        scores = self.mlp(candidate_rep) # (n_targets * n_candidates)
+        if self.args.placeholder_input:
+            scores = (layer_candidate_rep * candidate_rep).sum(dim=-1)
+        else:
+            scores = self.mlp(layer_candidate_rep) # (n_targets * n_candidates)
         scores = scores.reshape(n_targets, n_candidates) # (n_targets, n_candidates)
 
         return scores

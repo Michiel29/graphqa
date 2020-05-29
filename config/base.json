@@ -35,6 +35,8 @@
     "num_classes": null,
     "eval_metric": null,
 
+    "placeholder_input": false,
+
     "validate_before_training": true,
     "disable_training": false,
     "gradient_checkpoint_period": null
