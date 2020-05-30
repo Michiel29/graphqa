@@ -203,10 +203,12 @@ class MultiTask(BaseTask):
         dictionary = CustomDictionary.load(dict_path)
 
         entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-        entity_dictionary = EntityDictionary.load(entity_dict_path)
-
+        if os.path.exists(entity_dict_path):
+            entity_dictionary = EntityDictionary.load(entity_dict_path)
+            logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
+        else:
+            entity_dictionary = None
         logger.info('dictionary: {} types'.format(len(dictionary)))
-        logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
 
         tasks = {
             task_name: TASK_REGISTRY[task_args_override['task']](
