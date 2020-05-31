@@ -38,7 +38,6 @@ def initialize_neptune(trainer, extra_state, args):
 
         exp_logs = experiment.get_logs()
         log_dict = {}
-        logger.info('Clearing neptune experiment logs of {0}'.format(experiment.name))
 
         for name in exp_logs:
             log_dict[name] = experiment.get_numeric_channels_values(name).values
