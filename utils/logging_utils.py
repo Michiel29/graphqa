@@ -42,17 +42,12 @@ def initialize_neptune(trainer, extra_state, args):
 
         for name in exp_logs:
             log_dict[name] = experiment.get_numeric_channels_values(name).values
-            experiment.reset_log(name)
 
-        if experiment.state == 'running':
-            for name in exp_logs:
-                experiment.reset_log(name)
-        else:
-            experiment = project.create_experiment(
-                name=args.training_name,
-                params=params,
-                tags=generate_tags(args)
-            )
+        experiment = project.create_experiment(
+            name=args.training_name,
+            params=params,
+            tags=generate_tags(args)
+        )
 
         logger.info('Copying neptune experiment logs up to checkpoint of {0}'.format(experiment.name))
         for name, log in log_dict.items():
@@ -68,8 +63,6 @@ def initialize_neptune(trainer, extra_state, args):
         )
 
     set_experiment(experiment)
-
-
 
 class NeptuneWrapper(BaseProgressBar):
     def __init__(self, progress_bar):
