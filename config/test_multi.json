@@ -48,7 +48,7 @@
     "save_dir": "../save/",
     "restore_file": false,
     // "restore_file": "checkpoint_last.pt",
-    "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt",
+    "pretrain_roberta_path": "../data/roberta/roberta.small/model.pt",
     "ddp_backend": "no_c10d",
 
     "criterion": "cross_entropy_custom",

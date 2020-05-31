@@ -9,5 +9,5 @@
     "attention_dropout": 0.1,
 
     "max_positions": 128,
-    "pretrain_encoder_path": "../data/roberta/roberta.small/model.pt"
+    "pretrain_roberta_path": "../data/roberta/roberta.small/model.pt"
 }

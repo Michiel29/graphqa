@@ -18,10 +18,14 @@ class RobertaWrapper(RobertaModel):
         super().__init__(args, encoder)
 
         pretrain_encoder_path = getattr(args, 'pretrain_encoder_path', None)
-        pretrain_load_prefix = getattr(args, 'pretrain_load_prefix', None)
-
+        pretrain_roberta_path = getattr(args, 'pretrain_roberta_path', None)
         if pretrain_encoder_path is not None:
-            self.load_from_pretrained(pretrain_encoder_path, pretrain_load_prefix, args)
+            pretrain_roberta_path = None
+        pretrain_load_prefix = getattr(args, 'pretrain_load_prefix', None)
+        assert not (pretrain_roberta_path and pretrain_load_prefix)
+
+        if pretrain_roberta_path is not None:
+            self.load_from_pretrained(pretrain_roberta_path, pretrain_load_prefix, args)
 
         encoder_head_dropout_rate = getattr(args, 'encoder_head_dropout', 0)
         if encoder_head_dropout_rate > 0:
@@ -33,6 +37,9 @@ class RobertaWrapper(RobertaModel):
             self.custom_output_layer = self.output_layer
         else:
             self.custom_output_layer = encoder_head_dict[args.encoder_output_layer_type](args, encoder.dictionary)
+
+        if pretrain_encoder_path is not None:
+            self.load_from_pretrained(pretrain_encoder_path, pretrain_load_prefix, args)
 
     def forward(
         self,

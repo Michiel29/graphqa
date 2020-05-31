@@ -26,7 +26,7 @@
     "num_workers": 0,
     "save_dir": "../save/checkpoints__n_train=-1",
     "restore_file": false,
-    "pretrain_encoder_path": "../data/roberta/roberta.base/model.pt",
+    "pretrain_roberta_path": "../data/roberta/roberta.base/model.pt",
     "ddp_backend": "no_c10d",
 
     "tensorboard_logdir": "../save/tensorboard__n_train=-1",
