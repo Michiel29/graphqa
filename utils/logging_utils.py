@@ -33,7 +33,7 @@ def initialize_neptune(trainer, extra_state, args):
     params['hostname'] = socket.gethostname()
     session = Session.with_default_backend()
     project = session.get_project('selfinference/sandbox')
-    if extra_state is not None and "neptune_id" in extra_state:
+    if extra_state is not None and "neptune_id" in extra_state and trainer.get_num_updates() > 0:
         experiment = project.get_experiments(extra_state["neptune_id"])[0]
 
         exp_logs = experiment.get_logs()

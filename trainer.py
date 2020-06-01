@@ -23,6 +23,8 @@ from fairseq.logging import meters, metrics
 from fairseq.nan_detector import NanDetector
 from fairseq.optim import FairseqOptimizer, lr_scheduler
 
+from utils.checkpoint_utils import handle_state_dict_keys
+
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +270,7 @@ class Trainer(object):
         reset_lr_scheduler=False,
         optimizer_overrides=None,
         reset_meters=False,
+        restore_file_strict=True,
     ):
         """Load all training state from a checkpoint file."""
         extra_state, self._optim_history, last_optim_state = None, [], None
@@ -278,9 +281,10 @@ class Trainer(object):
 
             # load model parameters
             try:
-                self.get_model().load_state_dict(
-                    state["model"], strict=True, args=self.args
+                missing_keys, unexpected_keys = self.get_model().load_state_dict(
+                    state["model"], strict=restore_file_strict, args=self.args
                 )
+                handle_state_dict_keys(missing_keys, unexpected_keys)
                 if utils.has_parameters(self.get_criterion()):
                     self.get_criterion().load_state_dict(
                         state["criterion"], strict=True

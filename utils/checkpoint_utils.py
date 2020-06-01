@@ -89,17 +89,8 @@ def generate_save_dir(args, training_name, system_args):
         attribute_value = get_attribute_value_str(args, attribute_name)
         new_save_base = os.path.join(new_save_base, attribute_name + '_' + attribute_value)
 
-    if restore_file:
-        sub_dirs = next(os.walk(os.path.join(new_save_base,'.')))[1]
-
-        assert len(sub_dirs) > 0
-        time_stamps = [''.join(filter(str.isdigit, dirname)) for dirname in sub_dirs]
-        latest_dir_idx = np.argsort(time_stamps)[-1]
-        new_save_dir = os.path.join(new_save_base, sub_dirs[latest_dir_idx])
-    else:
-        dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm_%Ss")
-        new_save_dir = os.path.join(new_save_base, dt_string)
-
+    dt_string = datetime.now().strftime("%mm_%dd_%Hh_%Mm_%Ss")
+    new_save_dir = os.path.join(new_save_base, dt_string)
     return new_save_dir
 
 def handle_state_dict_keys(missing_keys, unexpected_keys):
