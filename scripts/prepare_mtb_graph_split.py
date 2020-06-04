@@ -53,7 +53,7 @@ def main(args):
         edge_counts[split] = {}
         for entity in tqdm(range(n_entities[split]), desc='Getting number of edges per entity, for {} graph'.format(split)):
             edge_counts[split][entity] = int(len(graph_dict[split][entity]) / EDGE_SIZE)
-    print('\n')
+    print()
 
     # Get each entity's neighbors, for each split's graph
     neighbors = {}
@@ -65,7 +65,7 @@ def main(args):
                 continue
             cur_neighbors = graph_dict[split][entity][TAIL_ENTITY::EDGE_SIZE].numpy()
             neighbors[split].append(set(cur_neighbors))
-    print('\n')
+    print()
 
     # Get all edge start/end indices, for each split's graph
     all_start_blocks, all_end_blocks = {}, {}
@@ -77,7 +77,7 @@ def main(args):
             all_start_blocks[split] += list(cur_start_blocks)
             all_end_blocks[split] += list(cur_end_blocks)
             assert len(cur_start_blocks) == edge_counts[split][entity]
-    print('\n')
+    print()
     
     # Get all edge start/end annotation indices, for train graph (vectorize np.searchsorted for faster runtime)
     all_s, all_e = {}, {}
@@ -86,7 +86,7 @@ def main(args):
         all_s[split], all_e[split] = get_annotation_block_indices(annotation_data[split], all_start_blocks[split], all_end_blocks[split])
         timer_end = timer()
         print('Finished {} get_annotation_block_indices in '.format(split) + str(timedelta(seconds=timer_end-timer_start)))
-    print('\n')
+    print()
 
     # Build MTB graph
     for split in splits:
@@ -192,7 +192,7 @@ def build_mtb_graph(graph, annotation_data, all_s, all_e, edge_counts, neighbors
             tail_neighbors.discard(head)
 
             # Check if all neighbors of head are also neighbors of tail
-            if not head_neighbors.issubset(tail_neighbors):
+            if not head_neighbors.issubset(tail_neighbors) and len(head_neighbors) > 0:
                 strong_neg = True
             else:
                 strong_neg = False

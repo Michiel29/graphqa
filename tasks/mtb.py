@@ -32,54 +32,57 @@ class MTBTask(RelationInferenceTask):
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
+        parser.add_argument('--split_mode', default=False,
+                            help='number of attempts to sample entity candidates')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        train_text_data = safe_load_indexed_dataset(
-            os.path.join(self.args.data_path, 'train.text'),
+        
+        text_data_A = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.text'),
         )
-        train_annotation_data = MMapNumpyArray(
-            os.path.join(self.args.data_path, 'train.annotations.npy')
+        annotation_data_A = MMapNumpyArray(
+            os.path.join(self.args.data_path, split + '.annotations.npy')
         )
-        train_annotated_text = AnnotatedText(
-            text_data=train_text_data,
-            annotation_data=train_annotation_data,
+        annotated_text_A = AnnotatedText(
+            text_data=text_data_A,
+            annotation_data=annotation_data_A,
             dictionary=self.dictionary,
             mask_type=self.args.mask_type,
             non_mask_rate=self.args.non_mask_rate,
         )
 
-        if split == 'train':
-            split_annotated_text = train_annotated_text
-        else:
-            split_text_data = safe_load_indexed_dataset(
-                os.path.join(self.args.data_path, split + '.text'),
-            )
-            split_annotation_data = MMapNumpyArray(
-                os.path.join(self.args.data_path, split + '.annotations.npy')
-            )
-            split_annotated_text = AnnotatedText(
-                text_data=split_text_data,
-                annotation_data=split_annotation_data,
-                dictionary=self.dictionary,
-                mask_type=self.args.mask_type,
-                non_mask_rate=self.args.non_mask_rate,
-            )
-
-        train_graph_data = safe_load_indexed_dataset(
-            os.path.join(self.args.data_path, 'train.graph'),
+        graph_data_A = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, 'mtb_' + split + '.graph'),
         )
-        train_graph = GraphDataset(
-            edges=train_graph_data,
+        graph_A = GraphDataset(
+            edges=graph_data_A,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
             seed=self.args.seed,
         )
 
-        split_graph_data = safe_load_indexed_dataset(
-            os.path.join(self.args.data_path, 'mtb_' + split + '.graph'),
+        if self.args.split_mode:
+            annotated_text_B = annotated_text_A
+        else:
+            text_data_B = safe_load_indexed_dataset(
+                os.path.join(self.args.data_path, 'train.text'),
+            )
+            annotation_data_B = MMapNumpyArray(
+                os.path.join(self.args.data_path, 'train.annotations.npy')
+            )
+            annotated_text_B = AnnotatedText(
+                text_data=text_data_B,
+                annotation_data=annotation_data_B,
+                dictionary=self.dictionary,
+                mask_type=self.args.mask_type,
+                non_mask_rate=self.args.non_mask_rate,
+            )
+
+        graph_data_B = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.graph'),
         )
-        split_graph = GraphDataset(
-            edges=split_graph_data,
+        graph_B = GraphDataset(
+            edges=graph_data_B,
             subsampling_strategy=self.args.subsampling_strategy,
             subsampling_cap=self.args.subsampling_cap,
             seed=self.args.seed,
@@ -87,10 +90,10 @@ class MTBTask(RelationInferenceTask):
 
         dataset = MTBDataset(
             split=split,
-            split_annotated_text=split_annotated_text,
-            train_annotated_text=train_annotated_text,
-            split_graph=split_graph,
-            train_graph=train_graph,
+            annotated_text_A=annotated_text_A,
+            annotated_text_B=annotated_text_B,
+            graph_A=graph_A,
+            graph_B=graph_B,
             seed=self.args.seed,
             dictionary=self.dictionary,
             k_weak_negs=self.args.k_weak_negs,

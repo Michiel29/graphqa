@@ -21,20 +21,20 @@ class MTBDataset(FairseqDataset):
     def __init__(
         self,
         split,
-        split_annotated_text,
-        train_annotated_text,
-        split_graph,
-        train_graph,
+        annotated_text_A,
+        annotated_text_B,
+        graph_A,
+        graph_B,
         seed,
         dictionary,
         k_weak_negs,
         n_tries_entity
     ):
         self.split = split
-        self.split_annotated_text = split_annotated_text
-        self.train_annotated_text = train_annotated_text
-        self.split_graph = split_graph
-        self.train_graph = train_graph
+        self.annotated_text_A = annotated_text_A
+        self.annotated_text_B = annotated_text_B
+        self.graph_A = graph_A
+        self.graph_B = graph_B
 
         self.seed = seed
         self.dictionary = dictionary
@@ -45,25 +45,25 @@ class MTBDataset(FairseqDataset):
         self.epoch = None
 
     def set_epoch(self, epoch):
-        self.split_graph.set_epoch(epoch)
-        self.train_graph.set_epoch(epoch)
+        self.graph_A.set_epoch(epoch)
+        self.graph_B.set_epoch(epoch)
         self.epoch = epoch
 
     def __len__(self):
-        return len(self.split_graph)
+        return len(self.graph_A)
 
     def num_tokens(self, index):
-        return self.split_graph.sizes[index]
+        return self.graph_A.sizes[index]
 
     def size(self, index):
-        return self.split_graph.sizes[index]
+        return self.graph_A.sizes[index]
 
     @property
     def sizes(self):
-        return self.split_graph.sizes
+        return self.graph_A.sizes
 
     def ordered_indices(self):
-        return self.split_graph.ordered_indices()
+        return self.graph_A.ordered_indices()
 
     def get_edge_entities(self, annotation_data, start_block, end_block):
         # From http://sociograph.blogspot.com/2011/12/gotcha-with-numpys-searchsorted.html
@@ -97,7 +97,7 @@ class MTBDataset(FairseqDataset):
             # For strong negatives, discard the current edge if it contains tailA
             if strong_neg:
                 edge_entities = self.get_edge_entities(
-                    self.train_annotated_text.annotation_data.array, 
+                    self.annotated_text_B.annotation_data.array, 
                     edge[GraphDataset.START_BLOCK], 
                     edge[GraphDataset.END_BLOCK]
                 )
@@ -105,7 +105,7 @@ class MTBDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.train_annotated_text.annotate(*(edge))
+            textB = self.annotated_text_B.annotate(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -178,15 +178,15 @@ class MTBDataset(FairseqDataset):
         return textB_strong_neg
 
     def __getitem__(self, index):
-        edge = self.split_graph[index]
+        edge = self.graph_A[index]
         headA = edge[GraphDataset.HEAD_ENTITY].item()
         tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.split_annotated_text.annotate(*(edge.numpy()))
+            textA = self.annotated_text_A.annotate(*(edge.numpy()))
 
             # Get edges with headA as the head
-            headA_edges = self.train_graph.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
             # Sample positive text pair: textA and textB share both head and tail
             textB_pos = self.sample_positive(headA_edges, tailA, textA)

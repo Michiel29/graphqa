@@ -6,17 +6,21 @@
     "tasks": {
         "mtb": {
             "task": "mtb",
+            "arch": "encoder_mtb__roberta_small",
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
+            "split_mode": true,
 
             "update_freq": 7,
             "epoch_size": 4e6,
             "max_sentences": 88,
             "max_tokens": 1e4,
+
+            "num_workers": 4,
 
             "criterion": "cross_entropy_custom",
             "weight": 0.5
@@ -38,18 +42,21 @@
             "max_sentences": 88,
             "max_tokens": 1e4,
 
+            "num_workers": 2,
+
             "criterion": "masked_lm_custom",
             "weight": 0.5
         }
     },
 
     "task": "multi_task",
-    "arch": "encoder_mtb__roberta_small",
+    "arch": "multi_model",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
 
     // "data_path": "../data/nki/bin-v5-threshold20-small",
-    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+    "data_path": "../data/nki/bin-v6",
 
     "mask_type": "start_end",
 
