@@ -22,63 +22,81 @@ EDGE_SIZE = 8
 SAMPLE_SIZE = 20
 
 def main(args):
-    entity_dict_path = os.path.join(args.data_path, 'entity.dict.txt')
-    n_entities = len(Dictionary.load(entity_dict_path))
     splits = ['train', 'valid']
+
+    # Get num of entities in each split
+    print('\nLoading number of entities in each split')
+    n_entities = {}
+    for split in splits:
+        entity_dict_path = os.path.join(args.data_path, 'entity.dict.{}.txt'.format(split))
+        n_entities[split] = len(Dictionary.load(entity_dict_path))
 
     # Load train and valid graphs
     # edge = (right_entity, left_entity, left_start_pos, left_end_pos, right_start_pos, right_end_pos, start_block, end_block)
-    print('\nLoading train and valid graphs')
+    print('Loading train and valid graphs')
     graph_dict = {}
     for split in splits:
         graph_path = os.path.join(args.data_path, split+'.graph')
         graph_dict[split] = safe_load_indexed_dataset(graph_path)
 
-    # Load train annotation data
+    # Load train and valid annotation data
     # annotation = (global starting position, global ending position, sentence idx, document idx, entity idx)
-    print('Loading train annotation data\n')
-    annotation_path = os.path.join(args.data_path, 'train.annotations.npy')
-    annotation_data = np.load(annotation_path)
+    print('Loading train and valid annotation data\n')
+    annotation_data = {}
+    for split in splits:
+        annotation_path = os.path.join(args.data_path, '{}.annotations.npy'.format(split))
+        annotation_data[split] = np.load(annotation_path)
 
-    # Get number of edges per entity, for train graph
+    # Get number of edges per entity, for each split's graph
     edge_counts = {}
-    for entity in tqdm(range(n_entities), desc='Getting number of edges per entity, for train graph'):
-        edge_counts[entity] = int(len(graph_dict['train'][entity]) / EDGE_SIZE)
+    for split in splits:
+        edge_counts[split] = {}
+        for entity in tqdm(range(n_entities[split]), desc='Getting number of edges per entity, for {} graph'.format(split)):
+            edge_counts[split][entity] = int(len(graph_dict[split][entity]) / EDGE_SIZE)
+    print('\n')
 
-    # Get each entity's neighbors, for train graph
-    neighbors = []
-    for entity in tqdm(range(n_entities), desc="Getting each entity's neighbors, for train graph"):
-        if edge_counts[entity] == 0:
-            neighbors.append(set())
-            continue
-        cur_neighbors = graph_dict['train'][entity][TAIL_ENTITY::EDGE_SIZE].numpy()
-        neighbors.append(set(cur_neighbors))
+    # Get each entity's neighbors, for each split's graph
+    neighbors = {}
+    for split in splits:
+        neighbors[split] = []
+        for entity in tqdm(range(n_entities[split]), desc="Getting each entity's neighbors, for {} graph".format(split)):
+            if edge_counts[split][entity] == 0:
+                neighbors[split].append(set())
+                continue
+            cur_neighbors = graph_dict[split][entity][TAIL_ENTITY::EDGE_SIZE].numpy()
+            neighbors[split].append(set(cur_neighbors))
+    print('\n')
 
-    # Get all edge start/end indices, for train graph
-    all_start_blocks, all_end_blocks = [], []
-    for entity in tqdm(range(n_entities), desc='Getting edge start/end indices, for train graph'):
-        cur_start_blocks = graph_dict['train'][entity][START_BLOCK::EDGE_SIZE].numpy()
-        cur_end_blocks = graph_dict['train'][entity][END_BLOCK::EDGE_SIZE].numpy()
-        all_start_blocks += list(cur_start_blocks)
-        all_end_blocks += list(cur_end_blocks)
-        assert len(cur_start_blocks) == edge_counts[entity]
+    # Get all edge start/end indices, for each split's graph
+    all_start_blocks, all_end_blocks = {}, {}
+    for split in splits:
+        all_start_blocks[split], all_end_blocks[split] = [], []
+        for entity in tqdm(range(n_entities[split]), desc='Getting edge start/end indices, for {} graph'.format(split)):
+            cur_start_blocks = graph_dict[split][entity][START_BLOCK::EDGE_SIZE].numpy()
+            cur_end_blocks = graph_dict[split][entity][END_BLOCK::EDGE_SIZE].numpy()
+            all_start_blocks[split] += list(cur_start_blocks)
+            all_end_blocks[split] += list(cur_end_blocks)
+            assert len(cur_start_blocks) == edge_counts[split][entity]
+    print('\n')
     
     # Get all edge start/end annotation indices, for train graph (vectorize np.searchsorted for faster runtime)
-    timer_start = timer()
-    all_s, all_e = get_annotation_block_indices(annotation_data, all_start_blocks, all_end_blocks)
-    timer_end = timer()
-    print('Finished get_annotation_block_indices in ' + str(timedelta(seconds=timer_end-timer_start)) + '\n')
+    all_s, all_e = {}, {}
+    for split in splits:
+        timer_start = timer()
+        all_s[split], all_e[split] = get_annotation_block_indices(annotation_data[split], all_start_blocks[split], all_end_blocks[split])
+        timer_end = timer()
+        print('Finished {} get_annotation_block_indices in '.format(split) + str(timedelta(seconds=timer_end-timer_start)))
+    print('\n')
 
     # Build MTB graph
     for split in splits:
         build_mtb_graph(
             graph_dict[split],
-            graph_dict['train'],
-            annotation_data,
-            all_s, 
-            all_e,
-            edge_counts, 
-            neighbors,
+            annotation_data[split],
+            all_s[split], 
+            all_e[split],
+            edge_counts[split], 
+            neighbors[split],
             args.data_path,
             split
         )
@@ -107,10 +125,10 @@ def get_annotation_block_indices(annotation_data, start_block, end_block):
 
     return s, e
 
-def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train, all_e_train, edge_counts_train, neighbors_train, data_path, split):
-    n_entities = len(edge_counts_train)
-    min_pos = 2 if split == 'train' else 1 # train graph needs to contain at least min_pos positive texts
-    min_strong_neg = 1 # train graph needs to contain at least min_strong_neg strong negative texts
+def build_mtb_graph(graph, annotation_data, all_s, all_e, edge_counts, neighbors, data_path, split):
+    n_entities = len(edge_counts)
+    min_pos = 2 # graph needs to contain at least min_pos positive texts
+    min_strong_neg = 1 # graph needs to contain at least min_strong_neg strong negative texts
 
     # Initialize MTB indexed dataset
     mtb_graph_path = os.path.join(data_path, 'mtb_' + split + '.graph')
@@ -120,47 +138,46 @@ def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train
     )
 
     # Initialize global edge start/end indices to zero
-    edge_count_train_start, edge_count_train_end = 0, 0
+    edge_count_start, edge_count_end = 0, 0
 
     # Iterate through all head entities
     for head in tqdm(range(n_entities), desc='Building {} MTB graph'.format(split)):
         
         # Update edge_count start/end indices
-        edge_count_train_start = edge_count_train_end
-        edge_count_train_end += edge_counts_train[head]
+        edge_count_start = edge_count_end
+        edge_count_end += edge_counts[head]
            
         # If we know current head entity cannot have positives or strong negatives, add empty list to MTB indexed dataset
-        if len(graph_split[head]) == 0 or edge_counts_train[head] < min_pos + min_strong_neg:
+        if len(graph[head]) == 0 or edge_counts[head] < min_pos + min_strong_neg:
             mtb_graph_builder.add_item(torch.LongTensor([]))
             continue
 
         # Get start/end indices for all edges of current head entity
-        cur_s_train = all_s_train[edge_count_train_start:edge_count_train_end]
-        cur_e_train = all_e_train[edge_count_train_start:edge_count_train_end]
+        cur_s = all_s[edge_count_start:edge_count_end]
+        cur_e = all_e[edge_count_start:edge_count_end]
 
         # Get edges for current head entity, for the graph of current split
-        cur_edges_split = graph_split[head].numpy().reshape(-1, EDGE_SIZE)
-        cur_edges_train = graph_train[head].numpy().reshape(-1, EDGE_SIZE)
+        cur_edges = graph[head].numpy().reshape(-1, EDGE_SIZE)
 
         # For each of head's tail candidates, count how many edges contain the tail
-        edge_tails_counts_train = defaultdict(int)
-        cur_tails_train = cur_edges_train[:, TAIL_ENTITY]
-        edge_tails_counts_train.update(dict(Counter(cur_tails_train)))
+        edge_tails_counts = defaultdict(int)
+        cur_tails = cur_edges[:, TAIL_ENTITY]
+        edge_tails_counts.update(dict(Counter(cur_tails)))
 
         # Initialize MTB edges list for current head entity
         cur_mtb_edges = []
 
         # Iterate through all edges of the current head entity
-        for edge_idx in range(cur_edges_split.shape[0]):
+        for edge_idx in range(cur_edges.shape[0]):
 
             # Get current edge
-            cur_edge_split = cur_edges_split[edge_idx]
+            cur_edge = cur_edges[edge_idx]
 
             # Get current tail entity
-            tail = cur_edge_split[TAIL_ENTITY]
+            tail = cur_edge[TAIL_ENTITY]
 
             # Check for positives (i.e., are there at least two texts mentioning both head and tail?)
-            pos = edge_tails_counts_train[tail] >= min_pos
+            pos = edge_tails_counts[tail] >= min_pos
             if pos is False:
                 continue
 
@@ -168,7 +185,7 @@ def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train
             # - First, does head have at least one neighbor which is not also neighbors with tail?
             # - If not, does head have at least one edge which does not contain tail? 
             #   (We approximate this by checking a sample of SAMPLE_SIZE of head's edges.)
-            head_neighbors, tail_neighbors = neighbors_train[head], neighbors_train[tail]
+            head_neighbors, tail_neighbors = neighbors[head], neighbors[tail]
             
             # Temporarily remove tail and head from head_neighbors and tail_neighbors, respectively
             head_neighbors.discard(tail) 
@@ -186,18 +203,18 @@ def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train
 
             # If head_neighbors is not a subset of tail_neighbors, check if head has at least one edge which does not contain tail
             if not strong_neg:
-                sample = np.random.choice(len(cur_s_train), size=min(SAMPLE_SIZE, len(cur_s_train)), replace=False)
+                sample = np.random.choice(len(cur_s), size=min(SAMPLE_SIZE, len(cur_s)), replace=False)
                 for sample_edge_idx in sample:
-                    cur_edge_train_entities = set(annotation_data_train[slice(cur_s_train[sample_edge_idx], cur_e_train[sample_edge_idx])][:, -1])
-                    assert head in cur_edge_train_entities
-                    assert len(cur_edge_train_entities) > 1
-                    if tail not in cur_edge_train_entities:
+                    cur_edge_entities = set(annotation_data[slice(cur_s[sample_edge_idx], cur_e[sample_edge_idx])][:, -1])
+                    assert head in cur_edge_entities
+                    assert len(cur_edge_entities) > 1
+                    if tail not in cur_edge_entities:
                         strong_neg = True
                         break
                     
             # If pos and strong_neg are both true, then add the current edge to cur_mtb_edges
             if pos and strong_neg:
-                cur_mtb_edges.append(tuple(cur_edge_split))
+                cur_mtb_edges.append(tuple(cur_edge))
         
         # Add current entity's sorted MTB edges to the MTB graph
         cur_mtb_edges.sort()
@@ -207,7 +224,7 @@ def build_mtb_graph(graph_split, graph_train, annotation_data_train, all_s_train
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Constructing arrays of MTB triplets satisfying pos and strong_neg')
-    parser.add_argument('--data-path', type=str, help='Data directory', default='../data/nki/bin-v5-threshold20')
+    parser.add_argument('--data-path', type=str, help='Data directory', default='../data/nki/bin-v6')
 
     args = parser.parse_args()
     main(args)
