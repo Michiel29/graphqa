@@ -1,11 +1,14 @@
 {
-    "add_configs": ["tacred.json", "../roberta/small.json", "../base.json"],
+    "add_configs": ["../tacred/tacred.json", "../roberta/small.json", "../base.json"],
 
     "eval_downstream": false,
 
     "seed": 0,
 
     "arch": "encoder_tacred__roberta_small",
+    "task": "tacred_probing",
+    "n_rules": 1000,
+    "n_texts": 3,
     // "entity_dim": 256,
     "entity_dim": 512,
     // "entity_dim": 768,
