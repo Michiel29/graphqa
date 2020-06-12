@@ -3,6 +3,7 @@
 import os
 import logging
 import sys
+from collections import defaultdict
 
 import numpy as np
 import torch
@@ -111,9 +112,17 @@ def main(args):
         )
 
         log_outputs = []
+        results = defaultdict(dict)
         for i, sample in enumerate(progress):
             sample = utils.move_to_cuda(sample) if use_cuda else sample
-            _loss, _sample_size, log_output = task.probe_step(sample, model)
+            scores, target_relation, evidence_relations, log_output = task.probe_step(sample, model)
+            results[evidence_relations] = {
+                target_relation: {
+                    'scores': scores,
+                    'mean_score': scores.mean().item(),
+                    'n_samples': len(scores)
+                }
+            }
             progress.log(log_output, step=i)
             log_outputs.append(log_output)
 

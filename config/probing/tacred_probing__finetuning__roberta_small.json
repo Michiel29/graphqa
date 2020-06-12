@@ -5,13 +5,25 @@
 
     "seed": 0,
 
-    "arch": "encoder_tacred__roberta_small",
-    "task": "tacred_probing",
-    "n_rules": 1000,
-    "n_texts": 3,
-    // "entity_dim": 256,
-    "entity_dim": 512,
+    "arch": "encoder_gnn_eval__roberta_small",
+    "gnn_layer_type": "mlp_concat",
+    "gnn_layer_args": {
+        "enc_dim": 256,
+        "linear_dim": 256,
+        "layer_sizes": [[256, 2]],
+        "layer_norm": true,
+        "n_gnn_layers": 1
+    },
+    "layer_sizes": [[256, 1], [1, 1]],
+    "gnn_mlp_layer_norm": true,
+    "entity_dim": 256,
+    // "entity_dim": 512,
     // "entity_dim": 768,
+
+    "task": "tacred_probing",
+    "n_rules": 100,
+    "n_texts": 10,
+    "n_chunks": 4,
     "mask_type": "start_end",
     "non_mask_rate": 1,
     "encoder_output_layer_type": "entity_start_linear",
@@ -29,7 +41,8 @@
     // "lr_scheduler": "fixed",
     // "weight_decay": 0.01,
 
-    "max_sentences": 16,
+    // "max_sentences": 16,
+    "max_sentences": 1,
     "update_freq": [1],
     // "update_freq": [2],
     // "update_freq": [4],

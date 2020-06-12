@@ -117,8 +117,18 @@ class TACREDProbingTask(BaseTask):
             metrics.log_custom(MicroF1Meter, 'micro_f1_avg', fn, tp, fp, self.split, sample_size)
 
     def probe_step(self, sample, model):
-        raise NotImplementedError
         model.eval()
-        # with torch.no_grad():
-            # sample_size, logging_output = criterion(model, sample)
-        return sample_size, logging_output
+        with torch.no_grad():
+            scores = model(sample).cpu()
+            target_relation = sample['target_relation']
+            evidence_relations = sample['evidence_relations']
+
+            sample_size = len(scores)
+            logging_output = {
+                'sample_size': sample_size,
+                'ntokens': sample['ntokens'],
+                'nsentences': sample['nsentences'],
+                'num_updates': 1,
+            }
+
+        return scores, target_relation, evidence_relations, logging_output
