@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 
 import torch
 from fairseq.tasks import register_task
@@ -116,12 +117,26 @@ class TACREDProbingTask(BaseTask):
         if self.split == 'train':
             metrics.log_custom(MicroF1Meter, 'micro_f1_avg', fn, tp, fp, self.split, sample_size)
 
-    def probe_step(self, sample, model):
+    def probe_step(self, sample, model, diag):
         model.eval()
         with torch.no_grad():
             scores = model(sample).cpu()
             target_relation = sample['target_relation']
             evidence_relations = sample['evidence_relations']
+
+            decoded_texts = []
+            for i in range(sample['nsentences']):
+                decoded_texts.append(diag.decode_text(sample['text'][0, i]))
+
+            decoded_rules = []
+            for i in range(len(sample['target_text_idx'])):
+                cur_dict = defaultdict(dict)
+                decoded_target = decoded_texts[sample['target_text_idx'][i]]
+                cur_dict['target'][target_relation] = decoded_target
+                for j in range(2):
+                    decoded_evidence = decoded_texts[sample['graph'][i][j]]
+                    cur_dict['evidence'][evidence_relations[j]] = decoded_evidence
+                decoded_rules.append(cur_dict)
 
             sample_size = len(scores)
             logging_output = {
@@ -131,4 +146,4 @@ class TACREDProbingTask(BaseTask):
                 'num_updates': 1,
             }
 
-        return scores, target_relation, evidence_relations, logging_output
+        return scores, target_relation, evidence_relations, decoded_rules, logging_output

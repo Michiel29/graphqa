@@ -12,6 +12,8 @@ from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tas
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
 from utils.checkpoint_utils import select_component_state, handle_state_dict_keys
+from utils.dictionary import CustomDictionary, EntityDictionary
+from utils.diagnostic_utils import Diagnostic
 
 import models, criterions
 import tasks as custom_tasks
@@ -111,17 +113,23 @@ def main(args):
             no_progress_bar='simple'
         )
 
+        # Load dictionary
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
+
         log_outputs = []
         results = defaultdict(dict)
+        diag = Diagnostic(dictionary, entity_dictionary=None)
         for i, sample in enumerate(progress):
             sample = utils.move_to_cuda(sample) if use_cuda else sample
-            scores, target_relation, evidence_relations, log_output = task.probe_step(sample, model)
+            scores, target_relation, evidence_relations, decoded_rules, log_output = task.probe_step(sample, model, diag)
             results[evidence_relations] = {
                 target_relation: {
                     'scores': scores,
                     'mean_score': scores.mean().item(),
-                    'n_samples': len(scores)
-                }
+                    'n_samples': len(scores),
+                    'decoded_rules': decoded_rules
+                },
             }
             progress.log(log_output, step=i)
             log_outputs.append(log_output)
