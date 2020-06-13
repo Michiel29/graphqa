@@ -118,19 +118,25 @@ def main(args):
         dictionary = CustomDictionary.load(dict_path)
 
         log_outputs = []
-        results = defaultdict(dict)
+        all_results, rule_results = [], defaultdict(list)
         diag = Diagnostic(dictionary, entity_dictionary=None)
         for i, sample in enumerate(progress):
             sample = utils.move_to_cuda(sample) if use_cuda else sample
             scores, target_relation, evidence_relations, decoded_rules, log_output = task.probe_step(sample, model, diag)
-            results[evidence_relations] = {
-                target_relation: {
-                    'scores': scores,
-                    'mean_score': scores.mean().item(),
-                    'n_samples': len(scores),
-                    'decoded_rules': decoded_rules
-                },
-            }
+            all_results.append({
+                'rule': tuple([target_relation, evidence_relations[0], evidence_relations[1]]),
+                'scores': scores,
+                'mean_score': scores.mean().item(),
+                'n_samples': len(scores),
+                'decoded_rules': decoded_rules
+            })
+            rule_results[evidence_relations].append({
+                'target_relation': target_relation,
+                'scores': scores,
+                'mean_score': scores.mean().item(),
+                'n_samples': len(scores),
+                'decoded_rules': decoded_rules
+            })
             progress.log(log_output, step=i)
             log_outputs.append(log_output)
 
@@ -140,6 +146,11 @@ def main(args):
 
         progress.print(log_output, tag=subset, step=i)
 
+        # Sort results by mean_score
+        all_results = sorted(all_results, key=lambda k: k['mean_score'], reverse=True)
+        for e in rule_results.keys():
+            rule_results[e] = sorted(rule_results[e], key=lambda k: k['mean_score'], reverse=True)
+        
 
 def cli_main():
     parser = options.get_validation_parser()

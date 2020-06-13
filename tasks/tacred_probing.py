@@ -120,7 +120,7 @@ class TACREDProbingTask(BaseTask):
     def probe_step(self, sample, model, diag):
         model.eval()
         with torch.no_grad():
-            scores = model(sample).cpu()
+            scores = torch.sigmoid(model(sample)).cpu()
             target_relation = sample['target_relation']
             evidence_relations = sample['evidence_relations']
 
