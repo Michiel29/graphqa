@@ -83,13 +83,12 @@ class TACREDProbingDataset(FairseqDataset):
     def __getitem__(self, index):
 
         rule = self.perm[self.perm_indices[index]]
-        n_texts = min([self.n_texts] + [len(self.relation_index[rel]) for rel in rule])
 
-        graph_list = [[] for x in range(n_texts)]
+        graph_list = [[] for x in range(self.n_texts)]
         target_list = []
         all_text_indices = []
         for rel in rule:
-            cur_text_indices = list(rd.choice(self.relation_index[rel], size=n_texts, replace=False))
+            cur_text_indices = list(rd.choice(self.relation_index[rel], size=self.n_texts, replace=True))
             all_text_indices += cur_text_indices
         all_text_indices = np.array(all_text_indices)
 
@@ -112,7 +111,7 @@ class TACREDProbingDataset(FairseqDataset):
             'text': text,
             'target_text_idx': target_list,
             'graph': graph_list,
-            'graph_sizes': [1] * n_texts,
+            'graph_sizes': [1] * self.n_texts,
             'target_relation': tacred_relations[rule[0]],
             'evidence_relations': (tacred_relations[rule[1]], tacred_relations[rule[2]])
         }
