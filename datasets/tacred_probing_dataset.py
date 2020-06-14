@@ -1,5 +1,5 @@
 from collections import defaultdict
-from itertools import permutations, chain
+from itertools import product, chain
 import numpy as np
 import numpy.random as rd
 import torch
@@ -54,6 +54,10 @@ tacred_relations = {
     41: 'no_relation',
 }
 
+tacred_rules = [
+    (36, 20, 20)
+]
+
 class TACREDProbingDataset(FairseqDataset):
 
     def __init__(
@@ -76,14 +80,21 @@ class TACREDProbingDataset(FairseqDataset):
             self.relation_index[self.relation_dataset[idx].item()].append(idx)
         
         n_relations = len(self.relation_index)
-        self.perm = list(permutations(range(n_relations), 3))
-        self.perm_indices = np.random.choice(len(self.perm), size=n_rules, replace=False)
+        self.all_rules = list(product(range(n_relations), repeat=3))
+        for rule in tacred_rules:
+            self.all_rules = list(filter((rule).__ne__, self.all_rules))
+        self.rule_indices = np.random.choice(len(self.all_rules), size=n_rules-len(tacred_rules), replace=False) + len(tacred_rules)
+
+        self.all_rules = tacred_rules + self.all_rules
+        self.rule_indices = np.concatenate((np.array(range(len(tacred_rules))), self.rule_indices))      
 
 
     def __getitem__(self, index):
 
-        rule = self.perm[self.perm_indices[index]]
-
+        # rule = self.perm[self.perm_indices[index]]
+        # from utils.diagnostic_utils import Diagnostic
+        # diag = Diagnostic(self.dictionary, entity_dictionary=None)
+        # tmp = diag.decode_text(self.tacred_dataset.__getitem__(self.relation_index[0][0])['text'])
         graph_list = [[] for x in range(self.n_texts)]
         target_list = []
         all_text_indices = []
