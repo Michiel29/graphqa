@@ -8,55 +8,7 @@ from torch.nn.utils.rnn import pad_sequence
 from fairseq.data import data_utils, FairseqDataset
 
 from datasets import AnnotatedText
-
-tacred_relations = {
-    0: 'org:alternate_names',
-    1: 'org:city_of_headquarters',
-    2: 'org:country_of_headquarters',
-    3: 'org:dissolved',
-    4: 'org:founded',
-    5: 'org:founded_by',
-    6: 'org:member_of',
-    7: 'org:members',
-    8: 'org:number_of_employees/members',
-    9: 'org:parents',
-    10: 'org:political/religious_affiliation',
-    11: 'org:shareholders',
-    12: 'org:stateorprovince_of_headquarters',
-    13: 'org:subsidiaries',
-    14: 'org:top_members/employees',
-    15: 'org:website',
-    16: 'per:age',
-    17: 'per:alternate_names',
-    18: 'per:cause_of_death',
-    19: 'per:charges',
-    20: 'per:children',
-    21: 'per:cities_of_residence',
-    22: 'per:city_of_birth',
-    23: 'per:city_of_death',
-    24: 'per:countries_of_residence',
-    25: 'per:country_of_birth',
-    26: 'per:country_of_death',
-    27: 'per:date_of_birth',
-    28: 'per:date_of_death',
-    29: 'per:employee_of',
-    30: 'per:origin',
-    31: 'per:other_family',
-    32: 'per:parents',
-    33: 'per:religion',
-    34: 'per:schools_attended',
-    35: 'per:siblings',
-    36: 'per:spouse',
-    37: 'per:stateorprovince_of_birth',
-    38: 'per:stateorprovince_of_death',
-    39: 'per:stateorprovinces_of_residence',
-    40: 'per:title',
-    41: 'no_relation',
-}
-
-tacred_rules = [
-    (36, 20, 20)
-]
+from utils.probing_utils import tacred_relations, tacred_rules
 
 class TACREDProbingDataset(FairseqDataset):
 
@@ -92,9 +44,11 @@ class TACREDProbingDataset(FairseqDataset):
     def __getitem__(self, index):
 
         rule = self.all_rules[self.rule_indices[index]]
+
         # from utils.diagnostic_utils import Diagnostic
         # diag = Diagnostic(self.dictionary, entity_dictionary=None)
         # tmp = diag.decode_text(self.tacred_dataset.__getitem__(self.relation_index[0][0])['text'])
+
         graph_list = [[] for x in range(self.n_texts)]
         target_list = []
         all_text_indices = []
