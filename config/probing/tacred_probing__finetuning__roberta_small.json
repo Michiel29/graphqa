@@ -21,12 +21,12 @@
     // "entity_dim": 768,
 
     "task": "tacred_probing",
-    "n_rules": 100,
-    "n_texts": 10,
+    "n_rules": 1000,
+    "n_texts": 100,
     "n_chunks": 4,
     "mask_type": "start_end",
-    // "non_mask_rate": 1,
-    "non_mask_rate": 0,
+    "non_mask_rate": 1,
+    // "non_mask_rate": 0,
     "encoder_output_layer_type": "entity_start_linear",
 
     "max_epoch": 10,
