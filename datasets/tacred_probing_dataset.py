@@ -91,7 +91,7 @@ class TACREDProbingDataset(FairseqDataset):
 
     def __getitem__(self, index):
 
-        rule = self.perm[self.perm_indices[index]]
+        rule = self.all_rules[self.rule_indices[index]]
         # from utils.diagnostic_utils import Diagnostic
         # diag = Diagnostic(self.dictionary, entity_dictionary=None)
         # tmp = diag.decode_text(self.tacred_dataset.__getitem__(self.relation_index[0][0])['text'])
