@@ -1,3 +1,9 @@
+import json
+
+def save_results(results, path):
+    with open(path, 'w') as fp:
+        json.dump(results, fp)
+
 tacred_relations = {
     0: 'org:alternate_names',
     1: 'org:city_of_headquarters',

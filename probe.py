@@ -153,6 +153,12 @@ def main(args):
         all_results = sorted(all_results, key=lambda k: k['mean_score'], reverse=True)
         for e in rule_results.keys():
             rule_results[e] = sorted(rule_results[e], key=lambda k: k['mean_score'], reverse=True)
+        
+        # Save probing results
+        save_dir = os.path.join(args.data_path, 'probing')
+        save_results(all_results, os.path.join(save_dir, 'all_results.json'))
+        save_results(rule_results, os.path.join(save_dir, 'rule_results.json'))
+
 
 def cli_main():
     parser = options.get_validation_parser()
