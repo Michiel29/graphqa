@@ -16,6 +16,7 @@ class EncoderGNNEval(EncoderGNNModel):
         n_targets = len(target_text_idx)
         graph_idx = batch['graph']
         graph_sizes = batch['graph_sizes']
+        batch_size = batch['size']
 
         target_text_idx = target_text_idx.reshape(-1) # (n_targets)
 
@@ -38,7 +39,7 @@ class EncoderGNNEval(EncoderGNNModel):
             scores = (layer_target_rep * target_rep).sum(dim=-1)
         else:
             scores = self.mlp(layer_target_rep) # (n_targets * n_candidates)
-        scores = scores.reshape(n_targets) # (n_targets, n_candidates)
+        scores = scores.reshape(batch_size, -1) # (batch_size, n_texts)
 
         return scores
 

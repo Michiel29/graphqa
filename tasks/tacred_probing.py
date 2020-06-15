@@ -125,20 +125,28 @@ class TACREDProbingTask(BaseTask):
             scores = torch.sigmoid(model(sample)).cpu()
             target_relation = sample['target_relation']
             evidence_relations = sample['evidence_relations']
+            batch_size = sample['size']
 
             decoded_texts = []
-            for i in range(sample['nsentences']):
-                decoded_texts.append(diag.decode_text(sample['text'][0, i]))
+            for cluster in sample['text']:
+                for i in range(len(cluster)):
+                    decoded_texts.append(diag.decode_text(cluster[i]))
 
             decoded_rules = []
-            for i in range(len(sample['target_text_idx'])):
-                cur_dict = defaultdict(dict)
-                decoded_target = decoded_texts[sample['target_text_idx'][i]]
-                cur_dict['target'][target_relation] = decoded_target
-                for j in range(2):
-                    decoded_evidence = decoded_texts[sample['graph'][i][j]]
-                    cur_dict['evidence'][evidence_relations[j]] = decoded_evidence
-                decoded_rules.append(cur_dict)
+            target_text_idx = sample['target_text_idx'].reshape(batch_size, self.args.n_texts)
+            graph = sample['graph'].reshape(batch_size, self.args.n_texts, 2)
+            for i in range(batch_size):
+                cur_rule = []
+                for j in range(self.args.n_texts):
+                    cur_example = {'target': {}, 'evidence': []}
+                    decoded_target = decoded_texts[target_text_idx[i, j]]
+                    cur_example['target'][target_relation[i]] = decoded_target
+                    for k in range(2):
+                        decoded_evidence = decoded_texts[graph[i, j, k]]
+                        cur_evidence_dict = {evidence_relations[i][k]: decoded_evidence}
+                        cur_example['evidence'].append(cur_evidence_dict)
+                    cur_rule.append(cur_example)
+                decoded_rules.append(cur_rule)
 
             sample_size = len(scores)
             logging_output = {

@@ -68,40 +68,31 @@ class TACREDProbingDataset(FairseqDataset):
 
         rule = self.all_rules[self.rule_indices[index]]
 
-        # from utils.diagnostic_utils import Diagnostic
-        # diag = Diagnostic(self.dictionary, entity_dictionary=None)
-        # tmp = diag.decode_text(self.tacred_dataset.__getitem__(self.relation_index[0][0])['text'])
-
         graph_list = [[] for x in range(self.n_texts)]
         target_list = []
         all_text_indices = []
         for rel in rule:
             cur_text_indices = list(rd.choice(self.relation_index[rel], size=self.n_texts, replace=True))
             all_text_indices += cur_text_indices
+        text = list(set(all_text_indices))
         all_text_indices = np.array(all_text_indices)
-
-        unique_text_indices = np.unique(all_text_indices, return_counts=False)
-        unique_text_lengths = np.array([len(self.tacred_dataset.__getitem__(x)['text']) for x in unique_text_indices])
-        text_indices = np.argsort(unique_text_lengths)
-        text = [self.tacred_dataset.__getitem__(x)['text'] for x in text_indices]
-        
         all_text_indices = all_text_indices.reshape(3, -1)
+
         for i in range(len(all_text_indices)):
             cur_text_indices = all_text_indices[i]
             for j, idx in enumerate(cur_text_indices):
-                new_idx = text_indices[np.where(unique_text_indices == idx)[0][0]]
                 if i == 0:
-                    target_list.append(new_idx)
+                    target_list.append(idx)
                 else:
-                    graph_list[j].append(new_idx)
+                    graph_list[j].append(idx)
 
         item = {
             'text': text,
             'target_text_idx': target_list,
             'graph': graph_list,
             'graph_sizes': [1] * self.n_texts,
-            'target_relation': tacred_relations[rule[0]],
-            'evidence_relations': (tacred_relations[rule[1]], tacred_relations[rule[2]])
+            'target_relation': [tacred_relations[rule[0]]],
+            'evidence_relations': [tacred_relations[rule[1]], tacred_relations[rule[2]]]
         }
 
         return item
@@ -126,20 +117,51 @@ class TACREDProbingDataset(FairseqDataset):
         batch_size = len(instances)
         if batch_size == 0:
             return None
-        assert len(instances) == 1
 
-        text = instances[0]['text']
-        padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
-        ntokens = padded_text.numel()
-        nsentences = len(padded_text)
+        all_text_indices, target_text_idx, graph, graph_sizes = [], [], [], []
+        target_relation, evidence_relations = [], []
+        ntokens, nsentences = 0, 0
+
+        # Get text passages and indices
+        for instance in instances:
+            all_text_indices += instance['text']
+        unique_text_indices = list(set(all_text_indices))
+        text_lengths = np.array([len(self.tacred_dataset.__getitem__(x)['text']) for x in unique_text_indices])
+        argsort_text_indices = np.argsort(text_lengths)
+        text = [self.tacred_dataset.__getitem__(unique_text_indices[x])['text'] for x in argsort_text_indices]
+        text_indices = np.array(unique_text_indices)[argsort_text_indices]
+
+        # Create text clusters
+        sorted_text_lengths = np.sort(text_lengths)
+        text_mean = np.mean(sorted_text_lengths)
+        text_std = np.std(sorted_text_lengths)
+        bin_vals = [0] + [text_mean + 0.5*k*text_std for k in range(-3, 4)] + [float('inf')]
+        text_cluster_indices = [np.where(np.logical_and(sorted_text_lengths > bin_vals[i], sorted_text_lengths <= bin_vals[i+1]))[0] for i in range(len(bin_vals)-1)]
+
+        # Pad each text cluster
+        text_clusters = []
+        for c in text_cluster_indices:
+            cur_cluster = [text[x] for x in c]
+            padded_text = pad_sequence(cur_cluster, batch_first=True, padding_value=self.dictionary.pad())
+            text_clusters.append(padded_text)
+            ntokens += padded_text.numel()
+            nsentences += len(padded_text)
+
+        # Convert text indices
+        for instance in instances:
+            target_text_idx += [np.where(text_indices == x)[0][0] for x in instance['target_text_idx']]
+            graph += [[np.where(text_indices == x1)[0][0], np.where(text_indices == x2)[0][0]] for (x1, x2) in instance['graph']]
+            graph_sizes += instance['graph_sizes']
+            target_relation += instance['target_relation']
+            evidence_relations += [instance['evidence_relations']]
 
         batch = {
-            'text': padded_text.unsqueeze(0),
-            'target_text_idx': torch.LongTensor(instances[0]['target_text_idx']),
-            'graph': torch.LongTensor(instances[0]['graph']),
-            'graph_sizes': torch.LongTensor(instances[0]['graph_sizes']),
-            'target_relation': instances[0]['target_relation'],
-            'evidence_relations': instances[0]['evidence_relations'],
+            'text': text_clusters,
+            'target_text_idx': torch.LongTensor(target_text_idx),
+            'graph': torch.LongTensor(graph),
+            'graph_sizes': torch.LongTensor(graph_sizes),
+            'target_relation': target_relation,
+            'evidence_relations': evidence_relations,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': batch_size,

@@ -14,6 +14,7 @@ from utils.config import update_namespace, modify_factory, compose_configs, upda
 from utils.checkpoint_utils import select_component_state, handle_state_dict_keys
 from utils.dictionary import CustomDictionary, EntityDictionary
 from utils.diagnostic_utils import Diagnostic
+from utils.probing_utils import save_results
 
 import models, criterions
 import tasks as custom_tasks
@@ -122,21 +123,23 @@ def main(args):
         diag = Diagnostic(dictionary, entity_dictionary=None)
         for i, sample in enumerate(progress):
             sample = utils.move_to_cuda(sample) if use_cuda else sample
+            batch_size = sample['size']
             scores, target_relation, evidence_relations, decoded_rules, log_output = task.probe_step(sample, model, diag)
-            all_results.append({
-                'rule': tuple([target_relation, evidence_relations[0], evidence_relations[1]]),
-                'scores': scores,
-                'mean_score': scores.mean().item(),
-                'n_samples': len(scores),
-                'decoded_rules': decoded_rules
-            })
-            rule_results[evidence_relations].append({
-                'target_relation': target_relation,
-                'scores': scores,
-                'mean_score': scores.mean().item(),
-                'n_samples': len(scores),
-                'decoded_rules': decoded_rules
-            })
+            for j in range(batch_size):
+                all_results.append({
+                    'rule': tuple([target_relation[j], evidence_relations[j][0], evidence_relations[j][1]]),
+                    'scores': scores[j],
+                    'mean_score': scores[j].mean().item(),
+                    'n_samples': len(scores[j]),
+                    'decoded_rules': decoded_rules[j]
+                })
+                rule_results[tuple(evidence_relations[j])].append({
+                    'target_relation': target_relation[j],
+                    'scores': scores[j],
+                    'mean_score': scores[j].mean().item(),
+                    'n_samples': len(scores[j]),
+                    'decoded_rules': decoded_rules[j]
+                })
             progress.log(log_output, step=i)
             log_outputs.append(log_output)
 
@@ -150,7 +153,6 @@ def main(args):
         all_results = sorted(all_results, key=lambda k: k['mean_score'], reverse=True)
         for e in rule_results.keys():
             rule_results[e] = sorted(rule_results[e], key=lambda k: k['mean_score'], reverse=True)
-        
 
 def cli_main():
     parser = options.get_validation_parser()
