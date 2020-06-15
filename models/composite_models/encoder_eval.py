@@ -1,5 +1,10 @@
-from models.composite_models.encoder_gnn import EncoderGNNModel
+import torch
+from fairseq.models import register_model, register_model_architecture
 
+from models.composite_models.encoder_gnn import EncoderGNNModel
+from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
+
+@register_model('encoder_eval')
 class EncoderGNNEval(EncoderGNNModel):
 
     def forward(self, batch):
@@ -37,3 +42,6 @@ class EncoderGNNEval(EncoderGNNModel):
         return scores
 
 
+@register_model_architecture('encoder_eval', 'encoder_eval__roberta_small')
+def encoder_eval_small_architecture(args):
+    small_architecture(args)
