@@ -1,8 +1,12 @@
-import json
+import pickle
 
-def save_results(results, path):
-    with open(path, 'w') as fp:
-        json.dump(results, fp)
+def save_probing_results(results, path):
+    with open(path, 'wb') as handle:
+        pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def load_probing_results(path):
+    with open(path, 'rb') as handle:
+        return pickle.load(handle)
 
 tacred_relations = {
     0: 'org:alternate_names',

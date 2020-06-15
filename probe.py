@@ -14,7 +14,7 @@ from utils.config import update_namespace, modify_factory, compose_configs, upda
 from utils.checkpoint_utils import select_component_state, handle_state_dict_keys
 from utils.dictionary import CustomDictionary, EntityDictionary
 from utils.diagnostic_utils import Diagnostic
-from utils.probing_utils import save_results
+from utils.probing_utils import save_probing_results
 
 import models, criterions
 import tasks as custom_tasks
@@ -128,14 +128,14 @@ def main(args):
             for j in range(batch_size):
                 all_results.append({
                     'rule': tuple([target_relation[j], evidence_relations[j][0], evidence_relations[j][1]]),
-                    'scores': scores[j],
+                    'scores': scores[j].cpu().numpy(),
                     'mean_score': scores[j].mean().item(),
                     'n_samples': len(scores[j]),
                     'decoded_rules': decoded_rules[j]
                 })
                 rule_results[tuple(evidence_relations[j])].append({
                     'target_relation': target_relation[j],
-                    'scores': scores[j],
+                    'scores': scores[j].cpu().numpy(),
                     'mean_score': scores[j].mean().item(),
                     'n_samples': len(scores[j]),
                     'decoded_rules': decoded_rules[j]
@@ -158,8 +158,8 @@ def main(args):
         save_dir = os.path.join(args.data_path, 'probing')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        save_results(all_results, os.path.join(save_dir, 'all_results.json'))
-        save_results(rule_results, os.path.join(save_dir, 'rule_results.json'))
+        save_probing_results(all_results, os.path.join(save_dir, 'all_results.pkl'))
+        save_probing_results(rule_results, os.path.join(save_dir, 'rule_results.pkl'))
 
 
 def cli_main():
