@@ -34,6 +34,7 @@ class TACREDProbingTask(BaseTask):
         """Add task-specific arguments to the parser."""
         parser.add_argument('--n_rules', help='number of rules')
         parser.add_argument('--n_texts', help='number of texts to sample per relation')
+        parser.add_argument('--n_strong_negs', help='number of strong negatives to sample per relation')
 
         """Required either in config or cl"""
         parser.add_argument('--data_path', help='path to data')
@@ -77,6 +78,7 @@ class TACREDProbingTask(BaseTask):
             tacred_dataset=dataset,
             n_rules=self.args.n_rules,
             n_texts=self.args.n_texts, 
+            n_strong_negs=self.args.n_strong_negs,
             dictionary=self.dictionary,
             seed=self.seed
         )

@@ -2,6 +2,8 @@ from collections import defaultdict
 from itertools import product, chain
 import numpy as np
 import numpy.random as rd
+from tqdm import tqdm
+
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
@@ -17,12 +19,14 @@ class TACREDProbingDataset(FairseqDataset):
         tacred_dataset,
         n_rules,
         n_texts,
+        n_strong_negs,
         dictionary,
         seed,
     ):
         self.tacred_dataset = tacred_dataset
         self.n_rules = n_rules
         self.n_texts = n_texts
+        self.n_strong_negs = n_strong_negs
         self.dictionary = dictionary
         self.seed = seed
         
@@ -30,15 +34,34 @@ class TACREDProbingDataset(FairseqDataset):
         self.relation_index = defaultdict(list)
         for idx in range(len(self.relation_dataset)):
             self.relation_index[self.relation_dataset[idx].item()].append(idx)
-        
         n_relations = len(self.relation_index)
-        self.all_rules = list(product(range(n_relations), repeat=3))
-        for rule in tacred_rules:
-            self.all_rules = list(filter((rule).__ne__, self.all_rules))
-        self.rule_indices = np.random.choice(len(self.all_rules), size=n_rules-len(tacred_rules), replace=False) + len(tacred_rules)
 
-        self.all_rules = tacred_rules + self.all_rules
-        self.rule_indices = np.concatenate((np.array(range(len(tacred_rules))), self.rule_indices))      
+        # Create strong negative rules
+        strong_neg_rules = []
+        for rule in tqdm(tacred_rules, desc='Creating strong negative rules'):
+            target, evidence_1, evidence_2 = rule
+            cur_negs = []
+            neg_candidates = np.random.choice(n_relations, size=n_relations, replace=False)
+            for c in neg_candidates:
+                if c == target:
+                    continue
+                candidate_rule = (c, evidence_1, evidence_2)
+                if candidate_rule not in tacred_rules + strong_neg_rules:
+                    cur_negs.append(candidate_rule)
+                if len(cur_negs) == n_strong_negs:
+                    break
+            strong_neg_rules += cur_negs
+            
+        # Create weak negative rules
+        self.all_rules = list(product(range(n_relations), repeat=3))
+        n_non_weak_rules = len(tacred_rules) + len(strong_neg_rules)
+        for rule in tqdm(tacred_rules + strong_neg_rules, desc='Creating weak negative rules'):
+            self.all_rules = list(filter((rule).__ne__, self.all_rules))
+        self.rule_indices = np.random.choice(len(self.all_rules), size=n_rules-n_non_weak_rules, replace=False) + n_non_weak_rules
+
+        # Combine all rules together
+        self.all_rules = tacred_rules + strong_neg_rules + self.all_rules
+        self.rule_indices = np.concatenate((np.array(range(n_non_weak_rules)), self.rule_indices))     
 
 
     def __getitem__(self, index):

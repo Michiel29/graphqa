@@ -21,8 +21,9 @@
     // "entity_dim": 768,
 
     "task": "tacred_probing",
-    "n_rules": 1000,
+    "n_rules": 6000,
     "n_texts": 100,
+    "n_strong_negs": 10,
     "n_chunks": 4,
     "mask_type": "start_end",
     "non_mask_rate": 1,
