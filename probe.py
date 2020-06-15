@@ -156,6 +156,8 @@ def main(args):
         
         # Save probing results
         save_dir = os.path.join(args.data_path, 'probing')
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         save_results(all_results, os.path.join(save_dir, 'all_results.json'))
         save_results(rule_results, os.path.join(save_dir, 'rule_results.json'))
 
