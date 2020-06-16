@@ -648,13 +648,4 @@ tacred_rules = [
     (0, 29, 14), # (org:alternate_names, per:employee_of, org:top_members/employees)
     (29, 0, 14), # (per:employee_of, org:alternate_names, org:top_members/employees)
     (29, 14, 0), # (per:employee_of, org:top_members/employees, org:alternate_names)
-    
-
-    
-
-
-
-    
-
-
 ]
