@@ -37,7 +37,7 @@ class TACREDProbingDataset(FairseqDataset):
         n_relations = len(self.relation_index)
 
         # Create strong negative rules
-        strong_neg_rules = []
+        self.strong_neg_rules = []
         for rule in tqdm(tacred_rules, desc='Creating strong negative rules'):
             target, evidence_1, evidence_2 = rule
             cur_negs = []
@@ -46,21 +46,21 @@ class TACREDProbingDataset(FairseqDataset):
                 if c == target:
                     continue
                 candidate_rule = (c, evidence_1, evidence_2)
-                if candidate_rule not in tacred_rules + strong_neg_rules:
+                if candidate_rule not in tacred_rules + self.strong_neg_rules:
                     cur_negs.append(candidate_rule)
                 if len(cur_negs) == n_strong_negs:
                     break
-            strong_neg_rules += cur_negs
+            self.strong_neg_rules += cur_negs
             
         # Create weak negative rules
         self.all_rules = list(product(range(n_relations), repeat=3))
-        n_non_weak_rules = len(tacred_rules) + len(strong_neg_rules)
-        for rule in tqdm(tacred_rules + strong_neg_rules, desc='Creating weak negative rules'):
+        n_non_weak_rules = len(tacred_rules) + len(self.strong_neg_rules)
+        for rule in tqdm(tacred_rules + self.strong_neg_rules, desc='Creating weak negative rules'):
             self.all_rules = list(filter((rule).__ne__, self.all_rules))
         self.rule_indices = np.random.choice(len(self.all_rules), size=n_rules-n_non_weak_rules, replace=False) + n_non_weak_rules
 
         # Combine all rules together
-        self.all_rules = tacred_rules + strong_neg_rules + self.all_rules
+        self.all_rules = tacred_rules + self.strong_neg_rules + self.all_rules
         self.rule_indices = np.concatenate((np.array(range(n_non_weak_rules)), self.rule_indices))     
 
 

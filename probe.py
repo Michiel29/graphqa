@@ -160,6 +160,7 @@ def main(args):
             os.makedirs(save_dir)
         save_probing_results(all_results, os.path.join(save_dir, 'all_results.pkl'))
         save_probing_results(rule_results, os.path.join(save_dir, 'rule_results.pkl'))
+        save_probing_results(task.datasets['valid'].strong_neg_rules, os.path.join(save_dir, 'strong_neg_rules.pkl'))
 
 
 def cli_main():
