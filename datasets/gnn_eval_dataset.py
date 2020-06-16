@@ -74,17 +74,27 @@ class GNNEvalDataset(FairseqDataset):
             mutual_neighbors = np.intersect1d(head_neighbors, tail_neighbors, assume_unique=True)
             if len(mutual_neighbors) == 0:
                 return None
-            chosen_mutual = np.random.choice(mutual_neighbors)
 
-            support1, local_interval = self.sample_relation_statement(head, chosen_mutual, local_interval)
-            support2, local_interval = self.sample_relation_statement(chosen_mutual, tail, local_interval)
+            found_supporting = False
+            random_mutual = np.random.permutation(mutual_neighbors)
 
-            if support1 is None or support2 is None:
+            for chosen_mutual in random_mutual:
+                support1, local_interval = self.sample_relation_statement(head, chosen_mutual, local_interval)
+                support2, local_interval = self.sample_relation_statement(chosen_mutual, tail, local_interval)
+
+                if support1 is None or support2 is None:
+                    continue
+                else:
+                    found_supporting = True
+                    break
+
+            if found_supporting is False:
                 return None
 
         item = {
             'target': self.annotated_text.annotate(*(edge.numpy())),
             'support': [self.annotated_text.annotate(*(support1)), self.annotated_text.annotate(*(support2))],
+            'entities': {'A': head, 'B': tail, 'C': chosen_mutual}
         }
 
         return item
@@ -114,6 +124,7 @@ class GNNEvalDataset(FairseqDataset):
         graph_idx = []
         relation_statements = []
         graph_sizes = []
+        entities = {'A': [], 'B': [], 'C': []}
         for sample in samples:
             if sample == None:
                 continue
@@ -129,6 +140,9 @@ class GNNEvalDataset(FairseqDataset):
 
             graph_idx.append(local_support_idx)
             graph_sizes.append(1)
+
+            for entity in entities:
+                entities[entity].append(sample['entities'][entity])
         fake_relation_statement = torch.zeros(self.max_positions, dtype=torch.int64)
         relation_statements.append(fake_relation_statement)
         relation_statements = pad_sequence(
@@ -143,6 +157,7 @@ class GNNEvalDataset(FairseqDataset):
             'graph': torch.LongTensor(graph_idx),
             'graph_sizes': torch.LongTensor(graph_sizes),
             'target_text_idx': torch.LongTensor(target_idx),
+            'entities': {key: torch.LongTensor(value) for key, value in entities.items()}
         }
 
         return batch
