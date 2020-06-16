@@ -5,7 +5,7 @@
 
     "seed": 0,
 
-    "arch": "encoder_gnn_eval__roberta_small",
+    "arch": "encoder_eval__roberta_small",
     "gnn_layer_type": "mlp_concat",
     "gnn_layer_args": {
         "enc_dim": 256,
