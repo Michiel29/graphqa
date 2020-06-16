@@ -8,15 +8,14 @@ from collections import defaultdict
 import numpy as np
 import torch
 
-from fairseq import checkpoint_utils, metrics, options, progress_bar, utils, tasks
+from fairseq import options, progress_bar, utils, tasks
 
 from utils.config import update_namespace, modify_factory, compose_configs, update_config, save_config
-from utils.checkpoint_utils import select_component_state, handle_state_dict_keys
 from utils.dictionary import CustomDictionary, EntityDictionary
 from utils.diagnostic_utils import Diagnostic
 from utils.probing_utils import save_probing_results
 
-import models, criterions
+import models
 import tasks as custom_tasks
 
 logging.basicConfig(
@@ -32,135 +31,95 @@ is_neptune_initialized = False
 
 
 def main(args):
-    utils.import_user_module(args)
+    # Set random seeds
     np.random.seed(args.seed)
-    utils.set_torch_seed(args.seed)
+    torch.manual_seed(args.seed)
 
-    assert args.max_tokens is not None or args.max_sentences is not None, \
-        'Must specify batch size either with --max-tokens or --max-sentences'
-
-    use_fp16 = args.fp16
-    use_cuda = torch.cuda.is_available() and not args.cpu
-
-    # Setup task, e.g., translation, language modeling, etc.
     task = tasks.setup_task(args)
-    task.split = 'valid'
+    # Load valid datasets (we load training data below, based on the latest checkpoint)
+    valid_subset = args.valid_subset.split(',')[0]
 
-    # Load model
-    load_checkpoint = getattr(args, 'load_checkpoint')
+    task.load_dataset(valid_subset, combine=False, epoch=0)
 
-    if load_checkpoint:
-        logger.info('loading model(s) from {}'.format(load_checkpoint))
-        if not os.path.exists(load_checkpoint):
-            raise IOError("Model file not found: {}".format(load_checkpoint))
-        state = checkpoint_utils.load_checkpoint_to_cpu(load_checkpoint)
+    # Build models
+    model = task.build_model(args)
 
-        checkpoint_args = state["args"]
-        if task is None:
-            task = tasks.setup_task(args)
+    use_cuda = torch.cuda.is_available() and not args.cpu
+    if use_cuda:
+        device = torch.device('cuda')
 
-        load_component_prefix = getattr(args, 'load_component_prefix', None)
-
-        model_state = state["model"]
-        if load_component_prefix:
-            model_state = select_component_state(model_state, load_component_prefix)
-
-        # build model for ensemble
-        model = task.build_model(args)
-        missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False, args=args)
-        handle_state_dict_keys(missing_keys, unexpected_keys)
-
-    else:
-        model = task.build_model(args)
+    # Load model checkpoint
+    state_dict = torch.load(args.restore_file)['model']
+    prefix = 'model_dict.gnn.'
+    adjusted_state_dict = {key[len(prefix):]: value for key, value in state_dict.items() if key.startswith(prefix)}
+    model.load_state_dict(adjusted_state_dict)
 
     # Move model to GPU
-    if use_fp16:
-        model.half()
     if use_cuda:
         model.cuda()
 
-    # Print args
-    logger.info(args)
+    # Initialize data iterator
+    itr = task.get_batch_iterator(
+        dataset=task.dataset(valid_subset),
+        max_tokens=args.max_tokens_valid,
+        max_sentences=args.max_sentences_valid,
+        max_positions=utils.resolve_max_positions(
+            task.max_positions(),
+            model.max_positions(),
+        ),
+        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+        required_batch_size_multiple=args.required_batch_size_multiple,
+        seed=args.seed,
+        num_workers=args.num_workers,
+        epoch=1,
+    ).next_epoch_itr(shuffle=False)
+    progress = progress_bar.build_progress_bar(
+        args, itr, 0,
+        prefix='eval gnn',
+        no_progress_bar='simple'
+    )
 
-    # Build criterion
-    criterion = task.build_criterion(args)
-    criterion.eval()
+    # Load dictionary
+    dict_path = os.path.join(args.data_path, 'dict.txt')
+    dictionary = CustomDictionary.load(dict_path)
 
-    # Load valid dataset (we load training data below, based on the latest checkpoint)
-    for subset in args.valid_subset.split(','):
-        try:
-            task.load_dataset(subset, combine=False, epoch=0)
-            dataset = task.dataset(subset)
-        except KeyError:
-            raise Exception('Cannot find dataset: ' + subset)
+    log_outputs = []
+    all_results, rule_results = [], defaultdict(list)
+    diag = Diagnostic(dictionary, entity_dictionary=None)
+    for i, sample in enumerate(progress):
+        sample = utils.move_to_cuda(sample) if use_cuda else sample
+        batch_size = sample['size']
+        scores, target_relation, evidence_relations, decoded_rules, log_output = task.probe_step(sample, model, diag)
+        for j in range(batch_size):
+            all_results.append({
+                'rule': tuple([target_relation[j], evidence_relations[j][0], evidence_relations[j][1]]),
+                'scores': scores[j].cpu().numpy(),
+                'mean_score': scores[j].mean().item(),
+                'n_samples': len(scores[j]),
+                'decoded_rules': decoded_rules[j]
+            })
+            rule_results[tuple(evidence_relations[j])].append({
+                'target_relation': target_relation[j],
+                'scores': scores[j].cpu().numpy(),
+                'mean_score': scores[j].mean().item(),
+                'n_samples': len(scores[j]),
+                'decoded_rules': decoded_rules[j]
+            })
+        progress.log(log_output, step=i)
+        log_outputs.append(log_output)
 
-        # Initialize data iterator
-        itr = task.get_batch_iterator(
-            dataset=dataset,
-            max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
-            max_positions=utils.resolve_max_positions(
-                task.max_positions(),
-                model.max_positions(),
-            ),
-            ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-            required_batch_size_multiple=args.required_batch_size_multiple,
-            seed=args.seed,
-            num_workers=args.num_workers,
-        ).next_epoch_itr(shuffle=False)
-        progress = progress_bar.build_progress_bar(
-            args, itr,
-            prefix='valid on \'{}\' subset'.format(subset),
-            no_progress_bar='simple'
-        )
-
-        # Load dictionary
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
-
-        log_outputs = []
-        all_results, rule_results = [], defaultdict(list)
-        diag = Diagnostic(dictionary, entity_dictionary=None)
-        for i, sample in enumerate(progress):
-            sample = utils.move_to_cuda(sample) if use_cuda else sample
-            batch_size = sample['size']
-            scores, target_relation, evidence_relations, decoded_rules, log_output = task.probe_step(sample, model, diag)
-            for j in range(batch_size):
-                all_results.append({
-                    'rule': tuple([target_relation[j], evidence_relations[j][0], evidence_relations[j][1]]),
-                    'scores': scores[j].cpu().numpy(),
-                    'mean_score': scores[j].mean().item(),
-                    'n_samples': len(scores[j]),
-                    'decoded_rules': decoded_rules[j]
-                })
-                rule_results[tuple(evidence_relations[j])].append({
-                    'target_relation': target_relation[j],
-                    'scores': scores[j].cpu().numpy(),
-                    'mean_score': scores[j].mean().item(),
-                    'n_samples': len(scores[j]),
-                    'decoded_rules': decoded_rules[j]
-                })
-            progress.log(log_output, step=i)
-            log_outputs.append(log_output)
-
-        with metrics.aggregate() as agg:
-            task.reduce_metrics(log_outputs, criterion)
-            log_output = agg.get_smoothed_values()
-
-        progress.print(log_output, tag=subset, step=i)
-
-        # Sort results by mean_score
-        all_results = sorted(all_results, key=lambda k: k['mean_score'], reverse=True)
-        for e in rule_results.keys():
-            rule_results[e] = sorted(rule_results[e], key=lambda k: k['mean_score'], reverse=True)
-        
-        # Save probing results
-        save_dir = os.path.join(args.data_path, 'probing')
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        save_probing_results(all_results, os.path.join(save_dir, 'all_results.pkl'))
-        save_probing_results(rule_results, os.path.join(save_dir, 'rule_results.pkl'))
-        save_probing_results(task.datasets['valid'].strong_neg_rules, os.path.join(save_dir, 'strong_neg_rules.pkl'))
+    # Sort results by mean_score
+    all_results = sorted(all_results, key=lambda k: k['mean_score'], reverse=True)
+    for e in rule_results.keys():
+        rule_results[e] = sorted(rule_results[e], key=lambda k: k['mean_score'], reverse=True)
+    
+    # Save probing results
+    save_dir = os.path.join(args.data_path, 'probing')
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    save_probing_results(all_results, os.path.join(save_dir, 'all_results.pkl'))
+    save_probing_results(rule_results, os.path.join(save_dir, 'rule_results.pkl'))
+    save_probing_results(task.datasets['valid'].strong_neg_rules, os.path.join(save_dir, 'strong_neg_rules.pkl'))
 
 
 def cli_main():
