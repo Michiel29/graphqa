@@ -9,7 +9,6 @@
     "gnn_layer_type": "mlp_concat",
     "gnn_layer_args": {
         "enc_dim": 256,
-        "linear_dim": 256,
         "layer_sizes": [[256, 2]],
         "layer_norm": true,
         "n_gnn_layers": 1
@@ -17,31 +16,19 @@
     "layer_sizes": [[256, 1], [1, 1]],
     "gnn_mlp_layer_norm": true,
     "entity_dim": 256,
-    // "entity_dim": 512,
-    // "entity_dim": 768,
 
     "task": "tacred_probing",
-    "n_rules": 9000,
+    "n_rules": 10000,
     "n_texts": 100,
     "n_strong_negs": 10,
     "mask_type": "start_end",
-    "non_mask_rate": 1,
-    // "non_mask_rate": 0,
+    "non_mask_rate": 0,
     "encoder_output_layer_type": "entity_start_linear",
 
-    "max_epoch": 10,
-    "warmup_updates": 2553, // bsz=16, max_epoch=10
-    "lr": [2e-5],
-
-    "max_sentences": 1500,
-    "update_freq": [1],
+    "max_sentences": 2000,
     "max_tokens": 2e4,
 
     "num_workers": 4,
-    // "load_component_prefix": "encoder",
 
-    // "restore_file": "/data1/aarchan/self_inference/save/task_tacred/arch_encoder_tacred__roberta_large/encoder_output_layer_type_entity_start_linear/entity_dim_256/lr_3e-05/max_sentences_16/update_freq_4/04m_01d_02h_42m/checkpoints/checkpoint_best.pt",
-
-    "no_epoch_checkpoints": true
-
+    "restore_file": "../save/gnn_mlm/multi_model/mtb_init.unfrozen.disjoint_data/06m_07d_19h_30m_02s/checkpoints/checkpoint_last.pt"
 }
