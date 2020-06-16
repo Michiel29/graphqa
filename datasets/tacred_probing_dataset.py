@@ -55,7 +55,7 @@ class TACREDProbingDataset(FairseqDataset):
         # Create weak negative rules
         self.all_rules = list(product(range(n_relations), repeat=3))
         n_non_weak_rules = len(tacred_rules) + len(self.strong_neg_rules)
-        for rule in tqdm(tacred_rules + self.strong_neg_rules, desc='Creating weak negative rules'):
+        for rule in tqdm(tacred_rules + self.strong_neg_rules, desc='Filtering non-weak rules from all_rules list'):
             self.all_rules = list(filter((rule).__ne__, self.all_rules))
         self.rule_indices = np.random.choice(len(self.all_rules), size=n_rules-n_non_weak_rules, replace=False) + n_non_weak_rules
 
