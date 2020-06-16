@@ -82,7 +82,8 @@ for rank in tqdm(range(len(all_results)), desc='Aggregating scores/ranks'):
         agg_results['bottom_100'][category]['scores'].append(result['mean_score'])
         agg_results['bottom_100'][category]['ranks'].append(rank)
 
-print()
+print('\nn_pos_rules={}, n_strong_neg_rules={}, n_weak_neg_rules={}\n'.format(len(tacred_rules), len(strong_neg_rules), n_rules-len(tacred_rules)-len(strong_neg_rules)))
+
 for category in ['pos', 'strong_neg', 'weak_neg']:
     print('{}: mean_score={:.4f}, mean_rank={:.2f}'.format(category, mean(agg_results[category]['scores']), mean(agg_results[category]['ranks'])))
 print()
