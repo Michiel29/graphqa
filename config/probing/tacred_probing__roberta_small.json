@@ -29,6 +29,7 @@
     "max_tokens": 2e4,
 
     "num_workers": 4,
+    "criterion": null,
 
     "restore_file": "../save/gnn_mlm/multi_model/mtb_init.unfrozen.disjoint_data/06m_07d_19h_30m_02s/checkpoints/checkpoint_last.pt"
 }
