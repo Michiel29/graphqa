@@ -30,6 +30,5 @@
     "max_tokens": 1e4,
     "required_batch_size_multiple": 1,
 
-    "eval_downstream": false,
     "criterion": "cross_entropy_custom"
 }
