@@ -31,7 +31,7 @@ class MTBTask(RelationInferenceTask):
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
         parser.add_argument('--split_mode', default=False,
-                            help='number of attempts to sample entity candidates')
+                            help='whether train and validation sets have disjoint entities')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
