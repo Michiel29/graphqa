@@ -61,6 +61,9 @@ class MTBTask(RelationInferenceTask):
 
         if self.args.split_mode:
             annotated_text_B = annotated_text_A
+            graph_data_B = safe_load_indexed_dataset(
+                os.path.join(self.args.data_path, split + '.graph'),
+            )
         else:
             text_data_B = safe_load_indexed_dataset(
                 os.path.join(self.args.data_path, 'train.text'),
@@ -75,10 +78,10 @@ class MTBTask(RelationInferenceTask):
                 mask_type=self.args.mask_type,
                 non_mask_rate=self.args.non_mask_rate,
             )
+            graph_data_B = safe_load_indexed_dataset(
+                os.path.join(self.args.data_path, 'train.graph'),
+            )
 
-        graph_data_B = safe_load_indexed_dataset(
-            os.path.join(self.args.data_path, split + '.graph'),
-        )
         graph_B = GraphDataset(
             edges=graph_data_B,
             subsampling_strategy=self.args.subsampling_strategy,
