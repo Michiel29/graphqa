@@ -1,7 +1,6 @@
 from fairseq.tasks import register_task
 import logging
 import os
-# import numpy as np
 
 from datasets import (
     AnnotatedText,
@@ -10,7 +9,6 @@ from datasets import (
     GraphDataset,
     PrependTokenDataset,
     MTBDataset,
-    MTBTripletsDataset,
 )
 from utils.data_utils import safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
