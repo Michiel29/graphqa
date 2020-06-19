@@ -125,19 +125,22 @@ class PMTBDataset(FairseqDataset):
         # positive relation: (ent_fix_B, ent_new_B)
 
         # Decide which target entity to replace in textA
-        # choice1 = np.random.choice(2)
-        choice1 = 0
-        if choice1 == 0:
-            ent_fix_A, ent_replace_A = headA, tailA
-        else:
-            ent_fix_A, ent_replace_A = tailA, headA
+        # head_tail_choice1 = np.random.choice(2)
+        head_tail_choice1 = 0
+        # if head_tail_choice1 == 0:
+        #     ent_fix_A, ent_replace_A = headA, tailA
+        # else:
+        #     ent_fix_A, ent_replace_A = tailA, headA
+        (ent_fix_A, ent_replace_A) = (headA, tailA) if head_tail_choice1 == 0 else (tailA, headA)
 
         # Decide whether ent_new_B is the head or tail of the sampled positive relation
-        choice2 = np.random.choice(2)
-        if choice2 == 0:
-            ent_new_B_type = GraphDataset.TAIL_ENTITY
-        else:
-            ent_new_B_type = GraphDataset.HEAD_ENTITY
+        # head_tail_choice2 = np.random.choice(2)
+        head_tail_choice2 = 0
+        # if head_tail_choice2 == 0:
+        #     ent_new_B_type = GraphDataset.TAIL_ENTITY
+        # else:
+        #     ent_new_B_type = GraphDataset.HEAD_ENTITY
+        ent_new_B_type = GraphDataset.TAIL_ENTITY if head_tail_choice2 == 0 else GraphDataset.HEAD_ENTITY
 
         # Get edges for ent_fix_A
         fix_A_edges = self.graph_B.edges[ent_fix_A].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
@@ -179,7 +182,7 @@ class PMTBDataset(FairseqDataset):
             if textB_pos is not None:
                 break
 
-        return textB_pos, ent_fix_B, ent_new_B
+        return textB_pos, ent_new_B
 
     def sample_strong_negative(self, headA, tailA, textA, ent_new_B_pos):
         # Get edges with tailB_pos (i.e., headB_strong_neg) as the head
@@ -241,7 +244,7 @@ class PMTBDataset(FairseqDataset):
             # headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
             # Sample positive text pair: textA and textB share one target entity
-            textB_pos, ent_fix_B_pos, ent_new_B_pos = self.sample_positive(headA, tailA, textA)
+            textB_pos, ent_new_B_pos = self.sample_positive(headA, tailA, textA)
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None:
@@ -263,8 +266,8 @@ class PMTBDataset(FairseqDataset):
         item = {
             'textA': textA,
             'textB': textB,
-            'ent_fix_B_pos': ent_fix_B_pos,
-            'ent_new_B_pos': ent_new_B_pos,
+            'headA': headA,
+            'tailA': tailA,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + len(textB_pos),
@@ -288,9 +291,9 @@ class PMTBDataset(FairseqDataset):
         nsentences = 0
         ntokens_AB = 0
 
-        # Get ent_fix_B_pos and tailB_pos lists
-        ent_fix_B_pos_list = np.array([instance['ent_fix_B_pos'] for instance in instances])
-        ent_new_B_pos_list = np.array([instance['ent_new_B_pos'] for instance in instances])
+        # Get headA and tailA lists
+        headA_list = np.array([instance['headA'] for instance in instances])
+        tailA_list = np.array([instance['tailA'] for instance in instances])
 
         # Get array of textB lengths
         textB_len = np.array(list(chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
@@ -345,11 +348,9 @@ class PMTBDataset(FairseqDataset):
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
         bad_weak_negs = 0
         for i in range(batch_size):
-            weak_neg_conditions = np.logical_and.reduce(
-                (
-                    np.logical_and(ent_fix_B_pos_list != ent_fix_B_pos_list[i], ent_new_B_pos_list != ent_new_B_pos_list[i]), 
-                    np.logical_and(ent_fix_B_pos_list != ent_new_B_pos_list[i], ent_new_B_pos_list != ent_fix_B_pos_list[i])
-                )
+            weak_neg_conditions = np.logical_and(
+                np.logical_not(np.logical_xor(headA_list == headA_list[i], tailA_list == tailA_list[i])),
+                np.logical_not(np.logical_xor(headA_list == tailA_list[i], tailA_list == headA_list[i]))
             )
             weak_neg_candidates = np.flatnonzero(weak_neg_conditions)
             cur_bad_weak_negs = batch_size - len(weak_neg_candidates) - 1
