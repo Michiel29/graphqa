@@ -17,9 +17,9 @@
             "use_strong_negs": false,
 
             "update_freq": 5,
-            "epoch_size": 4e6,
+            "epoch_size": 4e5,
             "max_sentences": 123,
-            "max_tokens": 1e4,
+            "max_tokens": 1e10,
 
             "num_workers": 4,
 
@@ -37,11 +37,11 @@
             "mask_whole_words": true,
 
             "update_freq": 5,
-            "epoch_size": 4e6,
+            "epoch_size": 4e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 123,
-            "max_tokens": 1e4,
+            "max_tokens": 1e10,
 
             "num_workers": 2,
 
@@ -69,5 +69,5 @@
     "num_workers": 4,
     "max_sentences": 123,
     "update_freq": null,
-    "max_tokens": 1e4
+    "max_tokens": 1e10
 }
