@@ -354,9 +354,9 @@ class PMTBDataset(FairseqDataset):
             weak_neg_candidates = np.flatnonzero(weak_neg_conditions)
             cur_bad_weak_negs = batch_size - len(weak_neg_candidates) - 1
             bad_weak_negs += cur_bad_weak_negs
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
-            if k_weak_negs < self.k_weak_negs:
-                weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
+            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
+            weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
+            weak_negs = weak_negs[:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
         A2B_list = np.concatenate((A2B_list, A2B_weak_negs), axis=1).flatten()
 
