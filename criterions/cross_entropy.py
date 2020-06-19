@@ -57,6 +57,8 @@ class CrossEntropy(FairseqCriterion):
             logging_output['ntokens_AB'] = sample['ntokens_AB']
         if 'ntokens_mem' in sample.keys():
             logging_output['ntokens_mem'] = sample['ntokens_mem']
+        if 'bad_weak_negs' in sample.keys():
+            logging_output['bad_weak_negs'] = sample['bad_weak_negs']
         if 'yield' in sample.keys():
             keys = ['yield', 'rel_cov', 'n_mutual_neg', 'n_single_neg', 'n_weak_neg', 'n_mutual_neighbors', 'target_degree']
             for key in keys:
@@ -85,6 +87,10 @@ class CrossEntropy(FairseqCriterion):
                 priority=10,
                 round=3,
             )
+
+        if prefix + 'bad_weak_negs' in logging_outputs[0].keys():
+            bad_weak_negs_sum = sum(log.get(prefix + 'bad_weak_negs', 0) for log in logging_outputs)
+            metrics.log_scalar(prefix + 'bad_weak_negs', bad_weak_negs_sum / sample_size, weight, priority=0, round=5)
 
         if prefix + 'yield' in logging_outputs[0].keys():
             def get_value(log, key, prefix):

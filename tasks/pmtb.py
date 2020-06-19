@@ -26,12 +26,14 @@ class PMTBTask(RelationInferenceTask):
         """Add task-specific arguments to the parser."""
 
         """Required either in config or cl"""
-        parser.add_argument('--k_weak_negs', type=float,
+        parser.add_argument('--k_weak_negs', type=int,
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
         parser.add_argument('--split_mode', default=False,
                             help='whether train and validation sets have disjoint entities')
+        parser.add_argument('--use_strong_negs', default=False,
+                            help='whether to use strong negatives')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -98,7 +100,8 @@ class PMTBTask(RelationInferenceTask):
             seed=self.args.seed,
             dictionary=self.dictionary,
             k_weak_negs=self.args.k_weak_negs,
-            n_tries_entity=self.args.n_tries_entity
+            n_tries_entity=self.args.n_tries_entity,
+            use_strong_negs=self.args.use_strong_negs,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
