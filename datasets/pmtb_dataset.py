@@ -349,8 +349,8 @@ class PMTBDataset(FairseqDataset):
         bad_weak_negs = 0
         for i in range(batch_size):
             weak_neg_conditions = np.logical_and(
-                np.logical_not(np.logical_xor(headA_list == headA_list[i], tailA_list == tailA_list[i])),
-                np.logical_not(np.logical_xor(headA_list == tailA_list[i], tailA_list == headA_list[i]))
+                np.logical_not(np.logical_or(headA_list == headA_list[i], tailA_list == tailA_list[i])),
+                np.logical_not(np.logical_or(headA_list == tailA_list[i], tailA_list == headA_list[i]))
             )
             weak_neg_candidates = np.flatnonzero(weak_neg_conditions)
             cur_bad_weak_negs = batch_size - len(weak_neg_candidates)
