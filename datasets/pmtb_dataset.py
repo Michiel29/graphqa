@@ -371,7 +371,7 @@ class PMTBDataset(FairseqDataset):
             'nsentences': nsentences,
             'ntokens_AB': ntokens_AB,
             'ntokens_mem': padded_textA.numel() + padded_textB_size,
-            'bad_weak_negs': bad_weak_negs / batch_size
+            'bad_weak_negs': bad_weak_negs
         }
 
         return batch_dict
