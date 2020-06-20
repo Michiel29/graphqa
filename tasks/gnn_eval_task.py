@@ -16,6 +16,8 @@ from datasets import (
 )
 from utils.data_utils import numpy_seed, safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
+from utils.dictionary import CustomDictionary, EntityDictionary
+
 from tasks import BaseTask
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,22 @@ class GNNEvalTask(BaseTask):
         parser.add_argument('--non-mask-rate', default=1.0, type=float,
                             help='probability of not masking the entity with a [BLANK] token')
         parser.add_argument('--num-text-chunks', type=int, default=None)
+
+    @classmethod
+    def setup_task(cls, args, **kwargs):
+        dict_path = os.path.join(args.data_path, 'dict.txt')
+        dictionary = CustomDictionary.load(dict_path)
+
+        entity_dict_path = os.path.join(args.data_path, 'entity.dict.valid.txt')
+        if os.path.exists(entity_dict_path):
+            entity_dictionary = EntityDictionary.load(entity_dict_path)
+            logger.info('entity dictionary: {} types'.format(len(entity_dictionary)))
+        else:
+            entity_dictionary = None
+        logger.info('dictionary: {} types'.format(len(dictionary)))
+
+        task = cls(args, dictionary, entity_dictionary)
+        return task
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         text_data = safe_load_indexed_dataset(

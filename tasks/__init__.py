@@ -9,6 +9,7 @@ from .triplet_inference import TripletInferenceTask
 from .mtb import MTBTask
 from .gnn_task import GNNTask
 from .gnn_eval_task import GNNEvalTask
+from .graph_distance import GraphDistanceTask
 
 from .multi_task import MultiTask
 

@@ -92,6 +92,7 @@ def main(args):
 
     n_random_examples = 100
     n_top_examples = 100
+    n_bot_examples = 100
 
     with open('/tmp/random_examples', 'w') as f:
         for i in np.random.randint(len(targets), size=n_random_examples):
@@ -107,6 +108,13 @@ def main(args):
             a_c_text = diag.decode_text(sorted_supporting[i, 0]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<C>>>')
             c_b_text = diag.decode_text(sorted_supporting[i, 1]).replace('<s_head> <blank> <e_head>', '<<<C>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
             f.write('A: %s, B: %s, C: %s\nScore:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (ent_dictionary[sorted_entities['A'][i]], ent_dictionary[sorted_entities['B'][i]], ent_dictionary[sorted_entities['C'][i]], sorted_scores[i], a_b_text, a_c_text, c_b_text))
+
+    with open('/tmp/bot_examples', 'w') as f:
+        for i in range(n_top_examples):
+            a_b_text = diag.decode_text(sorted_targets[-i-1]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
+            a_c_text = diag.decode_text(sorted_supporting[-i-1, 0]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<C>>>')
+            c_b_text = diag.decode_text(sorted_supporting[-i-1, 1]).replace('<s_head> <blank> <e_head>', '<<<C>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
+            f.write('A: %s, B: %s, C: %s\nScore:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (ent_dictionary[sorted_entities['A'][-i-1]], ent_dictionary[sorted_entities['B'][-i-1]], ent_dictionary[sorted_entities['C'][-i-1]], sorted_scores[-i-1], a_b_text, a_c_text, c_b_text))
 
     print('done')
 

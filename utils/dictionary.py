@@ -119,3 +119,13 @@ class EntityDictionary(Dictionary):
         self.symbols = []
         self.count = []
         self.indices = {}
+
+    @classmethod
+    def load(cls, f):
+        """Loads the dictionary from a text file with the format:
+        <symbol0> <count0>
+        <symbol1> <count1>
+        """
+        d = cls()
+        d.add_from_file(f)
+        return d
