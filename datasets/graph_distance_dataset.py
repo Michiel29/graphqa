@@ -209,18 +209,22 @@ class GraphDistanceDataset(FairseqDataset):
             if example_class == "share_both":
                 # textA and textB share both head and tail
                 textB = self.sample_share_both(headA_edges, tailA, textA)
+                target = 0
             if example_class == "share_one" or not torch.is_tensor(textB):
                 # textA and textB share either head and tail but not both
                 textB = self.sample_share_one(headA, tailA, textA)
+                target = 1
             if example_class == "share_none" or not torch.is_tensor(textB):
                 # textA and textB share neither head nor tail
                 textB = self.sample_share_none(headA, tailA, textA)
+                target = 2
 
 
 
         item = {
             'textA': textA,
             'textB': textB,
+            'target': target,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + len(textB)
@@ -239,6 +243,7 @@ class GraphDistanceDataset(FairseqDataset):
 
         textA_list = []
         textB_dict = {}
+        target_list = []
         A2B_dict = {}
         ntokens = 0
         nsentences = 0
@@ -273,6 +278,7 @@ class GraphDistanceDataset(FairseqDataset):
                 textB_dict[cluster_id].append(cur_textB)
                 A2B_dict[cluster_id].append(i * 2 + j)
 
+            target_list.append(instance['target'])
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -293,20 +299,11 @@ class GraphDistanceDataset(FairseqDataset):
         # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
         # using texts in the current batch
         A2B_list = A2B_list.reshape(batch_size, 2)
-        k_weak_negs = min(self.k_weak_negs, batch_size * 2 - 2)
-        textB_idxs = np.arange(batch_size * 2)
-        A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
-        for i in range(batch_size):
-            weak_neg_candidates = textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
-            A2B_weak_negs[i, :] = weak_negs
-        A2B_list = np.concatenate((A2B_list, A2B_weak_negs), axis=1).flatten()
-
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
             'A2B': torch.LongTensor(A2B_list),
-            'target': torch.zeros(batch_size, dtype=torch.long),
+            'target': torch.LongTensor(target_list),
             'size': batch_size,
             'ntokens': ntokens,
             'nsentences': nsentences,
