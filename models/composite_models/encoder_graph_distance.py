@@ -27,10 +27,8 @@ class EncoderGraphDistance(BaseFairseqModel):
 
 
     def forward(self, batch):
-        n_pairs = int(batch['A2B'].numel()/batch['size'])
 
         textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
-        textA_enc = torch.repeat_interleave(textA_enc, n_pairs, dim=0)
 
         textB_enc = []
         for cluster_texts in batch['textB'].values():
@@ -38,9 +36,7 @@ class EncoderGraphDistance(BaseFairseqModel):
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
-        scores = self.mlp(torch.cat((textA_enc, textB_enc), dim=0))
-
-        scores = scores.reshape(-1, n_pairs)
+        scores = self.mlp(torch.cat((textA_enc, textB_enc), dim=1))
 
         return scores
 

@@ -250,7 +250,7 @@ class GraphDistanceDataset(FairseqDataset):
         ntokens_AB = 0
 
         # Get array of textB lengths
-        textB_len = np.array(list(itertools.chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
+        textB_len = np.array([len(instance['textB']) for instance in instances])
 
         # Compute statistics for textB lengths
         textB_mean = np.mean(textB_len)
@@ -273,10 +273,9 @@ class GraphDistanceDataset(FairseqDataset):
         # Populate textA_list, textB_dict, and other auxiliary lists
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
-            for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i * 2 + j]
-                textB_dict[cluster_id].append(cur_textB)
-                A2B_dict[cluster_id].append(i * 2 + j)
+            cluster_id = textB_clusters[i]
+            textB_dict[cluster_id].append(instance['textB'])
+            A2B_dict[cluster_id].append(i)
 
             target_list.append(instance['target'])
             ntokens += instance['ntokens']
@@ -296,9 +295,6 @@ class GraphDistanceDataset(FairseqDataset):
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
 
-        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
-        # using texts in the current batch
-        A2B_list = A2B_list.reshape(batch_size, 2)
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
