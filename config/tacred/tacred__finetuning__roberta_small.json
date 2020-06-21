@@ -13,9 +13,6 @@
     "non_mask_rate": 1,
     "encoder_output_layer_type": "entity_start_linear",
 
-    "use_pytorch_classifier": true,
-    "use_sklearn_classifier": false,
-
     "max_epoch": 10,
     "warmup_updates": 2553, // bsz=16, max_epoch=10
     // "warmup_updates": 1277, // bsz=32, max_epoch=10

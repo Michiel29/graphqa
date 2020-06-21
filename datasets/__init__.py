@@ -6,6 +6,7 @@ from .fewrel_dataset import FewRelDataset
 from .kbp37_dataset import KBP37Dataset
 from .semeval2010task8_dataset import SemEval2010Task8Dataset
 from .tacred_dataset import TACREDDataset
+from .tacred_probing_dataset import TACREDProbingDataset
 from .filtered_dataset import (
     FilteredDataset,
     FixedSizeDataset,
@@ -16,6 +17,7 @@ from .mtb_triplets_dataset import (
     MTBTripletsDataset,
 )
 from .prepend_token_dataset import PrependTokenDataset
+from .probing_prepend_token_dataset import ProbingPrependTokenDataset
 from .rel_inf_dataset import RelInfDataset
 from .gnn_dataset import GNNDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
