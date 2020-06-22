@@ -140,22 +140,21 @@ class GraphDistanceDataset(FairseqDataset):
         replace_entity = np.random.randint(1)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
-        entity_edge_positions = (GraphDataset.HEAD_ENTITY, GraphDataset.TAIL_ENTITY)
 
         keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
         # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
-        candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, entity_edge_positions[replace_entity]] != entity_ids[replace_entity])
+        candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
         # Check that keep_entity has at least one neighbor besides replace_entity
         if len(candidate_edge_idxs) < 1:
-            raise Exception("Keep_entity has no neighbors besides replace_entity")
+            return None
 
         # Get all of entity_keep's edges, excluding those shared with entity_replace
         candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
 
         # Get entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace
-        entity_replace_candidates = candidate_edges[:, entity_edge_positions[replace_entity]]
+        entity_replace_candidates = candidate_edges[:, GraphDataset.TAIL_ENTITY]
 
         # Get unique array of entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace and graph duplicates
         entity_replace_candidates_unique = np.unique(entity_replace_candidates)
@@ -168,10 +167,12 @@ class GraphDistanceDataset(FairseqDataset):
 
         # Iterate through all of the entity_replace candidates
         for entity_replace_candidate in entity_replace_candidates_sample:
+            candidate_head = headA if keep_entity == 0 else entity_replace_candidate
+            candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
 
-            candidate_edges = self.graph_B.edges[entity_replace_candidate].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
             # Get all edges between kepp_entity and entity_replace_candidate, according to the shuffled indices
-            replace_edges = candidate_edges[candidate_edges[:, entity_edge_positions[keep_entity]] == entity_ids[keep_entity]]
+            replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
 
             # Shuffle replace_edges
             replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
