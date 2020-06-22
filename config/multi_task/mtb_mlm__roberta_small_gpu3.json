@@ -16,9 +16,9 @@
             "split_mode": true,
 
             "update_freq": 7,
-            "epoch_size": 4e6,
+            "epoch_size": 4e5,
             "max_sentences": 88,
-            "max_tokens": 1e4,
+            "max_tokens": 1e10,
 
             "num_workers": 4,
 
@@ -36,11 +36,11 @@
             "mask_whole_words": true,
 
             "update_freq": 7,
-            "epoch_size": 4e6,
+            "epoch_size": 4e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 88,
-            "max_tokens": 1e4,
+            "max_tokens": 1e10,
 
             "num_workers": 2,
 
