@@ -276,20 +276,20 @@ class MTBDataset(FairseqDataset):
 
         # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
         # using texts in the current batch
-        A2B_list = A2B_list.reshape(batch_size, 2)
+        A2B = A2B_list.reshape(batch_size, 2)
         k_weak_negs = min(self.k_weak_negs, batch_size * 2 - 2)
         textB_idxs = np.arange(batch_size * 2)
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
         for i in range(batch_size):
-            weak_neg_candidates = textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]
+            weak_neg_candidates = A2B_list[textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]]
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
-        A2B_list = np.concatenate((A2B_list, A2B_weak_negs), axis=1).flatten()
+        A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
-            'A2B': torch.LongTensor(A2B_list),
+            'A2B': torch.LongTensor(A2B),
             'target': torch.zeros(batch_size, dtype=torch.long),
             'size': batch_size,
             'ntokens': ntokens,
