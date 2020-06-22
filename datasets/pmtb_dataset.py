@@ -91,22 +91,20 @@ class PMTBDataset(FairseqDataset):
 
         return set(annotation_data[slice(s, e)][:, -1])
 
-    def sample_text(self, ent_fix_new_B_edges, textA, ent_replace_A, strong_neg=False, ent_fix_A=None):
+    def sample_text(self, headB_tailB_edges, textA, example_class, entity_replace=None):
 
         # Iterate through edges between headB and tailB (i.e., textB candidates)
-        for edge in ent_fix_new_B_edges:
+        for edge in headB_tailB_edges:
 
-            # Discard the current edge if it contains tailA
-            edge_entities = self.get_edge_entities(
-                self.annotated_text_B.annotation_data.array, 
-                edge[GraphDataset.START_BLOCK], 
-                edge[GraphDataset.END_BLOCK]
-            )
-            if ent_replace_A in edge_entities:
-                continue
-
-            if strong_neg and ent_fix_A in edge_entities:
-                continue
+            # For share_one, discard the current edge if it contains entity replace
+            if example_class == 'share_one':
+                edge_entities = self.get_edge_entities(
+                    self.annotated_text_B.annotation_data.array,
+                    edge[GraphDataset.START_BLOCK],
+                    edge[GraphDataset.END_BLOCK]
+                )
+                if entity_replace in edge_entities:
+                    continue
 
             # Get textB, using the given edge, headB, and tailB
             textB = self.annotated_text_B.annotate(*(edge))
@@ -116,73 +114,55 @@ class PMTBDataset(FairseqDataset):
             if not torch.equal(textA, textB):
                 return textB
 
-        # Generally, there should always be candidates satisfying both case0 and cashead.
-        # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
     def sample_positive(self, headA, tailA, textA):
-        # base relation: (ent_fix_A, ent_replace_A)
-        # positive relation: (ent_fix_B, ent_new_B)
+        replace_entity = np.random.randint(1)
+        keep_entity = 1 - replace_entity
+        entity_ids = (headA, tailA)
 
-        # Decide which target entity to replace in textA
-        # head_tail_choice1 = np.random.choice(2)
-        head_tail_choice1 = 0
-        # if head_tail_choice1 == 0:
-        #     ent_fix_A, ent_replace_A = headA, tailA
-        # else:
-        #     ent_fix_A, ent_replace_A = tailA, headA
-        (ent_fix_A, ent_replace_A) = (headA, tailA) if head_tail_choice1 == 0 else (tailA, headA)
+        keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
-        # Decide whether ent_new_B is the head or tail of the sampled positive relation
-        # head_tail_choice2 = np.random.choice(2)
-        head_tail_choice2 = 0
-        # if head_tail_choice2 == 0:
-        #     ent_new_B_type = GraphDataset.TAIL_ENTITY
-        # else:
-        #     ent_new_B_type = GraphDataset.HEAD_ENTITY
-        ent_new_B_type = GraphDataset.TAIL_ENTITY if head_tail_choice2 == 0 else GraphDataset.HEAD_ENTITY
+        # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+        candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
-        # Get edges for ent_fix_A
-        fix_A_edges = self.graph_B.edges[ent_fix_A].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+        # Check that keep_entity has at least one neighbor besides replace_entity
+        if len(candidate_edge_idxs) < 1:
+            return None, None, None
 
-        # Get all indices of ent_fix_A's neighbors, for which the neighbor is not tail
-        fix_A_neighbors_idxs = np.flatnonzero(fix_A_edges[:, ent_new_B_type] != ent_replace_A)
+        # Get all of entity_keep's edges, excluding those shared with entity_replace
+        candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
 
-        # Check that ent_fix_A has at least one neighbor besides ent_replace_A
-        if len(fix_A_neighbors_idxs) < 1:
-            raise Exception("POSITIVE -- ent_fix_A has no neighbors besides ent_replace_A")
+        # Get entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace
+        entity_replace_candidates = candidate_edges[:, GraphDataset.TAIL_ENTITY]
 
-        # Get all of ent_fix_B's edges, excluding those shared with ent_replace_A
-        ent_fix_B = ent_fix_A
-        ent_fix_B_edges = fix_A_edges[fix_A_neighbors_idxs, :]
+        # Get unique array of entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace and graph duplicates
+        entity_replace_candidates_unique = np.unique(entity_replace_candidates)
 
-        # Get ent_new_B candidates -- i.e., all of ent_fix_B's neighbors, excluding ent_replace_A
-        ent_new_B_candidates = ent_fix_B_edges[:, ent_new_B_type]
+        # Set maximum number of replace candidates to consider
+        n_entity_replace_candidates = min(self.n_tries_entity, len(entity_replace_candidates_unique))
 
-        # Get unique array of ent_new_B candidates -- i.e., all of ent_fix_B's neighbors, excluding ent_replace_A and graph duplicates
-        ent_new_B_candidates_unique = np.unique(ent_new_B_candidates)
+        # Sample a random array of n_entity_replace_candidates entity_replace candidates
+        entity_replace_candidates_sample = entity_replace_candidates_unique[torch.randperm(len(entity_replace_candidates_unique)).numpy()[:n_entity_replace_candidates]]
 
-        # Set maximum number of ent_new_B candidates to consider
-        n_ent_new_B_candidates = min(self.n_tries_entity, len(ent_new_B_candidates_unique))
+        # Iterate through all of the entity_replace candidates
+        for entity_replace_candidate in entity_replace_candidates_sample:
+            candidate_head = headA if keep_entity == 0 else entity_replace_candidate
+            candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
 
-        # Sample a random array of n_ent_new_B_candidates ent_new_B candidates
-        ent_new_B_candidates_sample = ent_new_B_candidates_unique[torch.randperm(len(ent_new_B_candidates_unique)).numpy()[:n_ent_new_B_candidates]]
+            candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            # Get all edges between kepp_entity and entity_replace_candidate, according to the shuffled indices
+            replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
 
-        # Iterate through all of the ent_new_B candidates
-        for ent_new_B in ent_new_B_candidates_sample:
+            # Shuffle replace_edges
+            replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
 
-            # Get all edges between ent_fix_B and ent_new_B, according to the shuffled indices
-            ent_fix_new_B_edges = ent_fix_B_edges[ent_fix_B_edges[:, ent_new_B_type] == ent_new_B]
-
-            # Shuffle ent_fix_new_B_edges
-            ent_fix_new_B_edges = ent_fix_new_B_edges[torch.randperm(len(ent_fix_new_B_edges)).numpy()]
-
-            # Sample textB_pos from ent_fix_new_B_edges
-            textB_pos = self.sample_text(ent_fix_new_B_edges, textA, ent_replace_A)
-            if textB_pos is not None:
+            # Sample textB from replace_edges
+            textB = self.sample_text(replace_edges, textA, 'share_one', entity_replace=entity_ids[replace_entity])
+            if textB is not None:
                 break
 
-        return textB_pos, ent_fix_B, ent_new_B
+        return textB, entity_ids[keep_entity], entity_replace_candidate
 
     def sample_strong_negative(self, headA, tailA, textA, ent_new_B_pos):
         # Get edges with tailB_pos (i.e., headB_strong_neg) as the head
@@ -239,9 +219,6 @@ class PMTBDataset(FairseqDataset):
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
             textA = self.annotated_text_A.annotate(*(edge.numpy()))
-
-            # Get edges with headA as the head
-            # headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
             # Sample positive text pair: textA and textB share one target entity
             textB_pos, ent_fix_B_pos, ent_new_B_pos = self.sample_positive(headA, tailA, textA)
