@@ -11,7 +11,7 @@
 
     "k_weak_negs": 100,
     "n_tries_entity": 100,
-    "split_mode": false,
+    "split_mode": true,
     "use_strong_negs": false,
     
     "mask_type": "start_end",
