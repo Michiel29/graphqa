@@ -63,9 +63,11 @@ def main(args):
         no_progress_bar='simple'
     )
 
+    ent_dictionary = task.entity_dictionary
     all_scores = []
     targets = []
     supporting = []
+    entities = {'A': [], 'B': [], 'C': []}
 
     for sample in progress:
         text = torch.cat(sample['text'], dim=0)
@@ -73,32 +75,46 @@ def main(args):
         supporting.append(text[sample['graph']])
         scores = model(sample)
         all_scores.append(scores)
+        for entity in entities:
+            entities[entity].append(sample['entities'][entity])
 
     all_scores = torch.cat(all_scores, dim=0).cpu().detach().numpy()
     targets = torch.cat(targets, dim=0).cpu().detach().numpy()
     supporting = torch.cat(supporting, dim=0).cpu().detach().numpy()
+    entities = {key: torch.cat(value, dim=0).cpu().detach().numpy() for key, value in entities.items()}
     sort_idx = np.argsort(all_scores)[::-1]
     sorted_scores = all_scores[sort_idx]
     sorted_targets = targets[sort_idx]
     sorted_supporting = supporting[sort_idx]
+    entities = {entity: np.array(value) for entity, value in entities.items()}
+    sorted_entities = {entity: value[sort_idx] for entity, value in entities.items()}
     diag = Diagnostic(task.dictionary, task.entity_dictionary)
 
     n_random_examples = 100
     n_top_examples = 100
+    n_bot_examples = 100
 
     with open('/tmp/random_examples', 'w') as f:
         for i in np.random.randint(len(targets), size=n_random_examples):
             a_b_text = diag.decode_text(targets[i]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
             a_c_text = diag.decode_text(supporting[i, 0]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<C>>>')
             c_b_text = diag.decode_text(supporting[i, 1]).replace('<s_head> <blank> <e_head>', '<<<C>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
-            f.write('Score:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (all_scores[i], a_b_text, a_c_text, c_b_text))
+            f.write('A: %s, B: %s, C: %s\nScore:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (
+            ent_dictionary[entities['A'][i]], ent_dictionary[entities['B'][i]], ent_dictionary[entities['C'][i]], all_scores[i], a_b_text, a_c_text, c_b_text))
 
     with open('/tmp/top_examples', 'w') as f:
         for i in range(n_top_examples):
             a_b_text = diag.decode_text(sorted_targets[i]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
             a_c_text = diag.decode_text(sorted_supporting[i, 0]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<C>>>')
             c_b_text = diag.decode_text(sorted_supporting[i, 1]).replace('<s_head> <blank> <e_head>', '<<<C>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
-            f.write('Score:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (sorted_scores[i], a_b_text, a_c_text, c_b_text))
+            f.write('A: %s, B: %s, C: %s\nScore:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (ent_dictionary[sorted_entities['A'][i]], ent_dictionary[sorted_entities['B'][i]], ent_dictionary[sorted_entities['C'][i]], sorted_scores[i], a_b_text, a_c_text, c_b_text))
+
+    with open('/tmp/bot_examples', 'w') as f:
+        for i in range(n_top_examples):
+            a_b_text = diag.decode_text(sorted_targets[-i-1]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
+            a_c_text = diag.decode_text(sorted_supporting[-i-1, 0]).replace('<s_head> <blank> <e_head>', '<<<A>>>').replace('<s_tail> <blank> <e_tail>', '<<<C>>>')
+            c_b_text = diag.decode_text(sorted_supporting[-i-1, 1]).replace('<s_head> <blank> <e_head>', '<<<C>>>').replace('<s_tail> <blank> <e_tail>', '<<<B>>>')
+            f.write('A: %s, B: %s, C: %s\nScore:\t%s\nA_B:\t%s\nA_C:\t%s\nC_B:\t%s\n\n' % (ent_dictionary[sorted_entities['A'][-i-1]], ent_dictionary[sorted_entities['B'][-i-1]], ent_dictionary[sorted_entities['C'][-i-1]], sorted_scores[-i-1], a_b_text, a_c_text, c_b_text))
 
     print('done')
 

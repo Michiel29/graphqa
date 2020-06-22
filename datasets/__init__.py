@@ -25,3 +25,4 @@ from .subgraph_sampler import SubgraphSampler
 from .triplet_dataset import TripletDataset
 from .token_block_annotated_dataset import TokenBlockAnnotatedDataset
 from .gnn_eval_dataset import GNNEvalDataset
+from .graph_distance_dataset import GraphDistanceDataset

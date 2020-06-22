@@ -9,3 +9,4 @@ from .encoder_semeval2010task8 import EncoderSemEval2010Task8Model
 from .encoder_tacred import EncoderTACREDModel
 from .encoder_eval import EncoderGNNEval
 from .multi_model import MultiModel
+from .encoder_graph_distance import EncoderGraphDistance

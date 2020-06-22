@@ -16,7 +16,7 @@ from datasets import GraphDataset
 logger = logging.getLogger(__name__)
 
 
-class MTBDataset(FairseqDataset):
+class GraphDistanceDataset(FairseqDataset):
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class MTBDataset(FairseqDataset):
         graph_B,
         seed,
         dictionary,
-        k_weak_negs,
+        class_probabilities,
         n_tries_entity
     ):
         self.split = split
@@ -39,7 +39,7 @@ class MTBDataset(FairseqDataset):
         self.seed = seed
         self.dictionary = dictionary
 
-        self.k_weak_negs = k_weak_negs
+        self.class_probabilities = class_probabilities
         self.n_tries_entity = n_tries_entity
 
         self.epoch = None
@@ -89,19 +89,19 @@ class MTBDataset(FairseqDataset):
 
         return set(annotation_data[slice(s, e)][:, -1])
 
-    def sample_text(self, headB_tailB_edges, textA, strong_neg=False, tailA=None):
+    def sample_text(self, headB_tailB_edges, textA, example_class, entity_replace=None):
 
         # Iterate through edges between headB and tailB (i.e., textB candidates)
         for edge in headB_tailB_edges:
 
-            # For strong negatives, discard the current edge if it contains tailA
-            if strong_neg:
+            # For share_one, discard the current edge if it contains entity replace
+            if example_class == 'share_one':
                 edge_entities = self.get_edge_entities(
-                    self.annotated_text_B.annotation_data.array, 
-                    edge[GraphDataset.START_BLOCK], 
+                    self.annotated_text_B.annotation_data.array,
+                    edge[GraphDataset.START_BLOCK],
                     edge[GraphDataset.END_BLOCK]
                 )
-                if tailA in edge_entities:
+                if entity_replace in edge_entities:
                     continue
 
             # Get textB, using the given edge, headB, and tailB
@@ -112,17 +112,15 @@ class MTBDataset(FairseqDataset):
             if not torch.equal(textA, textB):
                 return textB
 
-        # Generally, there should always be candidates satisfying both case0 and cashead.
-        # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
-    def sample_positive(self, head_edges, tail, textA):
+    def sample_share_both(self, head_edges, tail, textA):
         # Get all indices of head's neighbors, for which the neighbor is tail
         head_neighbors_idxs = np.flatnonzero(head_edges[:, GraphDataset.TAIL_ENTITY] == tail)
 
         # Check that head and tail are mentioned in at least one training text
         if (
-            self.split == 'train' and len(head_neighbors_idxs) < 2 
+            self.split == 'train' and len(head_neighbors_idxs) < 2
             or self.split == 'valid' and len(head_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -133,81 +131,104 @@ class MTBDataset(FairseqDataset):
         # Shuffle head-tail edges
         head_tail_edges = head_tail_edges[torch.randperm(len(head_tail_edges)).numpy()]
 
-        # Sample textB_pos from head-tail edges
-        textB_pos = self.sample_text(head_tail_edges, textA)
+        # Sample textB from head-tail edges
+        textB = self.sample_text(head_tail_edges, textA, 'share_both')
 
-        return textB_pos
+        return textB
 
-    def sample_strong_negative(self, headA_edges, tailA, textA):
-        # Get all indices of head's neighbors, for which the neighbor is not tail
-        head_neighbors_idxs = np.flatnonzero(headA_edges[:, GraphDataset.TAIL_ENTITY] != tailA)
+    def sample_share_one(self, headA, tailA, textA):
+        replace_entity = np.random.randint(1)
+        keep_entity = 1 - replace_entity
+        entity_ids = (headA, tailA)
 
-        # Check that headA has at least one neighbor besides tailA
-        if len(head_neighbors_idxs) < 1:
-            raise Exception("STRONG NEGATIVE -- headA has no neighbors besides tailA")
+        keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
-        # Get all of headB's edges (note that headB = headA), excluding those shared with tailA
-        headB_edges = headA_edges[head_neighbors_idxs, :]
+        # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+        candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
-        # Get tailB candidates -- i.e., all of headB's neighbors, excluding tailA
-        tailB_candidates = headB_edges[:, GraphDataset.TAIL_ENTITY]
+        # Check that keep_entity has at least one neighbor besides replace_entity
+        if len(candidate_edge_idxs) < 1:
+            return None
 
-        # Get unique array of tailB candidates -- i.e., all of headB's neighbors, excluding tailA and graph duplicates
-        tailB_candidates_unique = np.unique(tailB_candidates)
+        # Get all of entity_keep's edges, excluding those shared with entity_replace
+        candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
 
-        # Set maximum number of tailB candidates to consider
-        n_tailB_candidates = min(self.n_tries_entity, len(tailB_candidates_unique))
+        # Get entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace
+        entity_replace_candidates = candidate_edges[:, GraphDataset.TAIL_ENTITY]
 
-        # Sample a random array of n_tailB_candidates tailB candidates
-        tailB_candidates_sample = tailB_candidates_unique[torch.randperm(len(tailB_candidates_unique)).numpy()[:n_tailB_candidates]]
+        # Get unique array of entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace and graph duplicates
+        entity_replace_candidates_unique = np.unique(entity_replace_candidates)
 
-        # Iterate through all of the tailB candidates
-        for tailB in tailB_candidates_sample:
+        # Set maximum number of replace candidates to consider
+        n_entity_replace_candidates = min(self.n_tries_entity, len(entity_replace_candidates_unique))
 
-            # Get all edges between headB and tailB, according to the shuffled indices
-            headB_tailB_edges = headB_edges[headB_edges[:, GraphDataset.TAIL_ENTITY] == tailB]
+        # Sample a random array of n_entity_replace_candidates entity_replace candidates
+        entity_replace_candidates_sample = entity_replace_candidates_unique[torch.randperm(len(entity_replace_candidates_unique)).numpy()[:n_entity_replace_candidates]]
 
-            # Shuffle headB_tailB_edges
-            headB_tailB_edges = headB_tailB_edges[torch.randperm(len(headB_tailB_edges)).numpy()]
+        # Iterate through all of the entity_replace candidates
+        for entity_replace_candidate in entity_replace_candidates_sample:
+            candidate_head = headA if keep_entity == 0 else entity_replace_candidate
+            candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
 
-            # Sample textB_strong_neg from headB_tailB_edges
-            textB_strong_neg = self.sample_text(headB_tailB_edges, textA, strong_neg=True, tailA=tailA)
-            if textB_strong_neg is not None:
+            candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            # Get all edges between kepp_entity and entity_replace_candidate, according to the shuffled indices
+            replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
+
+            # Shuffle replace_edges
+            replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
+
+            # Sample textB from replace_edges
+            textB = self.sample_text(replace_edges, textA, 'share_one', entity_replace=entity_ids[replace_entity])
+            if textB is not None:
                 break
 
-        return textB_strong_neg
+        return textB
+    def sample_share_none(self, headA, tailA, textA):
+        while True:
+            edge = self.graph_B[np.random.randint(len(self.graph_B))].numpy()
+            head = edge[GraphDataset.HEAD_ENTITY]
+            tail = edge[GraphDataset.TAIL_ENTITY]
+            if head != headA and tail != tailA:
+                break
+        edges = [edge]
+        text = self.sample_text(edges, textA, 'share_none', entity_replace=None)
+        return text
+
+
 
     def __getitem__(self, index):
-        edge = self.graph_A[index]
-        headA = edge[GraphDataset.HEAD_ENTITY].item()
-        tailA = edge[GraphDataset.TAIL_ENTITY].item()
+        edge = self.graph_A[index].numpy()
+        headA = edge[GraphDataset.HEAD_ENTITY]
+        tailA = edge[GraphDataset.TAIL_ENTITY]
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge.numpy()))
-
+            textA = self.annotated_text_A.annotate(*(edge))
+            example_class = np.random.choice(("share_both", "share_one", "share_none"), p=self.class_probabilities)
+            textB = None
             # Get edges with headA as the head
             headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            if example_class == "share_both":
+                # textA and textB share both head and tail
+                textB = self.sample_share_both(headA_edges, tailA, textA)
+                target = 0
+            if example_class == "share_one" or not torch.is_tensor(textB):
+                # textA and textB share either head and tail but not both
+                textB = self.sample_share_one(headA, tailA, textA)
+                target = 1
+            if example_class == "share_none" or not torch.is_tensor(textB):
+                # textA and textB share neither head nor tail
+                textB = self.sample_share_none(headA, tailA, textA)
+                target = 2
 
-            # Sample positive text pair: textA and textB share both head and tail
-            textB_pos = self.sample_positive(headA_edges, tailA, textA)
 
-            # Check if positive text pair was successfully sampled
-            if textB_pos is None:
-                return None
-
-            # Sample one strong negative text pair
-            textB_strong_neg = self.sample_strong_negative(headA_edges, tailA, textA)
-
-            # Check if strong negative text pair was successfully sampled
-            if textB_strong_neg is None:
-                return None
 
         item = {
             'textA': textA,
-            'textB': [textB_pos, textB_strong_neg],
+            'textB': textB,
+            'target': target,
             'ntokens': len(textA),
             'nsentences': 1,
-            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_strong_neg),
+            'ntokens_AB': len(textA) + len(textB)
         }
 
         return item
@@ -223,13 +244,14 @@ class MTBDataset(FairseqDataset):
 
         textA_list = []
         textB_dict = {}
+        target_list = []
         A2B_dict = {}
         ntokens = 0
         nsentences = 0
         ntokens_AB = 0
 
         # Get array of textB lengths
-        textB_len = np.array(list(itertools.chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
+        textB_len = np.array([len(instance['textB']) for instance in instances])
 
         # Compute statistics for textB lengths
         textB_mean = np.mean(textB_len)
@@ -252,11 +274,11 @@ class MTBDataset(FairseqDataset):
         # Populate textA_list, textB_dict, and other auxiliary lists
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
-            for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i * 2 + j]
-                textB_dict[cluster_id].append(cur_textB)
-                A2B_dict[cluster_id].append(i * 2 + j)
-            
+            cluster_id = textB_clusters[i]
+            textB_dict[cluster_id].append(instance['textB'])
+            A2B_dict[cluster_id].append(i)
+
+            target_list.append(instance['target'])
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -274,23 +296,11 @@ class MTBDataset(FairseqDataset):
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
 
-        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
-        # using texts in the current batch
-        A2B = A2B_list.reshape(batch_size, 2)
-        k_weak_negs = min(self.k_weak_negs, batch_size * 2 - 2)
-        textB_idxs = np.arange(batch_size * 2)
-        A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
-        for i in range(batch_size):
-            weak_neg_candidates = A2B_list[textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]]
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
-            A2B_weak_negs[i, :] = weak_negs
-        A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
-
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
-            'A2B': torch.LongTensor(A2B),
-            'target': torch.zeros(batch_size, dtype=torch.long),
+            'A2B': torch.LongTensor(A2B_list),
+            'target': torch.LongTensor(target_list),
             'size': batch_size,
             'ntokens': ntokens,
             'nsentences': nsentences,

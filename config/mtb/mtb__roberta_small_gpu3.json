@@ -16,7 +16,7 @@
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
 
-    "epoch_size": 4e6,
+    "epoch_size": 4e5,
     "n_valid_examples": 20000,
     "max_epoch": 200,
     "warmup_updates": 1000,
@@ -26,7 +26,7 @@
     "num_workers": 4,
     "max_sentences": 88,
     "update_freq": [7],
-    "max_tokens": 1e4,
+    "max_tokens": 1e10,
     "required_batch_size_multiple": 1,
 
     "criterion": "cross_entropy_custom"
