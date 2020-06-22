@@ -346,7 +346,7 @@ class PMTBDataset(FairseqDataset):
             padded_textB_size += torch.numel(padded_textB[cluster_id])
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
-        A2B_list = np.expand_dims(A2B_list, axis=1)
+        A2B = np.expand_dims(A2B_list, axis=1)
 
         # Add k weak negatives (i.e., negatives not guaranteed to be strong)
         # to each positive, using texts in the current batch
@@ -358,19 +358,19 @@ class PMTBDataset(FairseqDataset):
                 np.logical_not(np.logical_or(ent_fix_B_pos_list == headA_list[i], ent_new_B_pos_list == tailA_list[i])),
                 np.logical_not(np.logical_or(ent_fix_B_pos_list == tailA_list[i], ent_new_B_pos_list == headA_list[i]))
             )
-            weak_neg_candidates = np.flatnonzero(weak_neg_conditions)
+            weak_neg_candidates = A2B_list[np.flatnonzero(weak_neg_conditions)]
             cur_bad_weak_negs = batch_size - len(weak_neg_candidates)
             bad_weak_negs += cur_bad_weak_negs
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
             weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
             weak_negs = weak_negs[:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
-        A2B_list = np.concatenate((A2B_list, A2B_weak_negs), axis=1).flatten()
+        A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
         batch_dict = {
             'textA': padded_textA,
             'textB': padded_textB,
-            'A2B': torch.LongTensor(A2B_list),
+            'A2B': torch.LongTensor(A2B),
             'target': torch.zeros(batch_size, dtype=torch.long),
             'size': batch_size,
             'ntokens': ntokens,
