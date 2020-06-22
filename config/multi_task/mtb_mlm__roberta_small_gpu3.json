@@ -16,7 +16,7 @@
             "split_mode": true,
 
             "update_freq": 7,
-            "epoch_size": 4e5,
+            "epoch_size": 8e5,
             "max_sentences": 88,
             "max_tokens": 1e10,
 
@@ -36,7 +36,7 @@
             "mask_whole_words": true,
 
             "update_freq": 7,
-            "epoch_size": 4e5,
+            "epoch_size": 8e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 88,
