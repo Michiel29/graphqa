@@ -125,10 +125,10 @@ class PMTBDataset(FairseqDataset):
 
         replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
 
-        replace_entity_neighbors = replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]]
+        replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
 
         # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
-        candidate_edge_idxs = np.flatnonzero([x in replace_entity_neighbors for x in keep_entity_edges[:, GraphDataset.TAIL_ENTITY]])
+        candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
 
         # Check that keep_entity has at least one neighbor besides replace_entity
         if len(candidate_edge_idxs) < 1:
