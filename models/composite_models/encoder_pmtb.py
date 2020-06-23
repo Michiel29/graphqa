@@ -9,6 +9,7 @@ from fairseq.models import BaseFairseqModel
 
 import tasks
 from models.encoder.roberta import RobertaWrapper, base_architecture, large_architecture, small_architecture
+from modules.mlp import MLP_factory
 
 
 @register_model('encoder_pmtb')
@@ -21,8 +22,10 @@ class EncoderPMTBModel(BaseFairseqModel):
 
         self.encoder_embed_dim = args.encoder_embed_dim
         self.encoder = encoder
-        if self.args.embedder == 'linear':
-            self.embedder = nn.Linear(args.encoder_embed_dim, args.encoder_embed_dim)
+        if self.args.scoring_function == 'linear':
+            self.linear = nn.Linear(args.encoder_embed_dim, args.encoder_embed_dim)
+        elif self.args.scoring_function == 'mlp':
+            self.mlp = MLP_factory([[2*args.encoder_embed_dim, 1]] + args.mlp_layer_sizes, layer_norm=args.mlp_layer_norm)
 
         self._max_positions = args.max_positions
 
@@ -41,13 +44,16 @@ class EncoderPMTBModel(BaseFairseqModel):
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
-        if self.args.embedder is not None:
-            textB_enc = self.embedder(textB_enc)
+        
+        if self.args.scoring_function == 'linear':
+            textB_enc = self.linear(textB_enc)
+        elif self.args.scoring_function == 'mlp':
+            textAB_enc = torch.cat((textA_enc, textB_enc), dim=-1)
+            scores = self.mlp(textAB_enc).reshape(-1, n_pairs)
+            return scores
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
-
         scores = scores.reshape(-1, n_pairs)
-
         return scores
 
     @staticmethod
