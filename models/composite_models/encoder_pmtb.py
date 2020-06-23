@@ -21,6 +21,8 @@ class EncoderPMTBModel(BaseFairseqModel):
 
         self.encoder_embed_dim = args.encoder_embed_dim
         self.encoder = encoder
+        if self.args.embedder == 'linear':
+            self.embedder = nn.Linear(args.encoder_embed_dim, args.encoder_embed_dim)
 
         self._max_positions = args.max_positions
 
@@ -39,6 +41,8 @@ class EncoderPMTBModel(BaseFairseqModel):
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])
+        if self.args.embedder is not None:
+            textB_enc = self.embedder(textB_enc)
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
 

@@ -34,6 +34,8 @@ class PMTBTask(RelationInferenceTask):
                             help='whether train and validation sets have disjoint entities')
         parser.add_argument('--use_strong_negs', default=False,
                             help='whether to use strong negatives')
+        parser.add_argument('--embedder', default=None,
+                            help='model for embedding textB_enc')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
