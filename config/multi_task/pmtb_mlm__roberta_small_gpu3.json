@@ -7,7 +7,7 @@
         "pmtb": {
             "task": "pmtb",
             "arch": "encoder_pmtb__roberta_small",
-            "embedder": "linear",
+            "embedder": null,
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
