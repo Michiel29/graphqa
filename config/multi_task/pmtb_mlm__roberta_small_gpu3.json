@@ -18,7 +18,7 @@
             "use_strong_negs": false,
 
             "update_freq": 4,
-            "epoch_size": 4e5,
+            "epoch_size": 8e5,
             "max_sentences": 154,
             "max_tokens": 1e10,
 
@@ -38,7 +38,7 @@
             "mask_whole_words": true,
 
             "update_freq": 4,
-            "epoch_size": 4e5,
+            "epoch_size": 8e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 154,
