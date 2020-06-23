@@ -8,7 +8,7 @@
             "task": "pmtb",
             "arch": "encoder_pmtb__roberta_small",
             "scoring_function": "mlp",
-            "mlp_layer_sizes": [[256, 1], [1, 1]],
+            "mlp_layer_sizes": [[256, 2]],
             "mlp_layer_norm": true,
             "k_weak_negs": 100,
             "n_tries_entity": 100,

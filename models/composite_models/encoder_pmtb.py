@@ -48,9 +48,7 @@ class EncoderPMTBModel(BaseFairseqModel):
         if self.args.scoring_function == 'linear':
             textB_enc = self.linear(textB_enc)
         elif self.args.scoring_function == 'mlp':
-            textAB_enc = torch.cat((textA_enc, textB_enc), dim=-1)
-            scores = self.mlp(textAB_enc).reshape(-1, n_pairs)
-            return scores
+            textB_enc = self.mlp(torch.cat((textA_enc, textB_enc), dim=-1))
 
         scores = (textA_enc * textB_enc).sum(dim=-1)
         scores = scores.reshape(-1, n_pairs)
