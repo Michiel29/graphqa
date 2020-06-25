@@ -7,7 +7,7 @@
         "pmtb": {
             "task": "pmtb",
             "arch": "encoder_pmtb__roberta_small",
-            "scoring_function": "mlp",
+            "scoring_function": null,
             "mlp_layer_sizes": [[256, 2]],
             "mlp_layer_norm": true,
             "k_weak_negs": 100,
