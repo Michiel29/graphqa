@@ -15,7 +15,7 @@
     "k_weak_negs": 100,
     "n_tries_entity": 100,
     "split_mode": true,
-    "use_strong_negs": false,
+    "use_strong_negs": true,
     
     "mask_type": "start_end",
     "non_mask_rate": 0.7,
@@ -30,8 +30,8 @@
     "lr": [1e-4],
 
     "num_workers": 4,
-    "max_sentences": 123,
-    "update_freq": [5],
+    "max_sentences": 103,
+    "update_freq": [6],
     "max_tokens": 1e10,
     "required_batch_size_multiple": 1,
 

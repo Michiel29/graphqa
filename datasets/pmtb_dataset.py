@@ -117,17 +117,21 @@ class PMTBDataset(FairseqDataset):
         return None
 
     def sample_positive(self, headA, tailA, textA):
+        # Randomly choose replace_entity and keep_entity
         replace_entity = np.random.randint(1)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
 
+        # Get edges with keep_entity as the head
         keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
+        # Get replace_entity's neighbors
         replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
 
+        # Get replace_entity's neighbors, excluding keep_entity
         replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
 
-        # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+        # Get all indices of keep_entity's neighbors, for which the neighbor is also one of replace_entity's neighbors
         candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
 
         # Check that keep_entity has at least one neighbor besides replace_entity
@@ -170,37 +174,41 @@ class PMTBDataset(FairseqDataset):
 
     def sample_strong_negative(self, headA, tailA, textA, fixB_pos, newB_pos):
 
-        # Given fixB_pos, newB_pos
-        # From edges with fixB_pos as head, get fixB_pos's neighbors
-        # Get neighbors of fixB_pos
-        # For each pair of fixB_pos neighbors (C, D), try to sample an edge mentioning (C, D)
+        # Given AB (base) and AC/CB (positive), where C is a mutual neighbor of A and B
+        # Sample DC/CD (strong negative), where D is also a mutual neighbor of A and B
 
+        # Get edges with headA/tailA/newB_pos as the head
+        headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+        tailA_edges = self.graph_B.edges[tailA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+        newB_pos_edges = self.graph_B.edges[newB_pos].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
-        # Get edges with fixB_pos as the head
-        fixB_pos_edges = self.graph_B.edges[fixB_pos].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+        # Get tail neighbors of headA/tailA
+        headA_neighbors = np.unique(headA_edges[:, GraphDataset.TAIL_ENTITY])
+        tailA_neighbors = np.unique(tailA_edges[:, GraphDataset.TAIL_ENTITY])
 
-        # Get tail neighbors of fixB_pos
-        fixB_pos_neighbors = np.unique(fixB_pos_edges[:, GraphDataset.TAIL_ENTITY])
+        # Get newB_pos edge indices for which the tail is a mutual neighbor of headA and tailA
+        newB_pos_headA_candidate_edge_indxs = np.flatnonzero(np.in1d(newB_pos_edges[:, GraphDataset.TAIL_ENTITY], headA_neighbors))
+        newB_pos_tailA_candidate_edge_indxs = np.flatnonzero(np.in1d(newB_pos_edges[:, GraphDataset.TAIL_ENTITY], tailA_neighbors))
+        newB_pos_candidate_edge_indxs = np.intersect1d(newB_pos_headA_candidate_edge_indxs, newB_pos_tailA_candidate_edge_indxs)
 
-        # Remove headA, tailA, and fixB_pos from fixB_pos_neighbors
-        fixB_pos_neighbors = fixB_pos_neighbors[fixB_pos_neighbors not in [headA, tailA, fixB_pos]]
+        # Check that there is at least one entity that is a mutual neighbor of newB_pos, headA, and tailA
+        if len(newB_pos_candidate_edge_indxs) < 1:
+            return None, None
 
-        # Check that there are at least two fixB_pos_neighbors
-        if len(fixB_pos_neighbors) < 2:
-            return None
+        # Get all possible strong negative entity candidates
+        newB_strong_neg_candidates = np.unique(newB_pos_edges[newB_pos_candidate_edge_indxs][:, GraphDataset.TAIL_ENTITY])
 
-        # Get all possible strong negative entity pair candidates
-        ent_pair_candidates = np.array(list(permutations(fixB_pos_neighbors, 2)))
+        # Set maximum number of entity candidates to consider
+        n_newB_strong_neg_candidates = min(self.n_tries_entity, len(newB_strong_neg_candidates))
 
-        # Set maximum number of entity pair candidates to consider
-        n_ent_pair_candidates = min(self.n_tries_entity, len(ent_pair_candidates))
-
-        # Sample a random array of n_ent_pair_candidates entity pair candidates
-        ent_pair_candidates_sample = ent_pair_candidates[torch.randperm(len(ent_pair_candidates)).numpy()[:n_ent_pair_candidates]]
+        # Sample a random array of n_newB_sneg_candidates entity candidates
+        newB_strong_neg_candidates_sample = newB_strong_neg_candidates[torch.randperm(len(newB_strong_neg_candidates)).numpy()[:n_newB_strong_neg_candidates]]
 
         # Iterate through the strong negative entity pair candidates
         textB_strong_neg = None
-        for headB_strong_neg, tailB_strong_neg in ent_pair_candidates_sample:
+        for newB_strong_neg in newB_strong_neg_candidates_sample:
+            headB_strong_neg = newB_pos if fixB_pos == headA else newB_strong_neg
+            tailB_strong_neg = newB_pos if fixB_pos == tailA else newB_strong_neg
 
             # Get edges with headB_strong_neg as the head
             headB_strong_neg_edges = self.graph_B.edges[headB_strong_neg].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
@@ -208,6 +216,7 @@ class PMTBDataset(FairseqDataset):
             # Get edges with (headB_strong_neg, tailB_strong_neg) as (head, tail)
             headB_tailB_strong_neg_edges = headB_strong_neg_edges[headB_strong_neg_edges[:, GraphDataset.TAIL_ENTITY] == tailB_strong_neg]
 
+            # Check that there is at least one edge with (headB_strong_neg, tailB_strong_neg) as (head, tail)
             if len(headB_tailB_strong_neg_edges) < 1:
                 continue
 
@@ -215,11 +224,11 @@ class PMTBDataset(FairseqDataset):
             headB_tailB_strong_neg_edges = headB_tailB_strong_neg_edges[torch.randperm(len(headB_tailB_strong_neg_edges)).numpy()]
 
             # Sample textB_strong_neg from headB_tailB_strong_neg_edges
-            textB_strong_neg = self.sample_text(headB_tailB_strong_neg_edges, textA, 'share_none', [headA, tailA, newB_pos])
+            textB_strong_neg = self.sample_text(headB_tailB_strong_neg_edges, textA, 'share_none', [headA, tailA])
             if textB_strong_neg is not None:
                 break
 
-        return textB_strong_neg, headB_strong_neg, tailB_strong_neg
+        return textB_strong_neg, newB_strong_neg
 
     def __getitem__(self, index):
         edge = self.graph_A[index]
@@ -236,18 +245,19 @@ class PMTBDataset(FairseqDataset):
             if textB_pos is None:
                 return None
 
+            # Initialize textB list with textB_pos
+            textB = [textB_pos]
+
             if self.use_strong_negs:
                 # Sample one strong negative text pair
-                textB_strong_neg, headB_strong_neg, tailB_strong_neg = self.sample_strong_negative(headA, tailA, textA, fixB_pos, newB_pos)
+                textB_strong_neg, newB_strong_neg = self.sample_strong_negative(headA, tailA, textA, fixB_pos, newB_pos)
 
                 # Check if strong negative text pair was successfully sampled
                 if textB_strong_neg is None:
-                    textB = [textB_pos]
-                else:
-                    textB = [textB_pos, textB_strong_neg]
-                
-            else:
-                textB = [textB_pos]
+                    return None
+
+                # Append textB_strong_neg to textB list
+                textB.append(textB_strong_neg)
 
         item = {
             'textA': textA,
@@ -261,6 +271,9 @@ class PMTBDataset(FairseqDataset):
             'ntokens_AB': len(textA) + len(textB_pos),
         }
 
+        if self.use_strong_negs:
+            item['newB_strong_neg'] = newB_strong_neg
+
         return item
 
     def collater(self, instances):
@@ -272,20 +285,25 @@ class PMTBDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        textA_list = []
-        textB_dict = {}
-        A2B_dict = {}
-        ntokens = 0
-        nsentences = 0
-        ntokens_AB = 0
+        # Get initial number of textBs per instance
+        n_textB_init = len(instances[0]['textB'])
+        assert n_textB_init in [1, 2]
+
+        # Initialize lists, dicts, and counters
+        textA_list, textB_dict, A2B_dict = [], {}, {}
+        ntokens, nsentences, ntokens_AB = 0, 0, 0
 
         # Get headA and tailA lists
         headA_list = np.array([instance['headA'] for instance in instances])
         tailA_list = np.array([instance['tailA'] for instance in instances])
 
         # Get fixB_pos and newB_pos lists
-        fixB_pos_list = np.array([instance['fixB_pos'] for instance in instances])
-        newB_pos_list = np.array([instance['newB_pos'] for instance in instances])
+        if n_textB_init == 1:
+            fixB_list = np.array([instance['fixB_pos'] for instance in instances])
+            newB_list = np.array([instance['newB_pos'] for instance in instances])
+        else:
+            fixB_list = np.array(list(chain.from_iterable([[instance['fixB_pos'], instance['newB_pos']] for instance in instances])))
+            newB_list = np.array(list(chain.from_iterable([[instance['newB_pos'], instance['newB_strong_neg']] for instance in instances])))
 
         # Get array of textB lengths
         textB_len = np.array(list(chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
@@ -300,7 +318,7 @@ class PMTBDataset(FairseqDataset):
 
         # Build textB clusters; initialize textB_dict and A2B_dict
         cluster_id = 0
-        textB_clusters = -1 * np.ones(batch_size)
+        textB_clusters = -1 * np.ones(batch_size * n_textB_init)
         for c in cluster_candidates:
             if len(c) > 0:
                 textB_clusters[c] = cluster_id
@@ -312,9 +330,9 @@ class PMTBDataset(FairseqDataset):
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
             for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i+j]
+                cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
-                A2B_dict[cluster_id].append(i+j)
+                A2B_dict[cluster_id].append(i * n_textB_init + j)
             
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
@@ -332,20 +350,24 @@ class PMTBDataset(FairseqDataset):
             padded_textB_size += torch.numel(padded_textB[cluster_id])
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
-        A2B = np.expand_dims(A2B_list, axis=1)
+        A2B = A2B_list.reshape(batch_size, n_textB_init)
 
         # Add k weak negatives (i.e., negatives not guaranteed to be strong)
         # to each positive, using texts in the current batch
-        k_weak_negs = min(self.k_weak_negs, batch_size-1)
+        k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
+        textB_idxs = np.arange(batch_size * n_textB_init)
         bad_weak_negs = 0
         for i in range(batch_size):
-            weak_neg_conditions = np.logical_and(
-                np.logical_not(np.logical_or(fixB_pos_list == headA_list[i], newB_pos_list == tailA_list[i])),
-                np.logical_not(np.logical_or(fixB_pos_list == tailA_list[i], newB_pos_list == headA_list[i]))
+            weak_neg_conditions = np.logical_and.reduce(
+                (
+                    np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1),
+                    np.logical_not(np.logical_or(fixB_list == headA_list[i], newB_list == tailA_list[i])),
+                    np.logical_not(np.logical_or(fixB_list == tailA_list[i], newB_list == headA_list[i]))
+                )
             )
             weak_neg_candidates = A2B_list[np.flatnonzero(weak_neg_conditions)]
-            cur_bad_weak_negs = batch_size - len(weak_neg_candidates)
+            cur_bad_weak_negs = batch_size * n_textB_init - n_textB_init - len(weak_neg_candidates) 
             bad_weak_negs += cur_bad_weak_negs
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
             weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
