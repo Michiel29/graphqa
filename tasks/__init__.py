@@ -9,6 +9,7 @@ from .masked_lm_em import MaskedLMEMTask
 from .triplet_inference import TripletInferenceTask
 from .mtb import MTBTask
 from .pmtb import PMTBTask
+from .mtb_plus import MTBPlusTask
 from .gnn_task import GNNTask
 from .gnn_eval_task import GNNEvalTask
 from .graph_distance import GraphDistanceTask
