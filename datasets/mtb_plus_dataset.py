@@ -29,7 +29,8 @@ class MTBPlusDataset(FairseqDataset):
         dictionary,
         k_weak_negs,
         n_tries_entity,
-        use_strong_negs
+        use_strong_negs,
+        mtb_prob
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -43,6 +44,7 @@ class MTBPlusDataset(FairseqDataset):
         self.k_weak_negs = k_weak_negs
         self.n_tries_entity = n_tries_entity
         self.use_strong_negs = use_strong_negs
+        self.mtb_prob = mtb_prob
 
         self.epoch = None
 
@@ -220,7 +222,7 @@ class MTBPlusDataset(FairseqDataset):
 
         # Check that there is at least one entity that is a mutual neighbor of newB_pos, headA, and tailA
         if len(newB_pos_candidate_edge_indxs) < 1:
-            return None, None
+            return None, None, None
 
         # Get all possible strong negative entity candidates
         newB_strong_neg_candidates = np.unique(newB_pos_edges[newB_pos_candidate_edge_indxs][:, GraphDataset.TAIL_ENTITY])
@@ -266,7 +268,7 @@ class MTBPlusDataset(FairseqDataset):
             textA = self.annotated_text_A.annotate(*(edge.numpy()))
 
             # Decide whether to do MTB or PMTB
-            task_choice = 'mtb' if np.random.randint(1) == 0 else 'pmtb'
+            task_choice = 'mtb' if np.random.choice(2, size=1, p=[self.mtb_prob, 1-self.mtb_prob]) == 0 else 'pmtb'
 
 
             # Sample positive text pair

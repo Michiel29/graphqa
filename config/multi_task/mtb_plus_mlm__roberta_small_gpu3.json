@@ -18,6 +18,7 @@
             "n_valid_examples": 20000,
             "split_mode": true,
             "use_strong_negs": true,
+            "mtb_prob": 0.7,
 
             "update_freq": 7,
             "epoch_size": 8e5,
