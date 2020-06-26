@@ -45,6 +45,7 @@ class MTBPlusDataset(FairseqDataset):
         self.n_tries_entity = n_tries_entity
         self.use_strong_negs = use_strong_negs
         self.mtb_prob = mtb_prob
+        assert mtb_prob <= 1 and mtb_prob >= 0
 
         self.epoch = None
 
