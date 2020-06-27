@@ -407,9 +407,10 @@ class MTBPlusDataset(FairseqDataset):
         textB_idxs = np.arange(batch_size * n_textB_init)
         bad_weak_negs = 0
         for i in range(batch_size):
+            self_textB_cond = np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1) if self.use_strong_negs else textB_idxs != i
             weak_neg_conditions = np.logical_and.reduce(
                 (
-                    np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1),
+                    self_textB_cond,
                     np.logical_not(np.logical_or(fixB_list == headA_list[i], newB_list == tailA_list[i])),
                     np.logical_not(np.logical_or(fixB_list == tailA_list[i], newB_list == headA_list[i]))
                 )

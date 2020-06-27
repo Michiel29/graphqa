@@ -295,7 +295,8 @@ class MTBDataset(FairseqDataset):
         textB_idxs = np.arange(batch_size * n_textB_init)
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
         for i in range(batch_size):
-            weak_neg_candidates = A2B_list[textB_idxs[np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1)]]
+            self_textB_cond = np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1) if self.use_strong_negs else textB_idxs != i
+            weak_neg_candidates = A2B_list[textB_idxs[self_textB_cond]]
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
