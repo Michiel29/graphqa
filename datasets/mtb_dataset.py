@@ -218,7 +218,7 @@ class MTBDataset(FairseqDataset):
             'textB': textB,
             'ntokens': len(textA),
             'nsentences': 1,
-            'ntokens_AB': len(textA) + len(textB_pos) + len(textB_strong_neg),
+            'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
         }
 
         return item
