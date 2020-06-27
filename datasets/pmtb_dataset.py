@@ -29,7 +29,8 @@ class PMTBDataset(FairseqDataset):
         dictionary,
         k_weak_negs,
         n_tries_entity,
-        use_strong_negs
+        use_strong_negs,
+        replace_tail
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -43,6 +44,7 @@ class PMTBDataset(FairseqDataset):
         self.k_weak_negs = k_weak_negs
         self.n_tries_entity = n_tries_entity
         self.use_strong_negs = use_strong_negs
+        self.replace_tail = replace_tail
 
         self.epoch = None
 
@@ -117,8 +119,9 @@ class PMTBDataset(FairseqDataset):
         return None
 
     def sample_positive(self, headA, tailA, textA):
-        # Randomly choose replace_entity and keep_entity
-        replace_entity = np.random.randint(1)
+
+        # If replace_tail=True, then always replace tail. Else, randomly choose replace_entity and keep_entity.
+        replace_entity = 1 if self.replace_tail else np.random.randint(1)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
 
@@ -286,8 +289,7 @@ class PMTBDataset(FairseqDataset):
             return None
 
         # Get initial number of textBs per instance
-        n_textB_init = len(instances[0]['textB'])
-        assert n_textB_init in [1, 2]
+        n_textB_init = 2 if self.use_strong_negs else 1
 
         # Initialize lists, dicts, and counters
         textA_list, textB_dict, A2B_dict = [], {}, {}

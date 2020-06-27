@@ -17,6 +17,7 @@
     "split_mode": true,
     "use_strong_negs": true,
     "mtb_prob": 0.7,
+    "replace_tail": false,
     
     "mask_type": "start_end",
     "non_mask_rate": 0.7,

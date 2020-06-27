@@ -19,6 +19,7 @@
             "split_mode": true,
             "use_strong_negs": true,
             "mtb_prob": 0.7,
+            "replace_tail": false,
 
             "update_freq": 7,
             "epoch_size": 8e5,

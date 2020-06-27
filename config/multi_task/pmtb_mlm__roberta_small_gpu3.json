@@ -18,6 +18,7 @@
             "n_valid_examples": 20000,
             "split_mode": true,
             "use_strong_negs": true,
+            "replace_tail": false,
 
             "update_freq": 7,
             "epoch_size": 8e5,

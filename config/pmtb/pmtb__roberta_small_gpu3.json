@@ -16,6 +16,7 @@
     "n_tries_entity": 100,
     "split_mode": true,
     "use_strong_negs": true,
+    "replace_tail": false,
     
     "mask_type": "start_end",
     "non_mask_rate": 0.7,

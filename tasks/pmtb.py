@@ -36,6 +36,8 @@ class PMTBTask(RelationInferenceTask):
                             help='whether to use strong negatives')
         parser.add_argument('--scoring_function', default=None,
                             help='function for computing text pair compatibility scores')
+        parser.add_argument('--replace_tail', default=False,
+                            help='whether to always replace tail when sampling positives')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -104,6 +106,7 @@ class PMTBTask(RelationInferenceTask):
             k_weak_negs=self.args.k_weak_negs,
             n_tries_entity=self.args.n_tries_entity,
             use_strong_negs=self.args.use_strong_negs,
+            replace_tail=self.args.replace_tail,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
