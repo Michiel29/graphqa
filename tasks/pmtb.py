@@ -30,9 +30,9 @@ class PMTBTask(RelationInferenceTask):
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
-        parser.add_argument('--split_mode', default=False,
+        parser.add_argument('--split_mode', default=True,
                             help='whether train and validation sets have disjoint entities')
-        parser.add_argument('--use_strong_negs', default=False,
+        parser.add_argument('--use_strong_negs', default=True,
                             help='whether to use strong negatives')
         parser.add_argument('--scoring_function', default=None,
                             help='function for computing text pair compatibility scores')
