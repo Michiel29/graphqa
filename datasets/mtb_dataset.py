@@ -28,7 +28,8 @@ class MTBDataset(FairseqDataset):
         seed,
         dictionary,
         k_weak_negs,
-        n_tries_entity
+        n_tries_entity,
+        use_strong_negs
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -41,6 +42,7 @@ class MTBDataset(FairseqDataset):
 
         self.k_weak_negs = k_weak_negs
         self.n_tries_entity = n_tries_entity
+        self.use_strong_negs = use_strong_negs
 
         self.epoch = None
 
@@ -195,16 +197,25 @@ class MTBDataset(FairseqDataset):
             if textB_pos is None:
                 return None
 
-            # Sample one strong negative text pair
-            textB_strong_neg = self.sample_strong_negative(headA_edges, tailA, textA)
+            # Initialize textB list with textB_pos
+            textB = [textB_pos]
 
-            # Check if strong negative text pair was successfully sampled
-            if textB_strong_neg is None:
-                return None
+        
+            if self.use_strong_negs:
+                # Sample one strong negative text pair
+                textB_strong_neg = self.sample_strong_negative(headA_edges, tailA, textA)
+
+                # Check if strong negative text pair was successfully sampled
+                if textB_strong_neg is None:
+                    return None
+
+                # Append textB_strong_neg to textB list
+                textB.append(textB_strong_neg)
+
 
         item = {
             'textA': textA,
-            'textB': [textB_pos, textB_strong_neg],
+            'textB': textB,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + len(textB_pos) + len(textB_strong_neg),
@@ -220,6 +231,9 @@ class MTBDataset(FairseqDataset):
         batch_size = len(instances)
         if batch_size == 0:
             return None
+
+        # Get initial number of textBs per instance
+        n_textB_init = 2 if self.use_strong_negs else 1
 
         textA_list = []
         textB_dict = {}
@@ -241,7 +255,7 @@ class MTBDataset(FairseqDataset):
 
         # Build textB clusters; initialize textB_dict and A2B_dict
         cluster_id = 0
-        textB_clusters = -1 * np.ones(batch_size * 2)
+        textB_clusters = -1 * np.ones(batch_size * n_textB_init)
         for c in cluster_candidates:
             if len(c) > 0:
                 textB_clusters[c] = cluster_id
@@ -253,9 +267,9 @@ class MTBDataset(FairseqDataset):
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
             for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i * 2 + j]
+                cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
-                A2B_dict[cluster_id].append(i * 2 + j)
+                A2B_dict[cluster_id].append(i * n_textB_init + j)
             
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
@@ -273,15 +287,15 @@ class MTBDataset(FairseqDataset):
             padded_textB_size += torch.numel(padded_textB[cluster_id])
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
+        A2B = A2B_list.reshape(batch_size, n_textB_init)
 
         # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
         # using texts in the current batch
-        A2B = A2B_list.reshape(batch_size, 2)
-        k_weak_negs = min(self.k_weak_negs, batch_size * 2 - 2)
-        textB_idxs = np.arange(batch_size * 2)
+        k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
+        textB_idxs = np.arange(batch_size * n_textB_init)
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
         for i in range(batch_size):
-            weak_neg_candidates = A2B_list[textB_idxs[np.logical_and(textB_idxs != i*2, textB_idxs != i*2+1)]]
+            weak_neg_candidates = A2B_list[textB_idxs[np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1)]]
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()

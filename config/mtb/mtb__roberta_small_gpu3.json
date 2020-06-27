@@ -6,10 +6,13 @@
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
     // "data_path": "../data/nki/bin-v5-threshold20-small",
-    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+    "data_path": "../data/nki/bin-v6",
 
     "k_weak_negs": 100,
     "n_tries_entity": 100,
+    "split_mode": true,
+    "use_strong_negs": true,
     
     "mask_type": "start_end",
     "non_mask_rate": 0.7,
