@@ -388,6 +388,7 @@ def cli_main():
         help='run training in the debugging mode',
     )
     parser.add_argument('--path-attributes', type=str, nargs='*', default=['task', 'arch', 'lr'])
+    parser.add_argument('--filter_best_last_ckpts', type=str, default=False, help='whether to filter out checkpoint_best and checkpoint_last from checkpoint list')
     pre_parsed_args, unknown = parser.parse_known_args()
 
     config_dict = {}
