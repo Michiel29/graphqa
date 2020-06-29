@@ -16,7 +16,7 @@
     "n_tries_entity": 100,
     "split_mode": true,
     "use_strong_negs": true,
-    "mtb_prob": 0.7,
+    "mtb_prob": 0.5,
     "replace_tail": false,
     
     "mask_type": "start_end",
