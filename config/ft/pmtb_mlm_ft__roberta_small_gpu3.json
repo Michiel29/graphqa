@@ -71,9 +71,14 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        "977_last": {
+        // "977_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-977/checkpoint_last.pt" // fantasia
+        //     ]
+        // },
+        "978_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-977/checkpoint_last.pt"
+                "../save/checkpoints/SAN-978/checkpoint_last.pt" // tempest
             ]
         }
     },

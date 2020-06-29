@@ -74,7 +74,7 @@
     "checkpoint_dict": {
         "981_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-981/checkpoint_last.pt"
+                "../save/checkpoints/SAN-981/checkpoint_last.pt" // fantasia
             ]
         }
     },
