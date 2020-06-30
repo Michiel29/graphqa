@@ -121,7 +121,7 @@ class PMTBDataset(FairseqDataset):
     def sample_positive(self, headA, tailA, textA):
 
         # If replace_tail=True, then always replace tail. Else, randomly choose replace_entity and keep_entity.
-        replace_entity = 1 if self.replace_tail else np.random.randint(1)
+        replace_entity = 1 if self.replace_tail else np.random.randint(2)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
 

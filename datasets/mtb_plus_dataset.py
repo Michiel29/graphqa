@@ -31,7 +31,8 @@ class MTBPlusDataset(FairseqDataset):
         n_tries_entity,
         use_strong_negs,
         mtb_prob,
-        replace_tail
+        replace_tail_mtb,
+        replace_tail_pmtb
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -47,7 +48,8 @@ class MTBPlusDataset(FairseqDataset):
         self.use_strong_negs = use_strong_negs
         self.mtb_prob = mtb_prob
         assert mtb_prob <= 1 and mtb_prob >= 0
-        self.replace_tail = replace_tail
+        self.replace_tail_mtb = replace_tail_mtb
+        self.replace_tail_pmtb = replace_tail_pmtb
 
         self.epoch = None
 
@@ -147,10 +149,11 @@ class MTBPlusDataset(FairseqDataset):
 
         return textB_pos, headA, tailA
 
-    def sample_share_one(self, headA, tailA, textA):
+    def sample_share_one(self, task_choice, headA, tailA, textA):
 
         # If replace_tail=True, then always replace tail. Else, randomly choose replace_entity and keep_entity.
-        replace_entity = 1 if self.replace_tail else np.random.randint(1)
+        replace_tail = self.replace_tail_mtb if task_choice == 'mtb' else self.replace_tail_pmtb
+        replace_entity = 1 if replace_tail else np.random.randint(2)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
 
@@ -280,7 +283,7 @@ class MTBPlusDataset(FairseqDataset):
                 textB_pos, fixB_pos, newB_pos = self.sample_share_two(headA, tailA, textA)
             else:
                 # textA and textB_pos share either headA or tailA
-                textB_pos, fixB_pos, newB_pos = self.sample_share_one(headA, tailA, textA)
+                textB_pos, fixB_pos, newB_pos = self.sample_share_one(task_choice, headA, tailA, textA)
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None: 
@@ -294,7 +297,7 @@ class MTBPlusDataset(FairseqDataset):
             if self.use_strong_negs:
                 if task_choice == 'mtb':
                     # textA and textB_strong_neg share either headA or tailA
-                    textB_strong_neg, fixB_strong_neg, newB_strong_neg = self.sample_share_one(headA, tailA, textA)
+                    textB_strong_neg, fixB_strong_neg, newB_strong_neg = self.sample_share_one(task_choice, headA, tailA, textA)
                 else:
                     # textA and textB_strong_neg share neither headA nor tailA; however, textB_strong_neg has newB_pos as a target entity
                     textB_strong_neg, fixB_strong_neg, newB_strong_neg = self.sample_share_none(headA, tailA, textA, fixB_pos, newB_pos)
