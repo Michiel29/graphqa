@@ -29,7 +29,9 @@ class MTBDataset(FairseqDataset):
         dictionary,
         k_weak_negs,
         n_tries_entity,
-        use_strong_negs
+        use_strong_negs,
+        replace_tail,
+        mutual_neighbors,
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -43,6 +45,8 @@ class MTBDataset(FairseqDataset):
         self.k_weak_negs = k_weak_negs
         self.n_tries_entity = n_tries_entity
         self.use_strong_negs = use_strong_negs
+        self.replace_tail = replace_tail
+        self.mutual_neighbors = mutual_neighbors
 
         self.epoch = None
 
@@ -140,40 +144,62 @@ class MTBDataset(FairseqDataset):
 
         return textB_pos
 
-    def sample_strong_negative(self, headA_edges, tailA, textA):
-        # Get all indices of head's neighbors, for which the neighbor is not tail
-        head_neighbors_idxs = np.flatnonzero(headA_edges[:, GraphDataset.TAIL_ENTITY] != tailA)
+    def sample_strong_negative(self, headA, tailA, textA):
 
-        # Check that headA has at least one neighbor besides tailA
-        if len(head_neighbors_idxs) < 1:
-            raise Exception("STRONG NEGATIVE -- headA has no neighbors besides tailA")
+        # If replace_tail=True, then always replace tail. Else, randomly choose replace_entity and keep_entity.
+        replace_entity = 1 if self.replace_tail else np.random.randint(1)
+        keep_entity = 1 - replace_entity
+        entity_ids = (headA, tailA)
 
-        # Get all of headB's edges (note that headB = headA), excluding those shared with tailA
-        headB_edges = headA_edges[head_neighbors_idxs, :]
+        # Get edges with keep_entity as the head
+        keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
-        # Get tailB candidates -- i.e., all of headB's neighbors, excluding tailA
-        tailB_candidates = headB_edges[:, GraphDataset.TAIL_ENTITY]
+        if self.mutual_neighbors:
+            # Get replace_entity's neighbors
+            replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
 
-        # Get unique array of tailB candidates -- i.e., all of headB's neighbors, excluding tailA and graph duplicates
-        tailB_candidates_unique = np.unique(tailB_candidates)
+            # Get replace_entity's neighbors, excluding keep_entity
+            replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
 
-        # Set maximum number of tailB candidates to consider
-        n_tailB_candidates = min(self.n_tries_entity, len(tailB_candidates_unique))
+            # Get all indices of keep_entity's neighbors, for which the neighbor is also one of replace_entity's neighbors
+            candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
+        else:
+            # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+            candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
-        # Sample a random array of n_tailB_candidates tailB candidates
-        tailB_candidates_sample = tailB_candidates_unique[torch.randperm(len(tailB_candidates_unique)).numpy()[:n_tailB_candidates]]
+        # Check that keep_entity has at least one neighbor besides replace_entity
+        if len(candidate_edge_idxs) < 1:
+            return None, None, None
 
-        # Iterate through all of the tailB candidates
-        for tailB in tailB_candidates_sample:
+        # Get all of entity_keep's edges, excluding those shared with entity_replace
+        candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
 
-            # Get all edges between headB and tailB, according to the shuffled indices
-            headB_tailB_edges = headB_edges[headB_edges[:, GraphDataset.TAIL_ENTITY] == tailB]
+        # Get entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace
+        entity_replace_candidates = candidate_edges[:, GraphDataset.TAIL_ENTITY]
 
-            # Shuffle headB_tailB_edges
-            headB_tailB_edges = headB_tailB_edges[torch.randperm(len(headB_tailB_edges)).numpy()]
+        # Get unique array of entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding entity_replace and graph duplicates
+        entity_replace_candidates_unique = np.unique(entity_replace_candidates)
 
-            # Sample textB_strong_neg from headB_tailB_edges
-            textB_strong_neg = self.sample_text(headB_tailB_edges, textA, strong_neg=True, tailA=tailA)
+        # Set maximum number of replace candidates to consider
+        n_entity_replace_candidates = min(self.n_tries_entity, len(entity_replace_candidates_unique))
+
+        # Sample a random array of n_entity_replace_candidates entity_replace candidates
+        entity_replace_candidates_sample = entity_replace_candidates_unique[torch.randperm(len(entity_replace_candidates_unique)).numpy()[:n_entity_replace_candidates]]
+
+        # Iterate through all of the entity_replace candidates
+        for entity_replace_candidate in entity_replace_candidates_sample:
+            candidate_head = headA if keep_entity == 0 else entity_replace_candidate
+            candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
+
+            candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+            # Get all edges between keep_entity and entity_replace_candidate, according to the shuffled indices
+            replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
+
+            # Shuffle replace_edges
+            replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
+
+            # Sample textB_strong_neg from replace_edges
+            textB_strong_neg = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[replace_entity]])
             if textB_strong_neg is not None:
                 break
 

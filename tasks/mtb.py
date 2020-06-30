@@ -34,6 +34,10 @@ class MTBTask(RelationInferenceTask):
                             help='whether train and validation sets have disjoint entities')
         parser.add_argument('--use_strong_negs', default=True,
                             help='whether to use strong negatives')
+        parser.add_argument('--replace_tail', default=False,
+                            help='whether to always replace tail when sampling strong negatives')
+        parser.add_argument('--mutual-neighbors', default=True,
+                            help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -102,6 +106,8 @@ class MTBTask(RelationInferenceTask):
             k_weak_negs=self.args.k_weak_negs,
             n_tries_entity=self.args.n_tries_entity,
             use_strong_negs=self.args.use_strong_negs,
+            replace_tail=self.args.replace_tail,
+            mutual_neighbors=self.args.mutual_neighbors,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(

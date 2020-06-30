@@ -13,9 +13,11 @@
     "n_tries_entity": 100,
     "split_mode": true,
     "use_strong_negs": true,
+    "replace_tail": false,
+    "mutual_neighbors": true,
     
     "mask_type": "start_end",
-    "non_mask_rate": 0.7,
+    "non_mask_rate": 0.2,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
 
