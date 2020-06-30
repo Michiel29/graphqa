@@ -138,7 +138,7 @@ class MTBDataset(FairseqDataset):
         head_tail_edges = head_tail_edges[torch.randperm(len(head_tail_edges)).numpy()]
 
         # Sample textB_pos from head-tail edges
-        textB_pos = self.sample_text(head_tail_edges, textA)
+        textB_pos = self.sample_text(head_tail_edges, textA, 'share_two')
 
         return textB_pos
 
