@@ -227,7 +227,7 @@ class MTBDataset(FairseqDataset):
         
             if self.use_strong_negs:
                 # Sample one strong negative text pair
-                textB_strong_neg = self.sample_strong_negative(headA_edges, tailA, textA)
+                textB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
 
                 # Check if strong negative text pair was successfully sampled
                 if textB_strong_neg is None:
