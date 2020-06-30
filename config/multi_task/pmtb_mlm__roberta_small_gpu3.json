@@ -12,7 +12,7 @@
             "mlp_layer_norm": true,
             "k_weak_negs": 100,
             "n_tries_entity": 100,
-            "non_mask_rate": 0.7,
+            "non_mask_rate": 0.2,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
