@@ -38,8 +38,10 @@ class MTBPlusTask(RelationInferenceTask):
                             help='function for computing text pair compatibility scores')
         parser.add_argument('--mtb_prob', type=float, default=0.5,
                             help='probability of choosing MTB over PMTB')
-        parser.add_argument('--replace_tail', default=False,
-                            help='whether to always replace tail when doing sample_share_one')
+        parser.add_argument('--replace_tail_mtb', default=False,
+                            help='whether to always replace tail when doing sample_share_one for MTB')
+        parser.add_argument('--replace_tail_pmtb', default=False,
+                            help='whether to always replace tail when doing sample_share_one for PMTB')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -109,7 +111,8 @@ class MTBPlusTask(RelationInferenceTask):
             n_tries_entity=self.args.n_tries_entity,
             use_strong_negs=self.args.use_strong_negs,
             mtb_prob=self.args.mtb_prob,
-            replace_tail=self.args.replace_tail,
+            replace_tail_mtb=self.args.replace_tail_mtb,
+            replace_tail_pmtb=self.args.replace_tail_pmtb,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
