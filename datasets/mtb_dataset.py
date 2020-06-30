@@ -95,19 +95,19 @@ class MTBDataset(FairseqDataset):
 
         return set(annotation_data[slice(s, e)][:, -1])
 
-    def sample_text(self, headB_tailB_edges, textA, strong_neg=False, tailA=None):
+    def sample_text(self, headB_tailB_edges, textA, example_class, filter_entities=None):
 
         # Iterate through edges between headB and tailB (i.e., textB candidates)
         for edge in headB_tailB_edges:
 
-            # For strong negatives, discard the current edge if it contains tailA
-            if strong_neg:
+            # For share_one, discard the current edge if it contains entity replace
+            if example_class in ['share_one', 'share_none']:
                 edge_entities = self.get_edge_entities(
-                    self.annotated_text_B.annotation_data.array, 
-                    edge[GraphDataset.START_BLOCK], 
+                    self.annotated_text_B.annotation_data.array,
+                    edge[GraphDataset.START_BLOCK],
                     edge[GraphDataset.END_BLOCK]
                 )
-                if tailA in edge_entities:
+                if np.any(np.array([x in edge_entities for x in filter_entities])):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
@@ -118,8 +118,6 @@ class MTBDataset(FairseqDataset):
             if not torch.equal(textA, textB):
                 return textB
 
-        # Generally, there should always be candidates satisfying both case0 and cashead.
-        # We only move on to the next case if all of these candidates are longer than max_positions.
         return None
 
     def sample_positive(self, head_edges, tail, textA):
