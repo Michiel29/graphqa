@@ -95,7 +95,7 @@ class MTBDataset(FairseqDataset):
 
         return set(annotation_data[slice(s, e)][:, -1])
 
-    def sample_text(self, headB_tailB_edges, textA, example_class, filter_entities=None):
+    def sample_text(self, headB_tailB_edges, textA, example_class, filter_entities=[]):
 
         # Iterate through edges between headB and tailB (i.e., textB candidates)
         for edge in headB_tailB_edges:
@@ -120,7 +120,11 @@ class MTBDataset(FairseqDataset):
 
         return None
 
-    def sample_positive(self, head_edges, tail, textA):
+    def sample_positive(self, headA, tail, textA):
+
+        # Get edges with headA as the head
+        head_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+
         # Get all indices of head's neighbors, for which the neighbor is tail
         head_neighbors_idxs = np.flatnonzero(head_edges[:, GraphDataset.TAIL_ENTITY] == tail)
 
@@ -167,7 +171,7 @@ class MTBDataset(FairseqDataset):
 
         # Check that keep_entity has at least one neighbor besides replace_entity
         if len(candidate_edge_idxs) < 1:
-            return None, None, None
+            return None
 
         # Get all of entity_keep's edges, excluding those shared with entity_replace
         candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
@@ -189,7 +193,9 @@ class MTBDataset(FairseqDataset):
             candidate_head = headA if keep_entity == 0 else entity_replace_candidate
             candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
 
+            # Get candidate edges, for which (head, tail) = (candidate_head, candidate_tail)
             candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+
             # Get all edges between keep_entity and entity_replace_candidate, according to the shuffled indices
             replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
 
@@ -211,11 +217,8 @@ class MTBDataset(FairseqDataset):
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
             textA = self.annotated_text_A.annotate(*(edge.numpy()))
 
-            # Get edges with headA as the head
-            headA_edges = self.graph_B.edges[headA].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
-
             # Sample positive text pair: textA and textB share both head and tail
-            textB_pos = self.sample_positive(headA_edges, tailA, textA)
+            textB_pos = self.sample_positive(headA, tailA, textA)
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None:
