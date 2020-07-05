@@ -7,6 +7,9 @@
         "mtb": {
             "task": "mtb",
             "arch": "encoder_mtb__roberta_small",
+            "scoring_function": null,
+            "mlp_layer_sizes": [[256, 2]],
+            "mlp_layer_norm": true,
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
