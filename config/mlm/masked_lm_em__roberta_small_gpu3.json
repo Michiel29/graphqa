@@ -4,7 +4,7 @@
     // "eval_downstream": false,
 
     "task": "masked_lm_em",
-    "arch": "roberta_small",
+    "arch": "encoder_mlm__roberta_small",
     "entity_dim": 256,
     "encoder_output_layer_type": "entity_start_linear",
 

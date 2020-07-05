@@ -1,3 +1,4 @@
+from .encoder_mlm import EncoderMLMModel
 from .encoder_dual import EncoderDualModel
 from .encoder_gnn import EncoderGNNModel
 from .encoder_triplet import EncoderTripletModel
