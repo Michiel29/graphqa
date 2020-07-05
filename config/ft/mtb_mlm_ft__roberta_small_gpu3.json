@@ -69,11 +69,11 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        // "1048_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1048/checkpoint_last.pt" // tempest --> ravenclaw
-        //     ]
-        // }
+        "1048_last": {
+            "checkpoints": [
+                "../save/checkpoints/SAN-1048/checkpoint_last.pt" // tempest --> ravenclaw
+            ]
+        }
         // "1049_last": {
         //     "checkpoints": [
         //         "../save/checkpoints/SAN-1049/checkpoint_last.pt" // fantasia --> ravenclaw
@@ -89,11 +89,11 @@
         //         "../save/checkpoints/SAN-1051/checkpoint_last.pt" // ravenclaw --> ravenclaw
         //     ]
         // }
-        "1052_last": {
-            "checkpoints": [
-                "../save/checkpoints/SAN-1052/checkpoint_last.pt" // ravenclaw --> ravenclaw
-            ]
-        }
+        // "1052_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1052/checkpoint_last.pt" // ravenclaw --> ravenclaw
+        //     ]
+        // }
         
     },
 
