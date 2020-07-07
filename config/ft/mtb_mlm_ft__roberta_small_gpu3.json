@@ -7,6 +7,9 @@
         "mtb": {
             "task": "mtb",
             "arch": "encoder_mtb__roberta_small",
+            "scoring_function": "mlp",
+            "mlp_layer_sizes": [[256, 2]],
+            "mlp_layer_norm": true,
             "k_weak_negs": 100,
             "n_tries_entity": 100,
             "non_mask_rate": 0.7,
@@ -69,11 +72,11 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        "1048_last": {
-            "checkpoints": [
-                "../save/checkpoints/SAN-1048/checkpoint_last.pt" // tempest --> ravenclaw
-            ]
-        }
+        // "1048_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1048/checkpoint_last.pt" // tempest --> ravenclaw
+        //     ]
+        // }
         // "1049_last": {
         //     "checkpoints": [
         //         "../save/checkpoints/SAN-1049/checkpoint_last.pt" // fantasia --> ravenclaw
@@ -94,6 +97,11 @@
         //         "../save/checkpoints/SAN-1052/checkpoint_last.pt" // ravenclaw --> ravenclaw
         //     ]
         // }
+        "1058_last": {
+            "checkpoints": [
+                "../save/checkpoints/SAN-1058/checkpoint_last.pt" // tempest
+            ]
+        }
         
     },
 

@@ -1,0 +1,46 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json"],
+    // "eval_downstream": false,
+
+    "task": "masked_lm_em",
+    "arch": "encoder_mlm__roberta_small",
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_start_linear",
+
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+    "data_path": "../data/nki/bin-v6",
+
+    "mask_type": "start_end",
+    "non_mask_rate": 0.5,
+
+    "mask_prob": 0.15,
+    "leave_unmasked_prob": 0.1,
+    "random_token_prob": 0.1,
+    "freq_weighted_replacement": false,
+    "mask_whole_words": true,
+
+    "epoch_size": 8e5,
+    "n_valid_examples": 20000,
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "checkpoint_dict": {
+        "1060_last": {
+            "checkpoints": [
+                "../save/checkpoints/SAN-1060/checkpoint_last.pt" // fantasia
+            ]
+        }
+    },
+
+    "num_workers": 4,
+    "max_sentences": 123,
+    "update_freq": [5],
+    "max_tokens": 1e10,
+    "required_batch_size_multiple": 1,
+
+    "criterion": "masked_lm_custom"
+}
