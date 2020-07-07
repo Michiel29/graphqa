@@ -79,8 +79,9 @@
         "dropout": false
     },
 
-    "data_path": "../data/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
     // "data_path": "../data/nki/bin-v5-threshold20",
+    "data_path": "../data/nki/bin-v6",
 
     "mask_type": "start_end",
 
@@ -91,10 +92,16 @@
 
     "checkpoint_dict": {
         // "total_negatives=25.max_hard_negatives=0.required_min_common_neighbors=10/05m_21d_23h_46m_28s": {
-        "total_negatives=50.max_hard_negatives=25.required_min_common_n=10/05m_22d_14h_56m_53s": {
+        // "total_negatives=50.max_hard_negatives=25.required_min_common_n=10/05m_22d_14h_56m_53s": {
+        //     "checkpoints": [
+        //         // "checkpoint14.pt"
+        //         "checkpoint24.pt"
+        //     ]
+        // }
+
+        "828_last": {
             "checkpoints": [
-                // "checkpoint14.pt"
-                "checkpoint24.pt"
+                "../save/checkpoints/SAN-828/checkpoint_last.pt" // ravenclaw --> waldstein
             ]
         }
     },
