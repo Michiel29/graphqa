@@ -30,7 +30,7 @@ class PMTBTask(RelationInferenceTask):
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
-        parser.add_argument('--split_mode', default=True,
+        parser.add_argument('--split_mode', default=False,
                             help='whether train and validation sets have disjoint entities')
         parser.add_argument('--use_strong_negs', default=True,
                             help='whether to use strong negatives')
@@ -38,6 +38,8 @@ class PMTBTask(RelationInferenceTask):
                             help='function for computing text pair compatibility scores')
         parser.add_argument('--replace_tail', default=False,
                             help='whether to always replace tail when sampling positives')
+        parser.add_argument('--mutual-neighbors', default=False,
+                            help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -107,6 +109,7 @@ class PMTBTask(RelationInferenceTask):
             n_tries_entity=self.args.n_tries_entity,
             use_strong_negs=self.args.use_strong_negs,
             replace_tail=self.args.replace_tail,
+            mutual_neighbors=self.args.mutual_neighbors,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(

@@ -30,7 +30,7 @@ class MTBPlusTask(RelationInferenceTask):
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
-        parser.add_argument('--split_mode', default=True,
+        parser.add_argument('--split_mode', default=False,
                             help='whether train and validation sets have disjoint entities')
         parser.add_argument('--use_strong_negs', default=True,
                             help='whether to use strong negatives')
@@ -42,6 +42,8 @@ class MTBPlusTask(RelationInferenceTask):
                             help='whether to always replace tail when doing sample_share_one for MTB')
         parser.add_argument('--replace_tail_pmtb', default=False,
                             help='whether to always replace tail when doing sample_share_one for PMTB')
+        parser.add_argument('--mutual-neighbors', default=False,
+                            help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         
@@ -113,6 +115,7 @@ class MTBPlusTask(RelationInferenceTask):
             mtb_prob=self.args.mtb_prob,
             replace_tail_mtb=self.args.replace_tail_mtb,
             replace_tail_pmtb=self.args.replace_tail_pmtb,
+            mutual_neighbors=self.args.mutual_neighbors,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(

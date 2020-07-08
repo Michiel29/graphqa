@@ -30,7 +30,8 @@ class PMTBDataset(FairseqDataset):
         k_weak_negs,
         n_tries_entity,
         use_strong_negs,
-        replace_tail
+        replace_tail,
+        mutual_neighbors,
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -45,6 +46,7 @@ class PMTBDataset(FairseqDataset):
         self.n_tries_entity = n_tries_entity
         self.use_strong_negs = use_strong_negs
         self.replace_tail = replace_tail
+        self.mutual_neighbors = mutual_neighbors
 
         self.epoch = None
 
@@ -128,14 +130,18 @@ class PMTBDataset(FairseqDataset):
         # Get edges with keep_entity as the head
         keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
 
-        # Get replace_entity's neighbors
-        replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
+        if self.mutual_neighbors:
+            # Get replace_entity's neighbors
+            replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
 
-        # Get replace_entity's neighbors, excluding keep_entity
-        replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
+            # Get replace_entity's neighbors, excluding keep_entity
+            replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
 
-        # Get all indices of keep_entity's neighbors, for which the neighbor is also one of replace_entity's neighbors
-        candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
+            # Get all indices of keep_entity's neighbors, for which the neighbor is also one of replace_entity's neighbors
+            candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
+        else:
+            # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+            candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
         # Check that keep_entity has at least one neighbor besides replace_entity
         if len(candidate_edge_idxs) < 1:

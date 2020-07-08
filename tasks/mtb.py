@@ -30,13 +30,13 @@ class MTBTask(RelationInferenceTask):
                             help='number of weak negatives per positive')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
-        parser.add_argument('--split_mode', default=True,
+        parser.add_argument('--split_mode', default=False,
                             help='whether train and validation sets have disjoint entities')
         parser.add_argument('--use_strong_negs', default=True,
                             help='whether to use strong negatives')
         parser.add_argument('--replace_tail', default=False,
                             help='whether to always replace tail when sampling strong negatives')
-        parser.add_argument('--mutual-neighbors', default=True,
+        parser.add_argument('--mutual-neighbors', default=False,
                             help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
