@@ -9,8 +9,8 @@
     "encoder_output_layer_type": "entity_start_linear",
 
     // "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
-    "data_path": "../data/nki/bin-v6",
+    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v6",
 
     "mask_type": "start_end",
     "non_mask_rate": 0.5,
