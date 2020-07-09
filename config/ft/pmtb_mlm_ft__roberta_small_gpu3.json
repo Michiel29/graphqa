@@ -16,9 +16,10 @@
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
-            "split_mode": true,
+            "split_mode": false,
             "use_strong_negs": true,
             "replace_tail": false,
+            "mutual_neighbors": false,
 
             "update_freq": 7,
             "epoch_size": 8e5,
@@ -60,8 +61,8 @@
     "encoder_output_layer_type": "entity_start_linear",
 
     // "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
-    "data_path": "../data/nki/bin-v6",
+    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v6",
 
     "mask_type": "start_end",
 
@@ -81,16 +82,21 @@
         //         "../save/checkpoints/SAN-978/checkpoint_last.pt" // tempest
         //     ]
         // }
-        "1020_last": {
-            "checkpoints": [
-                "../save/checkpoints/SAN-1020/checkpoint_last.pt" // tempest
-            ]
-        }
+        // "1020_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1020/checkpoint_last.pt" // tempest
+        //     ]
+        // }
         // "1021_last": {
         //     "checkpoints": [
         //         "../save/checkpoints/SAN-1021/checkpoint_last.pt" // fantasia
         //     ]
         // }
+        "1084_last": {
+            "checkpoints": [
+                "../save/checkpoints/SAN-1084/checkpoint_last.pt" // ravenclaw --> tempest
+            ]
+        }
     },
 
     "num_workers": 4,

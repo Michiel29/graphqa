@@ -7,18 +7,18 @@
         "mtb": {
             "task": "mtb",
             "arch": "encoder_mtb__roberta_small",
-            "scoring_function": "mlp",
+            "scoring_function": null,
             "mlp_layer_sizes": [[256, 2]],
             "mlp_layer_norm": true,
             "k_weak_negs": 100,
             "n_tries_entity": 100,
-            "non_mask_rate": 0.7,
+            "non_mask_rate": 0.2,
             "subsampling_strategy": "by_entity_pair",
             "subsampling_cap": 100,
             "n_valid_examples": 20000,
-            "split_mode": true,
+            "split_mode": false,
             "use_strong_negs": true,
-            "replace_tail": true,
+            "replace_tail": false,
             "mutual_neighbors": false,
 
             "update_freq": 7,
@@ -61,8 +61,8 @@
     "encoder_output_layer_type": "entity_start_linear",
 
     // "data_path": "../data/nki/bin-v5-threshold20-small",
-    // "data_path": "../data/nki/bin-v5-threshold20",
-    "data_path": "../data/nki/bin-v6",
+    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v6",
 
     "mask_type": "start_end",
 
@@ -97,9 +97,14 @@
         //         "../save/checkpoints/SAN-1052/checkpoint_last.pt" // ravenclaw --> ravenclaw
         //     ]
         // }
-        "1058_last": {
+        // "1058_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1058/checkpoint_last.pt" // tempest
+        //     ]
+        // }
+        "1078_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-1058/checkpoint_last.pt" // tempest
+                "../save/checkpoints/SAN-1078/checkpoint_last.pt" // tempest
             ]
         }
         
