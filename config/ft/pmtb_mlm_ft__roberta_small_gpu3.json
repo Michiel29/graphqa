@@ -92,9 +92,14 @@
         //         "../save/checkpoints/SAN-1021/checkpoint_last.pt" // fantasia
         //     ]
         // }
-        "1084_last": {
+        // "1084_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1084/checkpoint_last.pt" // ravenclaw --> tempest
+        //     ]
+        // }
+        "1093_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-1084/checkpoint_last.pt" // ravenclaw --> tempest
+                "../save/checkpoints/SAN-1093/checkpoint_last.pt" // ravenclaw --> tempest
             ]
         }
     },

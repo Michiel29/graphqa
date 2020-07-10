@@ -84,9 +84,14 @@
         //         "../save/checkpoints/SAN-1024/checkpoint_last.pt" // waldstein
         //     ]
         // }
-        "1082_last": {
+        // "1082_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1082/checkpoint_last.pt" // ravenclaw --> tempest
+        //     ]
+        // }
+        "1094_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-1082/checkpoint_last.pt" // ravenclaw --> tempest
+                "../save/checkpoints/SAN-1094/checkpoint_last.pt" // ravenclaw --> tempest
             ]
         }
     },
