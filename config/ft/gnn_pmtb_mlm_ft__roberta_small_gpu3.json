@@ -113,11 +113,16 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        "1096_ckpt12": {
+        "1096_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-1096/checkpoint12.pt" // fantasia
+                "../save/checkpoints/SAN-1096/checkpoint_last.pt" // fantasia --> ravenclaw
             ]
         }
+        // "1100_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1100/checkpoint_last.pt" // ravenclaw
+        //     ]
+        // }
     },
 
     "num_workers": 0,

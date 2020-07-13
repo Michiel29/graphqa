@@ -72,47 +72,26 @@
     "lr": [1e-4],
 
     "checkpoint_dict": {
-        // "1048_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1048/checkpoint_last.pt" // tempest --> ravenclaw
-        //     ]
-        // }
-        // "1049_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1049/checkpoint_last.pt" // fantasia --> ravenclaw
-        //     ]
-        // }
-        // "1050_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1050/checkpoint_last.pt" // ravenclaw --> ravenclaw
-        //     ]
-        // }
-        // "1051_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1051/checkpoint_last.pt" // ravenclaw --> ravenclaw
-        //     ]
-        // }
-        // "1052_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1052/checkpoint_last.pt" // ravenclaw --> ravenclaw
-        //     ]
-        // }
-        // "1058_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1058/checkpoint_last.pt" // tempest
-        //     ]
-        // }
-        // "1078_last": {
-        //     "checkpoints": [
-        //         "../save/checkpoints/SAN-1078/checkpoint_last.pt" // tempest
-        //     ]
-        // }
-        "1095_last": {
+        "1105_last": {
             "checkpoints": [
-                "../save/checkpoints/SAN-1095/checkpoint_last.pt" // ravenclaw --> tempest
+                "../save/checkpoints/SAN-1105/checkpoint_last.pt" // ravenclaw
             ]
         }
-        
+        // "1106_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1106/checkpoint_last.pt" // ravenclaw
+        //     ]
+        // }
+        // "1107_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1107/checkpoint_last.pt" // ravenclaw
+        //     ]
+        // }
+        // "1108_last": {
+        //     "checkpoints": [
+        //         "../save/checkpoints/SAN-1108/checkpoint_last.pt" // tempest -> ravenclaw
+        //     ]
+        // }
     },
 
     "num_workers": 4,
