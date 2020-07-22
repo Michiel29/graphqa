@@ -3,6 +3,7 @@ from .encoder_dual import EncoderDualModel
 from .encoder_gnn import EncoderGNNModel
 from .encoder_triplet import EncoderTripletModel
 from .encoder_mtb import EncoderMTBModel
+from .encoder_bor import EncoderBoRModel
 from .encoder_pmtb import EncoderPMTBModel
 from .encoder_mtb_plus import EncoderMTBPlusModel
 from .encoder_fewrel import EncoderFewRelModel

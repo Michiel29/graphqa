@@ -1,0 +1,42 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+
+    "task": "bor",
+    "arch": "encoder_bor__roberta_small",
+    "scoring_function": null,
+    "mlp_layer_sizes": [[256, 2]],
+    "mlp_layer_norm": true,
+    "entity_dim": 256,
+    "encoder_output_layer_type": "entity_start_linear",
+    // "data_path": "../data/nki/bin-v5-threshold20-small",
+    "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v6",
+
+    "k_weak_negs": 100,
+    "n_tries_entity": 100,
+    "split_mode": false,
+    "use_strong_negs": true,
+    "replace_tail": false,
+    "mutual_neighbors": false,
+    "candidate_weights": true,
+    
+    "mask_type": "start_end",
+    "non_mask_rate": 0.7,
+    "subsampling_strategy": "by_entity_pair",
+    "subsampling_cap": 100,
+
+    "epoch_size": 8e5,
+    "n_valid_examples": 20000,
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 4,
+    "max_sentences": 88,
+    "update_freq": [7],
+    "max_tokens": 1e10,
+    "required_batch_size_multiple": 1,
+
+    "criterion": "cross_entropy_custom"
+}

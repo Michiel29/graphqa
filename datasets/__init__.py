@@ -13,6 +13,7 @@ from .filtered_dataset import (
 )
 from .graph_dataset import GraphDataset
 from .mtb_dataset import MTBDataset
+from .bor_dataset import BoRDataset
 from .pmtb_dataset import PMTBDataset
 from .mtb_plus_dataset import MTBPlusDataset
 from .mtb_triplets_dataset import MTBTripletsDataset
