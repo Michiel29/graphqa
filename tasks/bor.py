@@ -42,7 +42,7 @@ class BoRTask(RelationInferenceTask):
                             help='whether positive/negative candidates are weighted by entity embedding similarity to base relation')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        
+
         text_data_A = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
@@ -97,12 +97,19 @@ class BoRTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
+        import numpy as np
+        similar_entities = np.array([np.random.choice(500, size=200, replace=False) for entity in range(len(self.entity_dictionary))])
+        similarity_scores = np.random.uniform(1, size=(len(self.entity_dictionary), 200))
+
+
         dataset = BoRDataset(
             split=split,
             annotated_text_A=annotated_text_A,
             annotated_text_B=annotated_text_B,
             graph_A=graph_A,
             graph_B=graph_B,
+            similar_entities=similar_entities,
+            similarity_scores=similarity_scores,
             seed=self.args.seed,
             dictionary=self.dictionary,
             k_weak_negs=self.args.k_weak_negs,
@@ -119,8 +126,8 @@ class BoRTask(RelationInferenceTask):
             )
 
         dataset = PrependTokenDataset(
-            dataset, 
-            self.dictionary.bos(), 
+            dataset,
+            self.dictionary.bos(),
             ['textA', 'textB']
         )
 

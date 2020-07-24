@@ -2,6 +2,8 @@ from fairseq.tasks import register_task
 import logging
 import os
 
+import numpy as np
+
 from datasets import (
     AnnotatedText,
     EpochSplitDataset,
@@ -42,7 +44,7 @@ class PMTBTask(RelationInferenceTask):
                             help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        
+
         text_data_A = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
@@ -97,19 +99,27 @@ class PMTBTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
+        similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
+        similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
+
         dataset = PMTBDataset(
             split=split,
             annotated_text_A=annotated_text_A,
             annotated_text_B=annotated_text_B,
             graph_A=graph_A,
             graph_B=graph_B,
+            similar_entities=similar_entities,
+            similarity_scores=similarity_scores,
             seed=self.args.seed,
             dictionary=self.dictionary,
             k_weak_negs=self.args.k_weak_negs,
             n_tries_entity=self.args.n_tries_entity,
-            use_strong_negs=self.args.use_strong_negs,
+            strong_negatives=self.args.strong_negatives,
+            strong_negative_type=self.args.strong_negative_type,
             replace_tail=self.args.replace_tail,
-            mutual_neighbors=self.args.mutual_neighbors,
+            mutual_positives=self.args.mutual_positives,
+            similar_positives=True,
+            similar_negatives=True,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
@@ -119,8 +129,8 @@ class PMTBTask(RelationInferenceTask):
             )
 
         dataset = PrependTokenDataset(
-            dataset, 
-            self.dictionary.bos(), 
+            dataset,
+            self.dictionary.bos(),
             ['textA', 'textB']
         )
 
