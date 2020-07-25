@@ -29,7 +29,7 @@
 
             "num_workers": 4,
 
-            "criterion": "cross_entropy_custom",
+            "criterion": "bor",
             "weight": 0.5
         },
         "mlm": {

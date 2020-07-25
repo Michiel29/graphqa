@@ -38,8 +38,6 @@ class BoRTask(RelationInferenceTask):
                             help='whether to always replace tail when sampling strong negatives')
         parser.add_argument('--mutual-neighbors', default=False,
                             help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
-        parser.add_argument('--candidate-weights', default=True,
-                            help='whether positive/negative candidates are weighted by entity embedding similarity to base relation')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         

@@ -38,5 +38,5 @@
     "max_tokens": 1e10,
     "required_batch_size_multiple": 1,
 
-    "criterion": "cross_entropy_custom"
+    "criterion": "bor"
 }
