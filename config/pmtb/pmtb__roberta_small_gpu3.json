@@ -15,9 +15,12 @@
     "k_weak_negs": 100,
     "n_tries_entity": 100,
     "split_mode": true,
-    "use_strong_negs": true,
+    "similar_positives": true,
+    "mutual_positives": false,
+    "strong_negatives": true,
+    "strong_negative_type": "similarity",
     "replace_tail": false,
-    
+
     "mask_type": "start_end",
     "non_mask_rate": 0.7,
     "subsampling_strategy": "by_entity_pair",
@@ -30,11 +33,12 @@
     "total_num_updates": 10000000,
     "lr": [1e-4],
 
-    "num_workers": 4,
+    "num_workers": 0,
     "max_sentences": 103,
     "update_freq": [6],
     "max_tokens": 1e10,
     "required_batch_size_multiple": 1,
 
-    "criterion": "cross_entropy_custom"
+    "criterion": "cross_entropy_custom",
+    "validate_before_training": false
 }
