@@ -36,10 +36,6 @@ class CrossEntropy(FairseqCriterion):
 
         model_output = model(sample)
         target = sample['target']
-        if self.args.candidate_weights:
-            candidate_similarity = torch.ones_like(model_output) # TODO: replace this placeholder with real candidate_similarity tensor
-            model_output = model_output * candidate_similarity
-
         # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         # diag.inspect_batch(sample, scores=model_output)
 

@@ -61,11 +61,6 @@ class PMTBDataset(FairseqDataset):
 
         self.epoch = None
 
-        self.count_similar_positive = 0
-        self.count_similar_negative = 0
-        self.count_total = 0
-
-
 
     def set_epoch(self, epoch):
         self.graph_A.set_epoch(epoch)
@@ -189,9 +184,7 @@ class PMTBDataset(FairseqDataset):
             indices_similar_sorted = indices_similar[score_sort_index]
             indices_candidates_sorted = indices_candidates[score_sort_index]
             overlap_candidates_sorted = replace_similar_entities[indices_similar_sorted]
-            self.count_total += 1
             if len(overlap_candidates_sorted) > 0:
-                self.count_similar_positive += 1
                 entity_replace_candidates_sample = np.concatenate((overlap_candidates_sorted, entity_replace_candidates_sample))
 
         entity_replace_candidates_sample = entity_replace_candidates_sample[:n_entity_replace_candidates]
@@ -232,12 +225,7 @@ class PMTBDataset(FairseqDataset):
             if len(sorted_overlap_entities) == 0:
                 return None, None
 
-            self.count_similar_negative += 1
-
             negative_entity_candidates = sorted_overlap_entities
-
-
-
 
         # Given AB (base) and AC/CB (positive), where C is a mutual neighbor of A and B
         # Sample DC/CD (strong negative), where D is also a mutual neighbor of A and B
