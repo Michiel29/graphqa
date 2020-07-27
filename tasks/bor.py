@@ -2,6 +2,8 @@ from fairseq.tasks import register_task
 import logging
 import os
 
+import numpy as np
+
 from datasets import (
     AnnotatedText,
     EpochSplitDataset,
@@ -95,10 +97,8 @@ class BoRTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
-        import numpy as np
-        similar_entities = np.array([np.random.choice(500, size=200, replace=False) for entity in range(len(self.entity_dictionary))])
-        similarity_scores = np.random.uniform(1, size=(len(self.entity_dictionary), 200))
-
+        similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
+        similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
 
         dataset = BoRDataset(
             split=split,

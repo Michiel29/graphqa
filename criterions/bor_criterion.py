@@ -28,9 +28,7 @@ class BoRCriterion(CrossEntropy):
         model_output = model(sample)
         target = sample['target']
 
-        candidate_similarity = torch.ones_like(model_output) # TODO: replace this placeholder with real candidate_similarity tensor (i.e., sample['candidate_similarity'])
-        # candidate_similarity = sample['candidate_similarity']
-        model_output = model_output * candidate_similarity
+        model_output = model_output * sample['candidate_weights']
 
         # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         # diag.inspect_batch(sample, scores=model_output)

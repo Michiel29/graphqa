@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 import logging
 
@@ -40,6 +41,9 @@ class BoRDataset(FairseqDataset):
         self.annotated_text_B = annotated_text_B
         self.graph_A = graph_A
         self.graph_B = graph_B
+
+        self.similar_entities = similar_entities
+        self.similarity_scores = similarity_scores
 
         self.seed = seed
         self.dictionary = dictionary
@@ -221,6 +225,7 @@ class BoRDataset(FairseqDataset):
 
             # Sample positive text pair: textA and textB share both head and tail
             textB_pos = self.sample_positive(headA, tailA, textA)
+            textB_pos_head, textB_pos_tail = 0, 1 # TODO: replace [0, 1] with real entities
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None:
@@ -228,11 +233,12 @@ class BoRDataset(FairseqDataset):
 
             # Initialize textB list with textB_pos
             textB = [textB_pos]
-
+            textB_entities = [[textB_pos_head, textB_pos_tail]]
 
             if self.use_strong_negs:
                 # Sample one strong negative text pair
                 textB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
+                textB_strong_neg_head, textB_strong_neg_tail = 2, 3 # TODO: replace [2, 3] with real entities
 
                 # Check if strong negative text pair was successfully sampled
                 if textB_strong_neg is None:
@@ -240,17 +246,39 @@ class BoRDataset(FairseqDataset):
 
                 # Append textB_strong_neg to textB list
                 textB.append(textB_strong_neg)
+                textB_entities.append([textB_strong_neg_head, textB_strong_neg_tail])
 
 
         item = {
             'textA': textA,
             'textB': textB,
+            'textA_entities': [headA, tailA],
+            'textB_entities': textB_entities,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
         }
 
         return item
+
+    def compute_candidate_weights(self, textA_entities, textB_entities):
+
+        headA, tailA = textA_entities
+        headB, tailB = textB_entities[:, 0], textB_entities[:, 1]
+        headA_similar_entities, tailA_similar_entities = self.similar_entities[headA], self.similar_entities[tailA]
+        headA_similarity_scores, tailA_similarity_scores = self.similarity_scores[headA], self.similarity_scores[tailA]
+
+        candidate_weights = -1 * np.ones_like(headB)
+        for i in range(len(candidate_weights)):
+            cur_weight, cur_headB, cur_tailB = 0, headB[i], tailB[i]
+            for ent in [cur_headB, cur_tailB]:
+                if ent in headA_similar_entities:
+                    cur_weight += headA_similarity_scores[np.where(headA_similar_entities == ent)[0][0]]
+                if ent in tailA_similar_entities:
+                    cur_weight += tailA_similarity_scores[np.where(tailA_similar_entities == ent)[0][0]]
+            candidate_weights[i] = cur_weight / 4
+
+        return F.softmax(torch.from_numpy(candidate_weights).float(), dim=0)
 
     def collater(self, instances):
         # Filter out instances for which no positive text pair exists
@@ -266,10 +294,14 @@ class BoRDataset(FairseqDataset):
 
         textA_list = []
         textB_dict = {}
+        textB_entities_dict = {}
         A2B_dict = {}
         ntokens = 0
         nsentences = 0
         ntokens_AB = 0
+
+        # Get array of textA entities
+        textA_entities = np.array([instance['textA_entities'] for instance in instances])
 
         # Get array of textB lengths
         textB_len = np.array(list(itertools.chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
@@ -282,13 +314,14 @@ class BoRDataset(FairseqDataset):
         bin_vals = [0] + [textB_mean + 0.5*k*textB_std for k in range(-3, 4)] + [float('inf')]
         cluster_candidates = [np.where(np.logical_and(textB_len > bin_vals[i], textB_len <= bin_vals[i+1]))[0] for i in range(len(bin_vals)-1)]
 
-        # Build textB clusters; initialize textB_dict and A2B_dict
+        # Build textB clusters; initialize textB_dict, textB_entities_dict, and A2B_dict
         cluster_id = 0
         textB_clusters = -1 * np.ones(batch_size * n_textB_init)
         for c in cluster_candidates:
             if len(c) > 0:
                 textB_clusters[c] = cluster_id
                 textB_dict[cluster_id] = []
+                textB_entities_dict[cluster_id] = []
                 A2B_dict[cluster_id] = []
                 cluster_id += 1
 
@@ -298,6 +331,7 @@ class BoRDataset(FairseqDataset):
             for j, cur_textB in enumerate(instance['textB']):
                 cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
+                textB_entities_dict[cluster_id].append(instance['textB_entities'][j])
                 A2B_dict[cluster_id].append(i * n_textB_init + j)
 
             ntokens += instance['ntokens']
@@ -310,24 +344,33 @@ class BoRDataset(FairseqDataset):
         # Pad textB, and get A2B_list
         padded_textB = {}
         padded_textB_size = 0
+        textB_entities_list = []
         A2B_list = []
         for cluster_id, cluster_texts in textB_dict.items():
             padded_textB[cluster_id] = pad_sequence(cluster_texts, batch_first=True, padding_value=self.dictionary.pad())
             padded_textB_size += torch.numel(padded_textB[cluster_id])
+            textB_entities_list += textB_entities_dict[cluster_id]
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
         A2B = A2B_list.reshape(batch_size, n_textB_init)
+        textB_entities = np.array(textB_entities_list)
 
         # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
         # using texts in the current batch
         k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
         textB_idxs = np.arange(batch_size * n_textB_init)
         A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
+        candidate_weights = -1 * np.ones((batch_size, n_textB_init + k_weak_negs))
         for i in range(batch_size):
             self_textB_cond = np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1) if self.use_strong_negs else textB_idxs != i
             weak_neg_candidates = A2B_list[textB_idxs[self_textB_cond]]
             weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
+            if n_textB_init == 1:
+                cur_A2B = np.concatenate(([A2B[i]], weak_negs)).astype(int)
+            else:
+                cur_A2B = np.concatenate((A2B[i], weak_negs)).astype(int)
+            candidate_weights[i, :] = self.compute_candidate_weights(textA_entities[i], textB_entities[cur_A2B])
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
         batch_dict = {
@@ -335,6 +378,7 @@ class BoRDataset(FairseqDataset):
             'textB': padded_textB,
             'A2B': torch.LongTensor(A2B),
             'target': torch.zeros(batch_size, dtype=torch.long),
+            'candidate_weights': torch.FloatTensor(candidate_weights),
             'size': batch_size,
             'ntokens': ntokens,
             'nsentences': nsentences,
