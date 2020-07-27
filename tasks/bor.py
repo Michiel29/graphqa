@@ -97,8 +97,15 @@ class BoRTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
-        similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
-        similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
+        if self.args.data_path == '../data/nki/bin-v5-threshold20':
+            similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1133_25.candidates.idx.npy'))
+            similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1133_25.candidates.score.npy'))
+        elif self.args.data_path == '../data/nki/bin-v6':
+            similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
+            similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
+        else:
+            raise Exception("Top 1000 similar entities/scores data not available for the given dataset.")
+
 
         dataset = BoRDataset(
             split=split,

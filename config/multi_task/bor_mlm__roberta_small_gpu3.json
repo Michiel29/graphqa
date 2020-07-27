@@ -20,7 +20,6 @@
             "use_strong_negs": true,
             "replace_tail": false,
             "mutual_neighbors": false,
-            "candidate_weights": true,
 
             "update_freq": 7,
             "epoch_size": 8e5,
