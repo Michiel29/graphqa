@@ -25,6 +25,8 @@ class BoRDataset(FairseqDataset):
         annotated_text_B,
         graph_A,
         graph_B,
+        similar_entities,
+        similarity_scores,
         seed,
         dictionary,
         k_weak_negs,
@@ -130,7 +132,7 @@ class BoRDataset(FairseqDataset):
 
         # Check that head and tail are mentioned in at least one training text
         if (
-            self.split == 'train' and len(head_neighbors_idxs) < 2 
+            self.split == 'train' and len(head_neighbors_idxs) < 2
             or self.split == 'valid' and len(head_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -227,7 +229,7 @@ class BoRDataset(FairseqDataset):
             # Initialize textB list with textB_pos
             textB = [textB_pos]
 
-        
+
             if self.use_strong_negs:
                 # Sample one strong negative text pair
                 textB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
@@ -297,7 +299,7 @@ class BoRDataset(FairseqDataset):
                 cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
                 A2B_dict[cluster_id].append(i * n_textB_init + j)
-            
+
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -316,7 +318,7 @@ class BoRDataset(FairseqDataset):
         A2B_list = np.argsort(A2B_list)
         A2B = A2B_list.reshape(batch_size, n_textB_init)
 
-        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
+        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
         # using texts in the current batch
         k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
         textB_idxs = np.arange(batch_size * n_textB_init)
