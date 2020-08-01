@@ -427,10 +427,14 @@ class MTBPlusDataset(FairseqDataset):
             weak_neg_candidates = A2B_list[np.flatnonzero(weak_neg_conditions)]
             cur_bad_weak_negs = batch_size * n_textB_init - n_textB_init - len(weak_neg_candidates) 
             bad_weak_negs += cur_bad_weak_negs
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
-            weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
+            weak_negs_init = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
+            
+            weak_negs = weak_negs_init
+            while len(weak_negs) < k_weak_negs:
+                weak_negs = np.concatenate((weak_negs, weak_negs_init)) # pad to make up for discarded weak negs
             weak_negs = weak_negs[:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
+
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
         batch_dict = {
