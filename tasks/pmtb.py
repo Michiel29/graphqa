@@ -99,8 +99,12 @@ class PMTBTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
-        similar_entities = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.idx.npy'))
-        similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.scores.npy'))
+        if (self.args.strong_negatives and self.args.strong_negative_type == 'similarity') or self.args.similar_positives:
+            similar_entities = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.idx.npy'))
+            similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.scores.npy'))
+        else:
+            similar_entities = None
+            similarity_scores = None
 
         dataset = PMTBDataset(
             split=split,
@@ -117,10 +121,11 @@ class PMTBTask(RelationInferenceTask):
             n_tries_entity=self.args.n_tries_entity,
             strong_negatives=self.args.strong_negatives,
             strong_negative_type=self.args.strong_negative_type,
+            negative_temperature=getattr(self.args, 'negative_temperature', None),
             replace_tail=self.args.replace_tail,
             mutual_positives=self.args.mutual_positives,
-            similar_positives=True,
-            similar_negatives=True,
+            similar_positives=self.args.similar_positives,
+            positive_temperature=getattr(self.args, 'positive_temperature', None),
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(

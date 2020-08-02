@@ -34,10 +34,11 @@ class PMTBDataset(FairseqDataset):
         n_tries_entity,
         strong_negatives,
         strong_negative_type,
+        negative_temperature,
         replace_tail,
         mutual_positives,
         similar_positives,
-        similar_negatives,
+        positive_temperature,
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -52,14 +53,15 @@ class PMTBDataset(FairseqDataset):
 
         self.k_weak_negs = k_weak_negs
         self.n_tries_entity = n_tries_entity
+        self.replace_tail = replace_tail
         self.strong_negatives = strong_negatives
         self.strong_negative_type = strong_negative_type
-        self.replace_tail = replace_tail
+        self.negative_temperature = negative_temperature
+
         self.mutual_positives = mutual_positives
-
-
         self.similar_positives = similar_positives
-        self.similar_negatives = similar_negatives
+        self.positive_temperature = positive_temperature
+
 
         self.epoch = None
 
@@ -184,18 +186,11 @@ class PMTBDataset(FairseqDataset):
             indices_similar = np.sort(indices_similar)
             overlap_entities = replace_similar_entities[indices_similar]
             if len(overlap_entities) > 0:
-                self.temperature = 5
-                self.p_random = 0
                 overlap_scores = self.similarity_scores.array[replace_entity_id][indices_similar]
-                overlap_scores = overlap_scores ** self.temperature
-                overlap_probabilities = overlap_scores / overlap_scores.sum()
+                exp_scores = np.exp(overlap_scores/self.positive_temperature)
+                overlap_probabilities = exp_scores / exp_scores.sum()
                 entity_order = np.random.choice(len(overlap_probabilities), size=len(overlap_probabilities), replace=False, p=overlap_probabilities)
-                if np.random.random() > self.p_random:
-                    entity_replace_candidates_sample = np.concatenate((overlap_entities[entity_order], entity_replace_candidates_sample))
-                else:
-                    entity_replace_candidates_sample = np.concatenate((entity_replace_candidates_sample, overlap_entities[entity_order]))
-
-            a = 3
+                entity_replace_candidates_sample = np.concatenate((overlap_entities[entity_order], entity_replace_candidates_sample))
 
         entity_replace_candidates_sample = entity_replace_candidates_sample[:n_entity_replace_candidates]
 
@@ -232,10 +227,15 @@ class PMTBDataset(FairseqDataset):
             similar_indices_overlap = np.sort(similar_indices_overlap)
 
             overlap_entities = new_entity_similar[similar_indices_overlap]
+
             if len(overlap_entities) == 0:
                 return None, None
 
-            negative_entity_candidates = overlap_entities
+            overlap_scores = self.similarity_scores.array[pos_new_entity][similar_indices_overlap]
+            exp_scores = np.exp(overlap_scores/self.negative_temperature)
+            overlap_probabilities = exp_scores / exp_scores.sum()
+            entity_order = np.random.choice(len(overlap_probabilities), size=len(overlap_probabilities), replace=False, p=overlap_probabilities)
+            negative_entity_candidates = overlap_entities[entity_order]
 
         # Given AB (base) and AC/CB (positive), where C is a mutual neighbor of A and B
         # Sample DC/CD (strong negative), where D is also a mutual neighbor of A and B
@@ -428,8 +428,11 @@ class PMTBDataset(FairseqDataset):
             weak_neg_candidates = A2B_list[np.flatnonzero(weak_neg_conditions)]
             cur_bad_weak_negs = batch_size * n_textB_init - n_textB_init - len(weak_neg_candidates)
             bad_weak_negs += cur_bad_weak_negs
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
-            weak_negs = np.concatenate((weak_negs, weak_negs[:cur_bad_weak_negs])) # pad to make up for discarded weak negs
+            weak_negs_init = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
+
+            weak_negs = weak_negs_init
+            while len(weak_negs) < k_weak_negs:
+                weak_negs = np.concatenate((weak_negs, weak_negs_init)) # pad to make up for discarded weak negs
             weak_negs = weak_negs[:k_weak_negs]
             A2B_weak_negs[i, :] = weak_negs
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
