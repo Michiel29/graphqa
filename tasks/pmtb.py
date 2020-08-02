@@ -99,8 +99,8 @@ class PMTBTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
-        similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
-        similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
+        similar_entities = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.idx.npy'))
+        similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.scores.npy'))
 
         dataset = PMTBDataset(
             split=split,
@@ -112,6 +112,7 @@ class PMTBTask(RelationInferenceTask):
             similarity_scores=similarity_scores,
             seed=self.args.seed,
             dictionary=self.dictionary,
+            entity_dictionary=self.entity_dictionary,
             k_weak_negs=self.args.k_weak_negs,
             n_tries_entity=self.args.n_tries_entity,
             strong_negatives=self.args.strong_negatives,
