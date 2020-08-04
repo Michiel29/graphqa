@@ -3,6 +3,7 @@ import os
 import argparse
 
 import numpy as np
+from tqdm import tqdm
 
 from fairseq.data import Dictionary
 
@@ -30,7 +31,7 @@ def main(args):
     base_to_external_map = np.zeros(len(base_dictionary), dtype=np.int64) - 1
 
 
-    with open(os.path.join(args.external_path, 'entity.dict.txt')) as f:
+    with open(os.path.join(args.external_path, 'dict.entity')) as f:
         lines = f.readlines()
         external_to_base_map = np.zeros(len(lines), dtype=np.int64) - 1
         for idx, line in enumerate(lines):
@@ -50,12 +51,13 @@ def main(args):
     new_candidates = np.zeros(new_shape, dtype=external_candidates.dtype) - 1
     new_scores = np.zeros(new_shape, dtype=external_scores.dtype) - 1
 
-    for base_idx in range(len(base_to_external_map)):
+    for base_idx in tqdm(range(len(base_to_external_map)), desc='remapping entities'):
         external_entity = base_to_external_map[base_idx]
         if not external_entity == -1:
             new_candidates[base_idx] = external_to_base_map[external_candidates[external_entity]]
             new_scores[base_idx] = external_scores[external_entity]
 
+    print('saving remapped entity files')
     new_external_candidate_path = external_candidate_path[:-8] + '_remap.idx'
     np.save(new_external_candidate_path, new_candidates)
     new_external_score_path = external_score_path[:-8] + '_remap.idx'
@@ -66,7 +68,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--base-path', type=str, help='Data directory', default='../data/nki/bin-v5-threshold20')
     parser.add_argument('--external-path', type=str, default='../data/lama')
-    parser.add_argument('--external-array-files', type=str, nargs='*', default=['entity.candidates.idx.npy', 'entity.scores.idx.npy'])
 
     args = parser.parse_args()
     main(args)
