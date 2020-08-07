@@ -12,15 +12,14 @@
     "data_path": "../data/nki/bin-v5-threshold20",
     // "data_path": "../data/nki/bin-v6",
 
-    "k_weak_negs": 100,
+    "n_strong_candidates": 3,
+    "n_weak_candidates": 100,
+    "head_tail_weight": 0.5,
     "n_tries_entity": 100,
     "split_mode": false,
-    "use_strong_negs": true,
-    "replace_tail": false,
-    "mutual_neighbors": false,
 
     "mask_type": "start_end",
-    "non_mask_rate": 0.7,
+    "non_mask_rate": 0.2,
     "subsampling_strategy": "by_entity_pair",
     "subsampling_cap": 100,
 
@@ -32,8 +31,8 @@
     "lr": [1e-4],
 
     "num_workers": 4,
-    "max_sentences": 88,
-    "update_freq": [7],
+    "max_sentences": 62,
+    "update_freq": [10],
     "max_tokens": 1e10,
     "required_batch_size_multiple": 1,
 

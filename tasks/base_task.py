@@ -64,6 +64,9 @@ class BaseTask(FairseqTask):
             sample_size = utils.item(sum(log.get('sample_size', 0) for log in logging_outputs))
             metrics.log_scalar('bsz', sample_size, priority=190, round=1)
 
+        if 'n_bor_instances' in logging_outputs[0].keys():
+            n_bor_instances = utils.item(sum(log.get('n_bor_instances', 0) for log in logging_outputs))
+            metrics.log_scalar('bsz_bor', n_bor_instances, priority=195, round=1)
         if 'ntokens_AB' in logging_outputs[0].keys():
             ntokens_AB = utils.item(sum(log.get('ntokens_AB', 0) for log in logging_outputs))
             metrics.log_scalar('wpb_AB', ntokens_AB, priority=200, round=1)

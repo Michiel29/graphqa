@@ -46,6 +46,8 @@ class BoRCriterion(CrossEntropy):
             'num_updates': 1,
         }
 
+        if 'n_bor_instances' in sample.keys():
+            logging_output['n_bor_instances'] = sample['n_bor_instances']
         if 'ntokens_AB' in sample.keys():
             logging_output['ntokens_AB'] = sample['ntokens_AB']
         if 'ntokens_mem' in sample.keys():

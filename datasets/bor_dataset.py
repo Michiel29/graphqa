@@ -30,11 +30,10 @@ class BoRDataset(FairseqDataset):
         similarity_scores,
         seed,
         dictionary,
-        k_weak_negs,
+        n_strong_candidates,
+        n_weak_candidates,
+        head_tail_weight,
         n_tries_entity,
-        use_strong_negs,
-        replace_tail,
-        mutual_neighbors,
     ):
         self.split = split
         self.annotated_text_A = annotated_text_A
@@ -44,15 +43,23 @@ class BoRDataset(FairseqDataset):
 
         self.similar_entities = similar_entities
         self.similarity_scores = similarity_scores
+        n_entities = len(self.similar_entities.array)
+        self.similar_entities.array = np.concatenate((
+            np.expand_dims(np.arange(n_entities), 1), 
+            self.similar_entities.array
+        ), axis=1)
+        self.similarity_scores.array = np.concatenate((
+            np.ones((n_entities, 1)),
+            self.similarity_scores.array
+        ), axis=1)
 
         self.seed = seed
         self.dictionary = dictionary
 
-        self.k_weak_negs = k_weak_negs
+        self.n_strong_candidates = n_strong_candidates
+        self.n_weak_candidates = n_weak_candidates
+        self.head_tail_weight = head_tail_weight
         self.n_tries_entity = n_tries_entity
-        self.use_strong_negs = use_strong_negs
-        self.replace_tail = replace_tail
-        self.mutual_neighbors = mutual_neighbors
 
         self.epoch = None
 
@@ -126,6 +133,83 @@ class BoRDataset(FairseqDataset):
 
         return None
 
+
+    def sample_bor_candidates(self, headA, tailA, textA):
+
+        # Randomly assign entity_replace and entity_keep
+        entity_replace = np.random.randint(2)
+        entity_keep = 1 - entity_replace
+        entity_ids = (headA, tailA)
+
+        # Get edges with entity_keep as the head
+        entity_keep_edges = self.graph_B.edges[entity_ids[entity_keep]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+
+        # Get entity_replace candidates -- i.e., all of entity_keep's neighbors, including duplicates
+        entity_replace_candidates = entity_keep_edges[:, GraphDataset.TAIL_ENTITY]
+
+        # Get unique array of entity_replace candidates -- i.e., all of entity_keep's neighbors, excluding duplicates
+        entity_replace_candidates_unique = np.unique(entity_replace_candidates)
+
+        # Keep only entity_replace candidates which are also among entity_replace's most similar entities
+        entity_replace_candidates_unique, _, entity_replace_candidates_idx = np.intersect1d(entity_replace_candidates_unique, self.similar_entities.array[entity_replace], assume_unique=False, return_indices=True)
+
+        # Sort entity_replace_candidates_idx and entity_replace_candidates_unique in descending order w.r.t. score
+        entity_replace_candidates_idx = np.sort(entity_replace_candidates_idx)
+        entity_replace_candidates_unique = self.similar_entities.array[entity_replace][entity_replace_candidates_idx]
+
+        # Check that entity_keep has at least n_strong_candidates neighbors
+        if len(entity_replace_candidates_idx) < self.n_strong_candidates:
+            return None, None, None
+
+        # Split entity_replace_candidates_idx and entity_replace_candidates_unique into n_strong_candidates chunks
+        entity_replace_candidates_chunks = np.array_split(entity_replace_candidates_unique, self.n_strong_candidates)
+
+        # Initialize textB and textB_entities lists
+        textB, textB_entities = [], []
+
+        # Iterate through the n_strong_candidates chunks
+        for chunk in entity_replace_candidates_chunks:
+
+            # Set maximum number of entity_replace candidates to consider
+            n_entity_replace_candidates = min(self.n_tries_entity, len(chunk))
+
+            # Sample a random array of n_entity_replace_candidates entity_replace candidates
+            entity_replace_candidates_sample = chunk[torch.randperm(n_entity_replace_candidates).numpy()]
+
+            # Iterate through all of the entity_replace candidates
+            for entity_replace_candidate in entity_replace_candidates_sample:
+
+                # Assign candidate_head and candidate_tail
+                candidate_head = headA if entity_keep == 0 else entity_replace_candidate
+                candidate_tail = tailA if entity_keep == 1 else entity_replace_candidate
+
+                # Get candidate_edges
+                candidate_edges = self.graph_B.edges[candidate_head].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+
+                # Get all edges between entity_keep and entity_replace_candidate, according to the shuffled indices
+                replace_edges = candidate_edges[candidate_edges[:, GraphDataset.TAIL_ENTITY] == candidate_tail]
+
+                # Shuffle replace_edges
+                replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
+
+                # Sample cur_textB from replace_edges
+                if candidate_head == headA and candidate_tail == tailA:
+                    cur_textB = self.sample_text(replace_edges, textA, 'share_two')
+                else:
+                    cur_textB = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[entity_replace]])
+                
+                if cur_textB is not None:
+                    textB.append(cur_textB) # Append cur_textB to textB list
+                    textB_entities.append([candidate_head, candidate_tail])
+                    break
+
+            # Return None if textB is unsuccessfully sampled for the current chunk
+            if cur_textB is None:
+                return None, None, None
+
+        return textB, textB_entities, True
+
+
     def sample_positive(self, headA, tail, textA):
 
         # Get edges with headA as the head
@@ -136,7 +220,7 @@ class BoRDataset(FairseqDataset):
 
         # Check that head and tail are mentioned in at least one training text
         if (
-            self.split == 'train' and len(head_neighbors_idxs) < 2
+            self.split == 'train' and len(head_neighbors_idxs) < 2 
             or self.split == 'valid' and len(head_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -155,29 +239,19 @@ class BoRDataset(FairseqDataset):
     def sample_strong_negative(self, headA, tailA, textA):
 
         # If replace_tail=True, then always replace tail. Else, randomly choose replace_entity and keep_entity.
-        replace_entity = 1 if self.replace_tail else np.random.randint(2)
+        replace_entity = np.random.randint(2)
         keep_entity = 1 - replace_entity
         entity_ids = (headA, tailA)
 
         # Get edges with keep_entity as the head
         keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
+       
+        # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
+        candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
-        if self.mutual_neighbors:
-            # Get replace_entity's neighbors
-            replace_entity_neighbors = self.graph_B.edges[entity_ids[replace_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)[:, GraphDataset.TAIL_ENTITY]
-
-            # Get replace_entity's neighbors, excluding keep_entity
-            replace_entity_neighbors = np.unique(replace_entity_neighbors[replace_entity_neighbors != entity_ids[keep_entity]])
-
-            # Get all indices of keep_entity's neighbors, for which the neighbor is also one of replace_entity's neighbors
-            candidate_edge_idxs = np.flatnonzero(np.in1d(keep_entity_edges[:, GraphDataset.TAIL_ENTITY], replace_entity_neighbors))
-        else:
-            # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
-            candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
-
-        # Check that keep_entity has at least one neighbor besides replace_entity
-        if len(candidate_edge_idxs) < 1:
-            return None
+        # Check that keep_entity has at least n_strong_candidates-1 neighbors besides replace_entity
+        if len(candidate_edge_idxs) < self.n_strong_candidates-1:
+            return None, None
 
         # Get all of entity_keep's edges, excluding those shared with entity_replace
         candidate_edges = keep_entity_edges[candidate_edge_idxs, :]
@@ -194,8 +268,11 @@ class BoRDataset(FairseqDataset):
         # Sample a random array of n_entity_replace_candidates entity_replace candidates
         entity_replace_candidates_sample = entity_replace_candidates_unique[torch.randperm(len(entity_replace_candidates_unique)).numpy()[:n_entity_replace_candidates]]
 
+        # Initialize empty textB_strong_neg, textB_strong_neg_entities list
+        textB_strong_neg, textB_strong_neg_entities = [], []
+
         # Iterate through all of the entity_replace candidates
-        for entity_replace_candidate in entity_replace_candidates_sample:
+        for i, entity_replace_candidate in enumerate(entity_replace_candidates_sample):
             candidate_head = headA if keep_entity == 0 else entity_replace_candidate
             candidate_tail = tailA if keep_entity == 1 else entity_replace_candidate
 
@@ -208,12 +285,42 @@ class BoRDataset(FairseqDataset):
             # Shuffle replace_edges
             replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
 
-            # Sample textB_strong_neg from replace_edges
-            textB_strong_neg = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[replace_entity]])
-            if textB_strong_neg is not None:
-                break
+            # Sample cur_textB_strong_neg from replace_edges
+            cur_textB_strong_neg = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[replace_entity]])
 
-        return textB_strong_neg
+            # Append cur_textB_strong_neg to textB_strong_neg list
+            if cur_textB_strong_neg is not None:
+                textB_strong_neg.append(cur_textB_strong_neg)
+                textB_strong_neg_entities.append([candidate_head, candidate_tail])
+
+            # Exit loop if enough textB_strong_negs have been sampled
+            if len(textB_strong_neg) == self.n_strong_candidates-1:
+                break
+            elif i == len(entity_replace_candidates_sample)-1:
+                return None, None
+
+        return textB_strong_neg, textB_strong_neg_entities
+
+    def sample_mtb_candidates(self, headA, tailA, textA):
+        # Sample positive: textA and textB share both head and tail
+        textB_pos = self.sample_positive(headA, tailA, textA)
+
+        # Check if positive was successfully sampled
+        if textB_pos is None:
+            return None, None, None
+
+        # Sample strong negatives
+        textB_strong_neg, textB_strong_neg_entities = self.sample_strong_negative(headA, tailA, textA)
+
+        # Check if strong negative was successfully sampled
+        if textB_strong_neg is None:
+            return None, None, None
+
+        # Create textB and textB_entities lists
+        textB = [textB_pos] + textB_strong_neg
+        textB_entities = [[headA, tailA]] + textB_strong_neg_entities
+
+        return textB, textB_entities, False
 
     def __getitem__(self, index):
         edge = self.graph_A[index]
@@ -223,37 +330,35 @@ class BoRDataset(FairseqDataset):
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
             textA = self.annotated_text_A.annotate(*(edge.numpy()))
 
-            # Sample positive text pair: textA and textB share both head and tail
-            textB_pos = self.sample_positive(headA, tailA, textA)
-            textB_pos_head, textB_pos_tail = 0, 1 # TODO: replace [0, 1] with real entities
+            if (
+                np.max(self.similar_entities.array[headA]) == -1 
+                or np.max(self.similar_entities.array[tailA]) == -1
+            ): 
+                # Sample MTB candidates
+                textB, textB_entities, use_bor_candidates = self.sample_mtb_candidates(headA, tailA, textA)
 
-            # Check if positive text pair was successfully sampled
-            if textB_pos is None:
-                return None
+            else: 
+                # Sample BoR candidates
+                textB, textB_entities, use_bor_candidates = self.sample_bor_candidates(headA, tailA, textA)
 
-            # Initialize textB list with textB_pos
-            textB = [textB_pos]
-            textB_entities = [[textB_pos_head, textB_pos_tail]]
+                if textB is None:
+                    # Sample MTB candidates
+                    textB, textB_entities, use_bor_candidates = self.sample_mtb_candidates(headA, tailA, textA)
 
-            if self.use_strong_negs:
-                # Sample one strong negative text pair
-                textB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
-                textB_strong_neg_head, textB_strong_neg_tail = 2, 3 # TODO: replace [2, 3] with real entities
+        # Check if textB candidates were successfully sampled
+        if textB is None:
+            return None
 
-                # Check if strong negative text pair was successfully sampled
-                if textB_strong_neg is None:
-                    return None
-
-                # Append textB_strong_neg to textB list
-                textB.append(textB_strong_neg)
-                textB_entities.append([textB_strong_neg_head, textB_strong_neg_tail])
-
+        # Make sure the correct number of textB and textB_entities have been sampled
+        assert len(textB) == self.n_strong_candidates
+        assert len(textB_entities) == self.n_strong_candidates
 
         item = {
             'textA': textA,
             'textB': textB,
             'textA_entities': [headA, tailA],
             'textB_entities': textB_entities,
+            'use_bor_candidates': use_bor_candidates, 
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
@@ -261,22 +366,41 @@ class BoRDataset(FairseqDataset):
 
         return item
 
-    def compute_candidate_weights(self, textA_entities, textB_entities):
+    def compute_candidate_weights(self, textA_entities, textB_entities, textB_strong_heads=[], textB_strong_tails=[]):
 
         headA, tailA = textA_entities
         headB, tailB = textB_entities[:, 0], textB_entities[:, 1]
-        headA_similar_entities, tailA_similar_entities = self.similar_entities[headA], self.similar_entities[tailA]
-        headA_similarity_scores, tailA_similarity_scores = self.similarity_scores[headA], self.similarity_scores[tailA]
+        headA_similar_entities, tailA_similar_entities = self.similar_entities.array[headA], self.similar_entities.array[tailA]
+        headA_similarity_scores, tailA_similarity_scores = self.similarity_scores.array[headA], self.similarity_scores.array[tailA]
 
         candidate_weights = -1 * np.ones_like(headB)
         for i in range(len(candidate_weights)):
-            cur_weight, cur_headB, cur_tailB = 0, headB[i], tailB[i]
-            for ent in [cur_headB, cur_tailB]:
-                if ent in headA_similar_entities:
-                    cur_weight += headA_similarity_scores[np.where(headA_similar_entities == ent)[0][0]]
-                if ent in tailA_similar_entities:
-                    cur_weight += tailA_similarity_scores[np.where(tailA_similar_entities == ent)[0][0]]
-            candidate_weights[i] = cur_weight / 4
+
+            if headB[i] in headA_similar_entities:
+                headA_headB_weight = headA_similarity_scores[np.where(headA_similar_entities == headB[i])[0][0]]
+            elif headB[i] in textB_strong_heads:
+                headA_headB_weight = 0.5
+            else:
+                headA_headB_weight = 0
+
+            if tailB[i] in tailA_similar_entities:
+                tailA_tailB_weight = tailA_similarity_scores[np.where(tailA_similar_entities == tailB[i])[0][0]]
+            elif tailB[i] in textB_strong_tails:
+                tailA_tailB_weight = 0.5
+            else:
+                tailA_tailB_weight = 0
+
+            if tailB[i] in headA_similar_entities:
+                headA_tailB_weight = self.head_tail_weight * headA_similarity_scores[np.where(headA_similar_entities == tailB[i])[0][0]]
+            else:
+                headA_tailB_weight = 0
+
+            if headB[i] in tailA_similar_entities:
+                tailA_headB_weight = self.head_tail_weight * tailA_similarity_scores[np.where(tailA_similar_entities == headB[i])[0][0]]
+            else:
+                tailA_headB_weight = 0
+                
+            candidate_weights[i] = headA_headB_weight + tailA_tailB_weight + headA_tailB_weight + tailA_headB_weight
 
         return F.softmax(torch.from_numpy(candidate_weights).float(), dim=0)
 
@@ -289,9 +413,6 @@ class BoRDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        # Get initial number of textBs per instance
-        n_textB_init = 2 if self.use_strong_negs else 1
-
         textA_list = []
         textB_dict = {}
         textB_entities_dict = {}
@@ -300,8 +421,17 @@ class BoRDataset(FairseqDataset):
         nsentences = 0
         ntokens_AB = 0
 
-        # Get array of textA entities
+        # Get array of headA and tailA entities (in batch idx order)
         textA_entities = np.array([instance['textA_entities'] for instance in instances])
+        headA_arr = textA_entities[:, 0]
+        tailA_arr = textA_entities[:, 1]
+
+        # Get arrays of headB and tailB entities (in batch idx order)
+        headB_arr = np.array(list(itertools.chain.from_iterable([instance['textB_entities'] for instance in instances])))[:, 0]
+        tailB_arr = np.array(list(itertools.chain.from_iterable([instance['textB_entities'] for instance in instances])))[:, 1]
+
+        # Get array of use_bor_candidates indicators
+        use_bor_candidates = [instance['use_bor_candidates'] for instance in instances]
 
         # Get array of textB lengths
         textB_len = np.array(list(itertools.chain.from_iterable([[len(t) for t in instance['textB']] for instance in instances])))
@@ -316,7 +446,7 @@ class BoRDataset(FairseqDataset):
 
         # Build textB clusters; initialize textB_dict, textB_entities_dict, and A2B_dict
         cluster_id = 0
-        textB_clusters = -1 * np.ones(batch_size * n_textB_init)
+        textB_clusters = -1 * np.ones(batch_size * self.n_strong_candidates)
         for c in cluster_candidates:
             if len(c) > 0:
                 textB_clusters[c] = cluster_id
@@ -329,10 +459,10 @@ class BoRDataset(FairseqDataset):
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
             for j, cur_textB in enumerate(instance['textB']):
-                cluster_id = textB_clusters[i * n_textB_init + j]
+                cluster_id = textB_clusters[i * self.n_strong_candidates + j]
                 textB_dict[cluster_id].append(cur_textB)
                 textB_entities_dict[cluster_id].append(instance['textB_entities'][j])
-                A2B_dict[cluster_id].append(i * n_textB_init + j)
+                A2B_dict[cluster_id].append(i * self.n_strong_candidates + j)
 
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
@@ -352,26 +482,47 @@ class BoRDataset(FairseqDataset):
             textB_entities_list += textB_entities_dict[cluster_id]
             A2B_list += A2B_dict[cluster_id]
         A2B_list = np.argsort(A2B_list)
-        A2B = A2B_list.reshape(batch_size, n_textB_init)
-        textB_entities = np.array(textB_entities_list)
+        A2B = A2B_list.reshape(batch_size, self.n_strong_candidates)
+        textB_entities = np.array(textB_entities_list) # in ascending length order
 
-        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
-        # using texts in the current batch
-        k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
-        textB_idxs = np.arange(batch_size * n_textB_init)
-        A2B_weak_negs = -1 * np.ones((batch_size, k_weak_negs))
-        candidate_weights = -1 * np.ones((batch_size, n_textB_init + k_weak_negs))
+        # Add n weak candidates to each instance, using candidates in the current batch
+        n_weak_candidates = min(self.n_weak_candidates, batch_size * self.n_strong_candidates - self.n_strong_candidates)
+        textB_idxs = np.arange(batch_size * self.n_strong_candidates)
+        A2B_weak_candidates = -1 * np.ones((batch_size, n_weak_candidates))
+        candidate_weights = -1 * np.ones((batch_size, self.n_strong_candidates + n_weak_candidates))
         for i in range(batch_size):
-            self_textB_cond = np.logical_and(textB_idxs != i*n_textB_init, textB_idxs != i*n_textB_init+1) if self.use_strong_negs else textB_idxs != i
-            weak_neg_candidates = A2B_list[textB_idxs[self_textB_cond]]
-            weak_negs = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()][:k_weak_negs]
-            A2B_weak_negs[i, :] = weak_negs
-            if n_textB_init == 1:
-                cur_A2B = np.concatenate(([A2B[i]], weak_negs)).astype(int)
+            self_textB_cond = np.logical_or(textB_idxs < i*self.n_strong_candidates, textB_idxs >= i*self.n_strong_candidates+self.n_strong_candidates)
+
+            weak_candidates_cond = np.logical_and(
+                self_textB_cond,
+                np.logical_not(np.logical_and(headB_arr == headA_arr[i], tailB_arr == tailA_arr[i]))
+            )
+
+            cur_weak_candidates = A2B_list[textB_idxs[weak_candidates_cond]]
+            cur_weak_candidates_sample = cur_weak_candidates[torch.randperm(len(cur_weak_candidates)).numpy()][:n_weak_candidates]
+
+            cur_weak_candidates = cur_weak_candidates_sample
+            while len(cur_weak_candidates) < n_weak_candidates:
+                cur_weak_candidates = np.concatenate((cur_weak_candidates, cur_weak_candidates_sample)) # pad to make up for discarded weak candidates
+            A2B_weak_candidates[i, :] = cur_weak_candidates[:n_weak_candidates]
+
+            if self.n_strong_candidates == 1:
+                cur_A2B = np.concatenate(([A2B[i]], cur_weak_candidates_sample)).astype(int)
             else:
-                cur_A2B = np.concatenate((A2B[i], weak_negs)).astype(int)
-            candidate_weights[i, :] = self.compute_candidate_weights(textA_entities[i], textB_entities[cur_A2B])
-        A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
+                cur_A2B = np.concatenate((A2B[i], cur_weak_candidates_sample)).astype(int)
+
+            if use_bor_candidates[i]:
+                strong_A2B = A2B_list[textB_idxs[np.logical_not(self_textB_cond)][1:]]
+                candidate_weights[i, :] = self.compute_candidate_weights(
+                    textA_entities[i], 
+                    textB_entities[cur_A2B], 
+                    textB_entities[strong_A2B][:, 0],
+                    textB_entities[strong_A2B][:, 1]
+                )
+            else:
+                candidate_weights[i, :] = self.compute_candidate_weights(textA_entities[i], textB_entities[cur_A2B])
+                
+        A2B = np.concatenate((A2B, A2B_weak_candidates), axis=1).flatten()
 
         batch_dict = {
             'textA': padded_textA,
@@ -380,6 +531,7 @@ class BoRDataset(FairseqDataset):
             'target': torch.zeros(batch_size, dtype=torch.long),
             'candidate_weights': torch.FloatTensor(candidate_weights),
             'size': batch_size,
+            'n_bor_instances': np.sum(use_bor_candidates),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'ntokens_AB': ntokens_AB,

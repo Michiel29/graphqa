@@ -20,8 +20,8 @@
             "n_valid_examples": 20000,
             "split_mode": false,
 
-            "update_freq": 10,
-            "epoch_size": 3e5,
+            "update_freq": 6,
+            "epoch_size": 5e5,
             "max_sentences": 62,
             "max_tokens": 1e10,
 
@@ -40,8 +40,8 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 10,
-            "epoch_size": 3e5,
+            "update_freq": 6,
+            "epoch_size": 5e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 62,

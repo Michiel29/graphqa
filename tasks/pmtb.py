@@ -101,7 +101,7 @@ class PMTBTask(RelationInferenceTask):
 
         if (self.args.strong_negatives and self.args.strong_negative_type == 'similarity') or self.args.similar_positives:
             similar_entities = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.idx.npy'))
-            similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.scores.npy'))
+            similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates.scores.npy')) 
         else:
             similar_entities = None
             similarity_scores = None

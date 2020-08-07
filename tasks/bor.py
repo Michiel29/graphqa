@@ -28,18 +28,16 @@ class BoRTask(RelationInferenceTask):
         """Add task-specific arguments to the parser."""
 
         """Required either in config or cl"""
-        parser.add_argument('--k_weak_negs', type=float,
-                            help='number of weak negatives per positive')
+        parser.add_argument('--n_strong_candidates', default=int,
+                            help='number of strong candidates per instance')
+        parser.add_argument('--n_weak_candidates', type=int,
+                            help='number of weak candidates per instance')
+        parser.add_argument('--head_tail_weight', type=float,
+                            help='weight for similarity score between head and tail entities')
         parser.add_argument('--n_tries_entity', type=int,
                             help='number of attempts to sample entity candidates')
         parser.add_argument('--split_mode', default=False,
                             help='whether train and validation sets have disjoint entities')
-        parser.add_argument('--use_strong_negs', default=True,
-                            help='whether to use strong negatives')
-        parser.add_argument('--replace_tail', default=False,
-                            help='whether to always replace tail when sampling strong negatives')
-        parser.add_argument('--mutual-neighbors', default=False,
-                            help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
 
@@ -97,12 +95,9 @@ class BoRTask(RelationInferenceTask):
             seed=self.args.seed,
         )
 
-        if self.args.data_path == '../data/nki/bin-v5-threshold20':
-            similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1133_25.candidates.idx.npy'))
-            similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1133_25.candidates.score.npy'))
-        elif self.args.data_path == '../data/nki/bin-v6':
-            similar_entities = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.idx.npy'))
-            similarity_scores = np.load(os.path.join(self.args.data_path, 'entity.train.1109_22.candidates.score.npy'))
+        if self.args.data_path in ['../data/nki/bin-v5-threshold20', '../data/nki/bin-v5-threshold20-small']:
+            similar_entities = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.candidates_remap.idx.npy'))
+            similarity_scores = MMapNumpyArray(os.path.join(self.args.data_path, 'entity.scores_remap.idx.npy'))
         else:
             raise Exception("Top 1000 similar entities/scores data not available for the given dataset.")
 
@@ -117,11 +112,10 @@ class BoRTask(RelationInferenceTask):
             similarity_scores=similarity_scores,
             seed=self.args.seed,
             dictionary=self.dictionary,
-            k_weak_negs=self.args.k_weak_negs,
+            n_strong_candidates=self.args.n_strong_candidates,
+            n_weak_candidates=self.args.n_weak_candidates,
+            head_tail_weight=self.args.head_tail_weight,
             n_tries_entity=self.args.n_tries_entity,
-            use_strong_negs=self.args.use_strong_negs,
-            replace_tail=self.args.replace_tail,
-            mutual_neighbors=self.args.mutual_neighbors,
         )
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
