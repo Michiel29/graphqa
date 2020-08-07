@@ -21,11 +21,11 @@
             "split_mode": false,
 
             "update_freq": 10,
-            "epoch_size": 3e5,
+            "epoch_size": 6e5,
             "max_sentences": 62,
             "max_tokens": 1e10,
 
-            "num_workers": 4,
+            "num_workers": 8,
 
             "criterion": "bor",
             "weight": 0.5
@@ -41,7 +41,7 @@
             "mask_whole_words": true,
 
             "update_freq": 10,
-            "epoch_size": 3e5,
+            "epoch_size": 6e5,
             "n_valid_examples": 20000,
 
             "max_sentences": 62,
