@@ -57,6 +57,7 @@ class BoRDataset(FairseqDataset):
         self.dictionary = dictionary
 
         self.n_strong_candidates = n_strong_candidates
+        assert self.n_strong_candidates >= 2
         self.n_weak_candidates = n_weak_candidates
         self.head_tail_weight = head_tail_weight
         self.n_tries_entity = n_tries_entity
