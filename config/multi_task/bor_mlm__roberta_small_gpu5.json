@@ -10,7 +10,7 @@
             "scoring_function": null,
             "mlp_layer_sizes": [[256, 2]],
             "mlp_layer_norm": true,
-            "n_strong_candidates": 3,
+            "n_strong_candidates": 4,
             "n_weak_candidates": 100,
             "head_tail_weight": 0.5,
             "n_tries_entity": 100,
@@ -20,9 +20,9 @@
             "n_valid_examples": 20000,
             "split_mode": false,
 
-            "update_freq": 6,
+            "update_freq": 8,
             "epoch_size": 8e5,
-            "max_sentences": 62,
+            "max_sentences": 47,
             "max_tokens": 1e10,
 
             "num_workers": 8,
@@ -40,11 +40,11 @@
             "freq_weighted_replacement": false,
             "mask_whole_words": true,
 
-            "update_freq": 6,
+            "update_freq": 8,
             "epoch_size": 8e5,
             "n_valid_examples": 20000,
 
-            "max_sentences": 62,
+            "max_sentences": 47,
             "max_tokens": 1e10,
 
             "num_workers": 2,
@@ -71,7 +71,7 @@
     "lr": [1e-4],
 
     "num_workers": 4,
-    "max_sentences": 62,
+    "max_sentences": 47,
     "update_freq": null,
     "max_tokens": 1e10
 }
