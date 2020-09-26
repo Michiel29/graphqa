@@ -14,6 +14,7 @@ from .mtb_plus import MTBPlusTask
 from .gnn_task import GNNTask
 from .gnn_eval_task import GNNEvalTask
 from .graph_distance import GraphDistanceTask
+from .triviaqa import TriviaQATask
 
 from .multi_task import MultiTask
 
