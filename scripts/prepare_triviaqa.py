@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import os
 import tqdm
+import re
 
 import torch
 
@@ -104,6 +105,9 @@ class TriviaQAProcessor(object):
             entity_end = entity_start + len(surface_form) - 1
             if entity_start > 0:
                 if string[entity_start - 1] != ' ':
+                    # Filter out cases where google erroniously recongizes entity in the middle of the word Eg: one in anyone
+                    if entity_start - 2 > 0 and string[entity_start - 2] != ' ' and string[entity_start - 3] != ' ':
+                        continue
                     string = string[:entity_start] + ' ' + string[entity_start:]
                     entity_end += 1
 
@@ -114,36 +118,61 @@ class TriviaQAProcessor(object):
 
             if entity_end + 1 < len(string):
                 if string[entity_end + 1] != ' ':
+                    if entity_end + 3 < len(string) and string[entity_end + 2] != ' ' and string[entity_end + 3] != ' ':
+                        continue
                     string = string[:entity_end + 1] + ' ' + string[entity_end + 1:]
+
 
             new_annotation.append(new_entity)
         return string, new_annotation
 
-    def process_annotation(self, words, annotation, word_to_token):
+    def find_all(self, substring, string):
+        starts = []
+        current_position = 0
+        while True:
+            position = string[current_position:].find(substring)
+            if position >= 0:
+                position = position + current_position
+                starts.append(position)
+                current_position = position + 1
+            else:
+                break
+        return starts
+
+    def process_annotation(self, string, words, annotation, word_to_token):
+        strip_string = string.replace(' ', '')
+        word_starts = []
+        word_ends = []
+        cumulative_characters = 0
+        for word in words:
+            word_starts.append(cumulative_characters)
+            word_ends.append(cumulative_characters + len(word))
+            cumulative_characters += len(word)
         already_done = []
         for entity in annotation:
             surface_form = entity['mentions'][0]['content']
-            entity_words = surface_form.split(' ')
-            candidate_starts = list()
-            for i in range(len(words) - len(entity_words)):
-                if entity_words == words[i:i+len(entity_words)]:
-                    candidate_starts.append(i)
+            surface_strip = surface_form.replace(' ', '')
+            candidate_character_positions = self.find_all(surface_strip, strip_string)
+            candidate_word_positions = []
+            for character_position in candidate_character_positions:
+                if character_position in word_starts and character_position + len(surface_strip) in word_ends:
+                    word_position = (word_starts.index(character_position), word_ends.index(character_position + len(surface_strip)))
+                    candidate_word_positions.append(word_position)
 
-            assert len(candidate_starts) > 0
+            assert len(candidate_word_positions) > 0
 
-            position = None
-            for candidate_start in candidate_starts:
-                interval = (candidate_start, candidate_start + len(entity_words))
-                if interval not in already_done:
-                    position = interval
-                    already_done.append(position)
+            word_position = None
+            for candidate_position in candidate_word_positions:
+                if candidate_position not in already_done:
+                    word_position = candidate_position
+                    already_done.append(word_position)
                     break
 
-            if position is None:
+            if word_position is None:
                 continue
 
-            start_token = word_to_token[position[0]]
-            end_token = word_to_token[position[1]]
+            start_token = word_to_token[word_position[0]]
+            end_token = word_to_token[word_position[1]]
             entity['position'] = (start_token, end_token)
         return annotation
 
@@ -152,7 +181,7 @@ class TriviaQAProcessor(object):
         string, annotation = self.add_spaces_around_annotations(string, annotation)
         words = self.strip_empty_words(string)
         ids, word_to_token = self.apply_gt2_bpe(' '.join(words), annotation)
-        annotation = self.process_annotation(words, annotation, word_to_token)
+        annotation = self.process_annotation(string, words, annotation, word_to_token)
 
         if len(ids) >= self.max_positions:
             return None
