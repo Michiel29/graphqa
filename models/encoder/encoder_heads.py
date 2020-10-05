@@ -236,6 +236,70 @@ class EntityPoolingFirstToken(nn.Module):
         ) # [batch_size, 2 * enc_dim]
         return head_tail_concat
 
+class EntityConcatAttention(nn.Module):
+    """ Generate relation representation for mentions i, j by concatenating first and last token of the mentions, then applying attention layer. More specifically,
+
+        M_i = [h(s_i); h(e_i)] where h(s_i) and h(e_i) are representations of starting and ending token of mention, respectively
+        R_i,j = g([M_i; M_j]) where g applies an attention block with M_i; M_j as the query and M_i;M_j and the token representations in the passage as keys and values
+    """
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+        head_first = x.index_select(1, annotation[:,0,0])
+        head_last = x.index_select(1, annotation[:,0,1])
+        tail_first = x.index_select(1, annotation[:,1,0])
+        tail_last = x.index_select(1, annotation[:,1,1])
+
+        head_tail_concat = torch.cat(
+            (head_first, head_last, tail_first, tail_last),
+            dim=-1,
+        ) # [batch_size, 2 * enc_dim]
+        return head_tail_concat
+
+class EntityConcat(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+
+        a = torch.nonzero((annotation > x.shape[1]))
+        if len(a) > 0:
+            b = 2
+
+
+        entity_rep = x.gather(1, annotation.view(-1, 4, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 4, enc_dim]
+        head_tail_concat = entity_rep.view(x.shape[0], -1) # [batch_size, enc_dim * 4]
+
+        return head_tail_concat
+
+
+class EntityConcatAllRelation(nn.Module):
+    """
+    As EntityConcatAttention, but for all pairs of mentions in passage"""
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+        head_first_tokens = torch.max(annotation == 0, dim=1)[1]
+        tail_first_tokens = torch.max(annotation == 1, dim=1)[1]
+        arange = torch.arange(x.shape[0], device=x.device)
+
+        head_tail_concat = torch.cat(
+            (
+                x[arange, head_first_tokens],
+                x[arange, tail_first_tokens],
+            ),
+            dim=-1,
+        ) # [batch_size, 2 * enc_dim]
+        return head_tail_concat
+
 
 class CLSTokenLinear(nn.Module):
     def __init__(self, args, dictionary):
@@ -265,6 +329,8 @@ encoder_head_dict = {
     'entity_split_linear': EntitySplitLinear,
     'entity_target_linear': EntityTargetLinear,
     'entity_pooling_first_token': EntityPoolingFirstToken,
+    'entity_concat': EntityConcat,
+    'entity_concat_attention': EntityConcatAttention,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,
 }

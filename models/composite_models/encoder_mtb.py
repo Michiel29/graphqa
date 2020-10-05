@@ -35,12 +35,14 @@ class EncoderMTBModel(BaseFairseqModel):
     def forward(self, batch):
         n_pairs = int(batch['A2B'].numel()/batch['size'])
 
-        textA_enc, _ = self.encoder(batch['textA']) # [batch_size, enc_dim]
+        textA_enc, _ = self.encoder(batch['textA'], annotation=batch['annotationA']) # [batch_size, enc_dim]
         textA_enc = torch.repeat_interleave(textA_enc, n_pairs, dim=0)
 
         textB_enc = []
-        for cluster_texts in batch['textB'].values():
-            cur_textB_enc, _ = self.encoder(cluster_texts)
+        for cluster_id in batch['textB']:
+            cluster_texts = batch['textB'][cluster_id]
+            annotation = batch['annotationB'][cluster_id]
+            cur_textB_enc, _ = self.encoder(cluster_texts, annotation=annotation)
             textB_enc.append(cur_textB_enc)
         textB_enc = torch.cat(textB_enc, dim=0)
         textB_enc = torch.index_select(textB_enc, 0, batch['A2B'])

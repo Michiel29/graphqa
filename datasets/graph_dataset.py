@@ -16,6 +16,10 @@ class GraphDataset(FairseqDataset):
     # (right_entity, left_entity, left_start_pos, left_end_pos, right_start_pos, right_end_pos, start_block, end_block)
     TAIL_ENTITY = 0
     HEAD_ENTITY = 1
+    LEFT_START_POS = 2
+    LEFT_END_POS = 3
+    RIGHT_START_POS = 4
+    RIGHT_END_POS = 5
     START_BLOCK = 6
     END_BLOCK = 7
 

@@ -29,7 +29,7 @@ class AnnotatedText(object):
 
         self.dictionary = dictionary
         self.mask_type = mask_type
-        assert self.mask_type in ['head_tail', 'start_end', None]
+        assert self.mask_type in ['concat', 'start_end', None]
         self.non_mask_rate = non_mask_rate
 
         offsets = np.roll(np.cumsum(self.text_data._index._sizes), 1)
@@ -104,8 +104,8 @@ class AnnotatedText(object):
             tail_start_pos -= start_block
             tail_end_pos -= start_block
 
-        if self.mask_type == 'head_tail':
-            text = self.head_tail_mask(
+        if self.mask_type == 'concat':
+            text = self.concat_mask(
                 text,
                 annotations,
                 head_entity,
@@ -130,7 +130,8 @@ class AnnotatedText(object):
             raise Exception('Unknown mask type: %s' % self.mask_type)
 
         text = torch.tensor(text)
-        return text
+        annotation_positions = [(head_start_pos, head_end_pos), (tail_start_pos, tail_end_pos)]
+        return text, annotation_positions
 
     def annotations_block(self, start_block, end_block):
         # From http://sociograph.blogspot.com/2011/12/gotcha-with-numpys-searchsorted.html
@@ -186,7 +187,7 @@ class AnnotatedText(object):
         index = np.random.randint(len(annotations))
         return annotations[index]
 
-    def head_tail_mask(
+    def concat_mask(
         self,
         text,
         annotations,
@@ -197,32 +198,13 @@ class AnnotatedText(object):
         tail_start_pos,
         tail_end_pos,
     ):
-        text = self.mask_annotations(
-            text,
-            annotations,
-            head_entity,
-            self.dictionary.blank_head_other(),
-            target_annotation_start=head_start_pos,
-        )
-        text = self.mask_annotations(
-            text,
-            annotations,
-            tail_entity,
-            self.dictionary.blank_tail_other(),
-            target_annotation_start=tail_start_pos,
-        )
         text[slice(head_start_pos, head_end_pos)] = -1
-        text[head_start_pos] = self.dictionary.head()
+        text[head_start_pos] = self.dictionary.blank()
         text[slice(tail_start_pos, tail_end_pos)] = -1
-        text[tail_start_pos] = self.dictionary.tail()
+        text[tail_start_pos] = self.dictionary.blank()
 
         text = text[text != -1]
 
-        assert (
-            (text == self.dictionary.blank_head_other()).sum()
-            + (text == self.dictionary.blank_tail_other()).sum()
-            == len(annotations) - 2
-        )
         return text
 
     def prepare_replacements(

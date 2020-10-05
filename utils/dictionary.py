@@ -36,7 +36,7 @@ class CustomDictionary(Dictionary):
         blank_head_other_token=blank_head_other_df,
         blank_tail_other_token=blank_tail_other_df,
     ):
-        super().__init__(pad, eos, unk, bos)
+        super().__init__(pad=pad, eos=eos, unk=unk, bos=bos)
 
         self.head_token = head_token
         self.tail_token = tail_token

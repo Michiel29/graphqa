@@ -15,12 +15,19 @@ class TriviaQADataset(FairseqDataset):
 
     def __init__(
         self,
+        questions,
+        answers,
+        annotations,
         dictionary,
         seed,
     ):
+        self.questions = questions
+        self.answers = answers
+        self.annotations = annotations
         self.dictionary = dictionary
         self.seed = seed
         self.epoch = 0
+
 
 
     def set_epoch(self, epoch):
@@ -28,11 +35,11 @@ class TriviaQADataset(FairseqDataset):
 
     def __getitem__(self, index):
         with data_utils.numpy_seed('triviaqa', self.seed, self.epoch, index):
-
+            pass
 
         item = {
-            'text': annot_item,
-            'target': relation
+            # 'text': annot_item,
+            # 'target': relation
         }
 
         return item

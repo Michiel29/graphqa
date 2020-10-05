@@ -1,5 +1,5 @@
 CUDA (10.1 works)
 torch # 1.4.0, cuda 10.1 works
 apex (https://github.com/NVIDIA/apex)
-build latest fairseq from source
+fairseq commit e8d2ebb9ae35f7f60cadeed268feed14f6c4521b
 

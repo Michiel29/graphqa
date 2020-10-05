@@ -111,14 +111,14 @@ class MTBDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.annotated_text_B.annotate(*(edge))
+            textB, annotation_positions = self.annotated_text_B.annotate(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
             if not torch.equal(textA, textB):
-                return textB
+                return textB, annotation_positions
 
-        return None
+        return None, None
 
     def sample_positive(self, headA, tail, textA):
 
@@ -130,7 +130,7 @@ class MTBDataset(FairseqDataset):
 
         # Check that head and tail are mentioned in at least one training text
         if (
-            self.split == 'train' and len(head_neighbors_idxs) < 2 
+            self.split == 'train' and len(head_neighbors_idxs) < 2
             or self.split == 'valid' and len(head_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -142,9 +142,9 @@ class MTBDataset(FairseqDataset):
         head_tail_edges = head_tail_edges[torch.randperm(len(head_tail_edges)).numpy()]
 
         # Sample textB_pos from head-tail edges
-        textB_pos = self.sample_text(head_tail_edges, textA, 'share_two')
+        textB_pos, annotation_positionsB_pos = self.sample_text(head_tail_edges, textA, 'share_two')
 
-        return textB_pos
+        return textB_pos, annotation_positionsB_pos
 
     def sample_strong_negative(self, headA, tailA, textA):
 
@@ -203,22 +203,24 @@ class MTBDataset(FairseqDataset):
             replace_edges = replace_edges[torch.randperm(len(replace_edges)).numpy()]
 
             # Sample textB_strong_neg from replace_edges
-            textB_strong_neg = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[replace_entity]])
+            textB_strong_neg, annotation_positionsB_strong_neg = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[replace_entity]])
             if textB_strong_neg is not None:
                 break
 
-        return textB_strong_neg
+        return textB_strong_neg, annotation_positionsB_strong_neg
 
     def __getitem__(self, index):
         edge = self.graph_A[index]
         headA = edge[GraphDataset.HEAD_ENTITY].item()
         tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
+
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge.numpy()))
+            textA, annotation_positionsA = self.annotated_text_A.annotate(*(edge.numpy()))
+            annotationA = annotation_positionsA
 
             # Sample positive text pair: textA and textB share both head and tail
-            textB_pos = self.sample_positive(headA, tailA, textA)
+            textB_pos, annotation_positionsB_pos = self.sample_positive(headA, tailA, textA)
 
             # Check if positive text pair was successfully sampled
             if textB_pos is None:
@@ -226,11 +228,12 @@ class MTBDataset(FairseqDataset):
 
             # Initialize textB list with textB_pos
             textB = [textB_pos]
+            annotationB = [annotation_positionsB_pos]
 
-        
+
             if self.use_strong_negs:
                 # Sample one strong negative text pair
-                textB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
+                textB_strong_neg, annotation_positionsB_strong_neg = self.sample_strong_negative(headA, tailA, textA)
 
                 # Check if strong negative text pair was successfully sampled
                 if textB_strong_neg is None:
@@ -238,11 +241,14 @@ class MTBDataset(FairseqDataset):
 
                 # Append textB_strong_neg to textB list
                 textB.append(textB_strong_neg)
+                annotationB.append(annotation_positionsB_strong_neg)
 
 
         item = {
             'textA': textA,
+            'annotationA': annotationA,
             'textB': textB,
+            'annotationB': annotationB,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
@@ -263,7 +269,9 @@ class MTBDataset(FairseqDataset):
         n_textB_init = 2 if self.use_strong_negs else 1
 
         textA_list = []
+        annotationA_list = []
         textB_dict = {}
+        annotationB_dict = {}
         A2B_dict = {}
         ntokens = 0
         nsentences = 0
@@ -287,17 +295,20 @@ class MTBDataset(FairseqDataset):
             if len(c) > 0:
                 textB_clusters[c] = cluster_id
                 textB_dict[cluster_id] = []
+                annotationB_dict[cluster_id] = []
                 A2B_dict[cluster_id] = []
                 cluster_id += 1
 
         # Populate textA_list, textB_dict, and other auxiliary lists
         for i, instance in enumerate(instances):
             textA_list.append(instance['textA'])
+            annotationA_list.append(instance['annotationA'])
             for j, cur_textB in enumerate(instance['textB']):
                 cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
+                annotationB_dict[cluster_id].append(instance['annotationB'][j])
                 A2B_dict[cluster_id].append(i * n_textB_init + j)
-            
+
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -316,7 +327,7 @@ class MTBDataset(FairseqDataset):
         A2B_list = np.argsort(A2B_list)
         A2B = A2B_list.reshape(batch_size, n_textB_init)
 
-        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive, 
+        # Add k weak negatives (i.e., negatives not guaranteed to be strong) to each positive,
         # using texts in the current batch
         k_weak_negs = min(self.k_weak_negs, batch_size * n_textB_init - n_textB_init)
         textB_idxs = np.arange(batch_size * n_textB_init)
@@ -330,7 +341,9 @@ class MTBDataset(FairseqDataset):
 
         batch_dict = {
             'textA': padded_textA,
+            'annotationA': torch.LongTensor(annotationA_list),
             'textB': padded_textB,
+            'annotationB': {key: torch.LongTensor(value) for key, value in annotationB_dict.items()},
             'A2B': torch.LongTensor(A2B),
             'target': torch.zeros(batch_size, dtype=torch.long),
             'size': batch_size,

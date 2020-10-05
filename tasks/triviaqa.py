@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 
 from fairseq.tasks import register_task
 
@@ -29,15 +30,6 @@ class TriviaQATask(BaseTask):
 
         """Required either in config or cl"""
         parser.add_argument('--data_path', help='path to data')
-        parser.add_argument('--n_way', default=5, help='number of few-shot classes')
-        parser.add_argument('--n_shot', default=1, help='number of few-shot examples')
-
-    @classmethod
-    def setup_task(cls, args, **kwargs):
-        dict_path = os.path.join(args.data_path, 'dict.txt')
-        dictionary = CustomDictionary.load(dict_path)
-        logger.info('dictionary: {} types'.format(len(dictionary)))
-        return cls(args, dictionary, None)
 
     def load_dataset(self, split, prune_type=None, prune_param=None, epoch=0, combine=False, **kwargs):
 
@@ -49,9 +41,12 @@ class TriviaQATask(BaseTask):
             os.path.join(self.args.data_path, split + '.answer_entities.npy'),
         )
 
+        with open(os.path.join(self.args.data_path, split + '.annotations.json')) as f:
+            annotations = json.load(f)
 
+        dataset = TriviaQADataset(questions, answers, annotations, self.dictionary, self.seed)
 
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['questions'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:
