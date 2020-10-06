@@ -74,7 +74,7 @@ class FewRelDataset(FairseqDataset):
     def __getitem__(self, index):
         with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
             text_index = index if self.filtered_relation_dataset is None else self.filtered_item_index[index]
-            target_item = self.annotation_text.annotate_sentence(text_index, head_entity=0, tail_entity=1)
+            target_item, target_annotation = self.annotation_text.annotate_sentence(text_index, head_entity=0, tail_entity=1)
             target_relation = self.relation_dataset[index].item() if self.filtered_relation_dataset is None else self.filtered_relation_dataset[index]
             relations = rd.choice(
                 self.relations,
@@ -89,21 +89,25 @@ class FewRelDataset(FairseqDataset):
             relations = [target_relation] + relations
 
             exemplars = []
+            exemplars_annotation = []
             for rel in relations:
                 rel_examplar_idxs = rd.choice(self.relation_index[rel], size=self.n_shot, replace=False)
-                exemplars += [
-                    self.annotation_text.annotate_sentence(idx, head_entity=0, tail_entity=1)
-                    for idx in rel_examplar_idxs
-                ]
+
+                for idx in rel_examplar_idxs:
+                    text, exemplar_annotation = self.annotation_text.annotate_sentence(idx, head_entity=0, tail_entity=1)
+                    exemplars.append(text)
+                    exemplars_annotation.append(exemplar_annotation)
 
             ntokens, nsentences = len(target_item), 1
             for exemplar in exemplars:
                 nsentences += 1
-                ntokens += len(exemplars)
+                ntokens += len(exemplar)
 
         item = {
             'text': target_item,
+            'annotation': target_annotation,
             'exemplars': exemplars,
+            'exemplars_annotation': exemplars_annotation,
             'ntokens': ntokens,
             'nsentences': nsentences,
         }
@@ -138,12 +142,16 @@ class FewRelDataset(FairseqDataset):
             return None
 
         text = []
+        annotation = []
         exemplars = []
+        exemplars_annotation = []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
+            annotation.append(instance['annotation'])
             exemplars += instance['exemplars']
+            exemplars_annotation.append(instance['exemplars_annotation'])
             ntokens += len(instance['text']) + sum([len(s) for s in instance['exemplars']])
             nsentences += 1 + len(instance['exemplars'])
 
@@ -152,7 +160,9 @@ class FewRelDataset(FairseqDataset):
 
         item = {
             'text': padded_text,
+            'annotation': torch.LongTensor(annotation),
             'exemplars': padded_exemplars,
+            'exemplars_annotation': torch.LongTensor(exemplars_annotation),
             'target': torch.zeros(len(instances), dtype=torch.long),
             'batch_size': len(instances),
             'ntokens': ntokens,

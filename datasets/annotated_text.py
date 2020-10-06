@@ -104,8 +104,9 @@ class AnnotatedText(object):
             tail_start_pos -= start_block
             tail_end_pos -= start_block
 
+        annotation_positions = None
         if self.mask_type == 'concat':
-            text = self.concat_mask(
+            text, annotation_positions = self.concat_mask(
                 text,
                 annotations,
                 head_entity,
@@ -130,7 +131,7 @@ class AnnotatedText(object):
             raise Exception('Unknown mask type: %s' % self.mask_type)
 
         text = torch.tensor(text)
-        annotation_positions = [(head_start_pos, head_end_pos), (tail_start_pos, tail_end_pos)]
+
         return text, annotation_positions
 
     def annotations_block(self, start_block, end_block):
@@ -198,14 +199,47 @@ class AnnotatedText(object):
         tail_start_pos,
         tail_end_pos,
     ):
-        text[slice(head_start_pos, head_end_pos)] = -1
-        text[head_start_pos] = self.dictionary.blank()
-        text[slice(tail_start_pos, tail_end_pos)] = -1
-        text[tail_start_pos] = self.dictionary.blank()
 
-        text = text[text != -1]
 
-        return text
+        replacements = self.prepare_replacements(
+            text,
+            annotations,
+            head_entity,
+            head_start_pos,
+            None,
+            None,
+            self.dictionary.blank_head_other(),
+        ) + self.prepare_replacements(
+            text,
+            annotations,
+            tail_entity,
+            tail_start_pos,
+            None,
+            None,
+            self.dictionary.blank_tail_other(),
+        )
+        replacements.sort()
+        replacements = reversed(replacements)
+
+        position_idx = np.arange(len(text))
+
+
+        for start_pos, end_pos, replacement_tokens in replacements:
+
+
+            n_removed = (end_pos - start_pos) - len(replacement_tokens)
+            position_idx[end_pos-1:] -= n_removed
+            position_idx[start_pos:end_pos-1] = position_idx[start_pos]
+
+            text = np.concatenate([
+                text[:start_pos],
+                replacement_tokens,
+                text[end_pos:],
+            ])
+
+        annotation_positions = [(position_idx[head_start_pos], position_idx[head_end_pos]), (position_idx[tail_start_pos], position_idx[tail_end_pos])]
+
+        return text, annotation_positions
 
     def prepare_replacements(
         self,
@@ -232,16 +266,23 @@ class AnnotatedText(object):
                 is_target_annotation = (annotation_start_pos == target_annotation_start)
                 if is_target_annotation:
                     if mask_decision:
+                        replacement_text = [self.dictionary.blank()]
+                        if marker_start:
+                            replacement_text = [marker_start] + replacement_text + [marker_end]
+
                         replacements.append((
                             annotation_start_pos,
                             annotation_end_pos,
-                            [marker_start, self.dictionary.blank(), marker_end],
+                            replacement_text,
                         ))
                     else:
+                        replacement_text = text[annotation_start_pos:annotation_end_pos]
+                        if marker_start:
+                            replacement_text = np.concatenate(([marker_start], replacement_text, [marker_end]))
                         replacements.append((
                             annotation_start_pos,
                             annotation_end_pos,
-                            np.concatenate(([marker_start], text[annotation_start_pos:annotation_end_pos], [marker_end]))
+                            replacement_text
                         ))
                 else:
                     if mask_decision:

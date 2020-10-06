@@ -171,7 +171,7 @@ class MTBDataset(FairseqDataset):
 
         # Check that keep_entity has at least one neighbor besides replace_entity
         if len(candidate_edge_idxs) < 1:
-            return None
+            return None, None
 
         # Get all of entity_keep's edges, excluding those shared with entity_replace
         candidate_edges = keep_entity_edges[candidate_edge_idxs, :]

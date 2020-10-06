@@ -1,7 +1,7 @@
 {
     "seed": 0,
-    
-    "mask_type": "start_end",
+
+    "mask_type": "concat",
 
     "n_train_examples": null,
     "n_valid_examples": null,
@@ -18,7 +18,7 @@
     "max_iter": 1e5,
     "verbose": 0,
     "C_vals": [5e2, 1e2, 5e1, 1e1, 5e0, 1e0, 5e-1, 1e-1, 5e-2, 1e-2, 5e-3, 1e-3],
-    
+
     "scaler_type": "standard",
     "n_splits": 3,
     "test_size": 0.2,

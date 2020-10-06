@@ -33,11 +33,12 @@ class SemEval2010Task8Dataset(FairseqDataset):
 
     def __getitem__(self, index):
         with data_utils.numpy_seed(271828, self.seed, self.epoch, index):
-            annot_item = self.annotation_text.annotate_sentence(index, head_entity=1, tail_entity=2)
+            annot_item, annotation = self.annotation_text.annotate_sentence(index, head_entity=1, tail_entity=2)
             relation = self.relation_dataset[index]
 
         item = {
             'text': annot_item,
+            'annotation': annotation,
             'target': relation
         }
 
@@ -65,12 +66,13 @@ class SemEval2010Task8Dataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        text, target = [], []
+        text, target, annotation = [], [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
             target.append(instance['target'])
+            annotation.append(instance['annotation'])
             ntokens += len(instance['text'])
             nsentences += 1
 
@@ -79,6 +81,7 @@ class SemEval2010Task8Dataset(FairseqDataset):
         batch = {
             'text': padded_text,
             'target': torch.LongTensor(target),
+            'annotation': torch.LongTensor(annotation),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': batch_size,

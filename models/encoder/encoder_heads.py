@@ -267,10 +267,20 @@ class EntityConcat(nn.Module):
     def forward(self, x, src_tokens, annotation, **unused):
         # x: [batch_size, length, enc_dim]
 
-        a = torch.nonzero((annotation > x.shape[1]))
-        if len(a) > 0:
-            b = 2
+        entity_rep = x.gather(1, annotation.view(-1, 4, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 4, enc_dim]
+        head_tail_concat = entity_rep.view(x.shape[0], -1) # [batch_size, enc_dim * 4]
 
+        return head_tail_concat
+
+
+class EntityConcatLinear(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        self.linear = nn.Linear(4 * args.encoder_embed_dim, args.entity_dim)
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
 
         entity_rep = x.gather(1, annotation.view(-1, 4, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 4, enc_dim]
         head_tail_concat = entity_rep.view(x.shape[0], -1) # [batch_size, enc_dim * 4]
@@ -330,6 +340,7 @@ encoder_head_dict = {
     'entity_target_linear': EntityTargetLinear,
     'entity_pooling_first_token': EntityPoolingFirstToken,
     'entity_concat': EntityConcat,
+    'entity_concat_linear': EntityConcatLinear,
     'entity_concat_attention': EntityConcatAttention,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,

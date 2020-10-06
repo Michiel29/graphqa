@@ -28,7 +28,7 @@ class EncoderFewRelModel(BaseFairseqModel):
 
         goal_enc, _ = self.encoder(goal_text, annotation=batch.get('annotation'))
         goal_enc = goal_enc.unsqueeze(-1) # [batch_size, enc_dim, 1]
-        exemplar_encs, _ = self.encoder(exemplars, annotation=batch.get('exemplars_annotations')) # [batch_size, n_way * n_shot, enc_dim]
+        exemplar_encs, _ = self.encoder(exemplars, annotation=batch.get('exemplars_annotation')) # [batch_size, n_way * n_shot, enc_dim]
         reshaped_exemplar_encs = torch.reshape(exemplar_encs, (batch_size, self.n_way, self.n_shot, -1))
 
         class_encs = torch.mean(reshaped_exemplar_encs, dim=2) # [batch_size, n_way, enc_dim]
