@@ -339,11 +339,18 @@ class MTBDataset(FairseqDataset):
             A2B_weak_negs[i, :] = weak_negs
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
+        if len(annotationA_list) > 0 and annotationA_list[0] is not None:
+            annotationA = torch.LongTensor(annotationA_list)
+            annotationB = {key: torch.LongTensor(value) for key, value in annotationB_dict.items()}
+        else:
+            annotationA = None
+            annotationB = {key: None for key  in annotationB_dict}
+
         batch_dict = {
             'textA': padded_textA,
-            'annotationA': torch.LongTensor(annotationA_list),
+            'annotationA': annotationA,
             'textB': padded_textB,
-            'annotationB': {key: torch.LongTensor(value) for key, value in annotationB_dict.items()},
+            'annotationB': annotationB,
             'A2B': torch.LongTensor(A2B),
             'target': torch.zeros(batch_size, dtype=torch.long),
             'size': batch_size,

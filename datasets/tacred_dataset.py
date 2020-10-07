@@ -78,10 +78,16 @@ class TACREDDataset(FairseqDataset):
 
         padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
 
+        if len(annotation) > 0 and annotation[0] is not None:
+            annotation = torch.LongTensor(annotation)
+        else:
+            annotation = None
+
+
         batch = {
             'text': padded_text,
             'target': torch.LongTensor(target),
-            'annotation': torch.LongTensor(annotation),
+            'annotation': annotation,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': batch_size,
