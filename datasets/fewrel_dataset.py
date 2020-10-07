@@ -167,7 +167,7 @@ class FewRelDataset(FairseqDataset):
 
         item = {
             'text': padded_text,
-            'annotation': torch.LongTensor(annotation),
+            'annotation': annotation,
             'exemplars': padded_exemplars,
             'exemplars_annotation': exemplars_annotation,
             'target': torch.zeros(len(instances), dtype=torch.long),
