@@ -1,7 +1,8 @@
 from torch import nn
+from torch.nn import functional as F
 import torch
-from modules.mlp import MLP_factory
 
+from modules.mlp import MLP_factory
 
 class BoW(nn.Module):
 
@@ -236,28 +237,7 @@ class EntityPoolingFirstToken(nn.Module):
         ) # [batch_size, 2 * enc_dim]
         return head_tail_concat
 
-class EntityConcatAttention(nn.Module):
-    """ Generate relation representation for mentions i, j by concatenating first and last token of the mentions, then applying attention layer. More specifically,
 
-        M_i = [h(s_i); h(e_i)] where h(s_i) and h(e_i) are representations of starting and ending token of mention, respectively
-        R_i,j = g([M_i; M_j]) where g applies an attention block with M_i; M_j as the query and M_i;M_j and the token representations in the passage as keys and values
-    """
-
-    def __init__(self, args, dictionary):
-        super().__init__()
-
-    def forward(self, x, src_tokens, annotation, **unused):
-        # x: [batch_size, length, enc_dim]
-        head_first = x.index_select(1, annotation[:,0,0])
-        head_last = x.index_select(1, annotation[:,0,1])
-        tail_first = x.index_select(1, annotation[:,1,0])
-        tail_last = x.index_select(1, annotation[:,1,1])
-
-        head_tail_concat = torch.cat(
-            (head_first, head_last, tail_first, tail_last),
-            dim=-1,
-        ) # [batch_size, 2 * enc_dim]
-        return head_tail_concat
 
 class EntityConcat(nn.Module):
 
@@ -287,6 +267,79 @@ class EntityConcatLinear(nn.Module):
 
         return head_tail_concat
 
+class RelationAttentionLayer(nn.Module):
+    def __init__(self, encoder_embed_dim, n_heads, dropout, ffn_dim):
+        super().__init__()
+        self.encoder_embed_dim = encoder_embed_dim
+        self.n_heads = n_heads
+        self.dropout = dropout
+        self.head_dim = self.encoder_embed_dim // n_heads
+        self.linear_relation_query = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+        self.linear_relation_value = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+        self.linear_relation_key = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+        self.linear_token_key = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+        self.linear_token_value = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+
+        self.linear_out = nn.Linear(self.encoder_embed_dim, self.encoder_embed_dim)
+
+        self.attention_layer_norm = nn.LayerNorm(self.encoder_embed_dim)
+        self.fc1 = nn.Linear(self.encoder_embed_dim, ffn_dim)
+        self.activation = nn.ReLU()
+        self.fc2 = nn.Linear(ffn_dim, self.encoder_embed_dim)
+        self.connected_layer_norm = nn.LayerNorm(self.encoder_embed_dim)
+
+    def forward(self, relation_representation, token_representation):
+        n_tokens = token_representation.shape[1]
+        relation_query = self.linear_relation_query(relation_representation).view(-1, 1, self.n_heads, self.head_dim) # (batch_size, 1, n_heads, encoder_dim / n_heads)
+        relation_value = self.linear_relation_value(relation_representation).view(-1, self.n_heads, self.head_dim) # (batch_size, 1, n_heads, encoder_dim / n_heads)
+        relation_key = self.linear_relation_key(relation_representation).view(-1, 1, self.n_heads, self.head_dim) # (batch_size, 1, n_heads, encoder_dim / n_heads)
+        token_key = self.linear_token_key(token_representation).view(-1, n_tokens, self.n_heads, self.head_dim) # (batch_size, n_tokens, n_heads, encoder_dim / n_heads)
+        token_value = self.linear_token_value(token_representation).view(-1, n_tokens, self.n_heads, self.head_dim) # (batch_size, n_tokens, n_heads, encoder_dim / n_heads)
+
+        self_attention_score = (relation_query * relation_key).squeeze(1).sum(axis=-1)
+        token_attention_scores = (relation_query * token_key).sum(axis=-1)
+        score_denominator = self_attention_score + token_attention_scores.sum(axis=1)
+        self_attention_score_normalized = self_attention_score / score_denominator
+        token_attention_score_normalized = token_attention_scores / score_denominator.unsqueeze(-2)
+
+        update = (self_attention_score_normalized.unsqueeze(-1) * relation_value) + (token_attention_score_normalized.unsqueeze(-1) * token_value).sum(axis=1)
+        update = self.linear_out(update.view(-1, self.encoder_embed_dim))
+        update = F.dropout(update, self.dropout, self.training)
+
+        new_relation_representation = relation_representation + update
+        new_relation_representation = self.attention_layer_norm(new_relation_representation)
+
+        update = self.activation(self.fc1(new_relation_representation))
+        update = F.dropout(update, self.dropout, self.training)
+        update = self.fc2(update)
+        new_relation_representation = new_relation_representation + update
+        new_relation_representation = self.connected_layer_norm(new_relation_representation)
+
+        return new_relation_representation
+
+class EntityConcatAttention(nn.Module):
+    """ Generate relation representation for mentions i, j by concatenating first and last token of the mentions, then applying attention layer. More specifically,
+
+        M_i = [h(s_i); h(e_i)] where h(s_i) and h(e_i) are representations of starting and ending token of mention, respectively
+        R_i,j = g([M_i; M_j]) where g applies an attention block with M_i; M_j as the query and M_i;M_j and the token representations in the passage as keys and values
+    """
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        self.linear_projection = nn.Linear(4 * args.encoder_embed_dim, args.encoder_embed_dim)
+        self.relation_layers = nn.ModuleList()
+        for layer_idx in range(args.n_relation_layers):
+            self.relation_layers.append(RelationAttentionLayer(args.encoder_embed_dim, args.encoder_attention_heads, args.dropout, args.encoder_ffn_embed_dim))
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+
+        entity_rep = x.gather(1, annotation.view(-1, 4, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 4, enc_dim]
+        head_tail_concat = entity_rep.view(x.shape[0], -1) # [batch_size, enc_dim * 4]
+        relation_representation = self.linear_projection(head_tail_concat)
+        for layer in self.relation_layers:
+            relation_representation = layer(relation_representation, x)
+        return relation_representation
 
 class EntityConcatAllRelation(nn.Module):
     """
