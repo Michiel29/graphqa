@@ -1,0 +1,57 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    // "add_configs": ["../roberta/small.json", "../base.json"],
+    // "eval_downstream": false,
+
+
+
+    "task": "mtb",
+    "arch": "encoder_mtb__roberta_small",
+    "scoring_function": null,
+    "entity_dim": 256,
+    // "mlp_layer_sizes": [[256, 2]],
+    // "mlp_layer_norm": true,
+    // "k_weak_negs": 100,
+    "n_tries_entity": 100,
+    // "non_mask_rate": 0.2,
+    // "subsampling_strategy": "by_entity_pair",
+    // "subsampling_cap": 100,
+    "n_valid_examples": 20000,
+    // "split_mode": false,
+    // "use_strong_negs": true,
+    // "replace_tail": false,
+    // "mutual_neighbors": false,
+
+    "encoder_output_layer_type": "entity_concat_attention",
+    "n_relation_layers": 1,
+    "data_path": "../data/selfinf/nki/bin-v5-threshold20-small",
+
+    "update_freq": 7,
+    "epoch_size": 8e5,
+    "max_sentences": 88,
+    "max_tokens": 1e10,
+
+    "num_workers": 4,
+
+    "criterion": "cross_entropy_custom",
+    "weight": 0.5,
+
+
+
+    "mask_type": "concat",
+
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "checkpoint_dict": {
+        "1105_last": {
+            "checkpoints": [
+                "../save/checkpoints/mtb/concat_attention_nmr_0.5_checkpoint20.pt"
+            ]
+        }
+
+    }
+
+}
