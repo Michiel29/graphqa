@@ -87,7 +87,7 @@ class GNNDataset(FairseqDataset):
             entity_pair_counter_sum=self.entity_pair_counter_sum,
             entity_pair_counter_cap=self.entity_pair_counter_cap,
         )
-        sentence = self.annotated_text.annotate(*(edge.numpy()))
+        sentence = self.annotated_text.annotate_relation(*(edge.numpy()))
 
         if not subgraph.add_initial_entity_pair(head, tail, self.max_tokens, self.max_sentences, sentence):
             return None

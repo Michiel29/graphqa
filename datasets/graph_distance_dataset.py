@@ -105,7 +105,7 @@ class GraphDistanceDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.annotated_text_B.annotate(*(edge))
+            textB = self.annotated_text_B.annotate_relation(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -202,7 +202,7 @@ class GraphDistanceDataset(FairseqDataset):
         tailA = edge[GraphDataset.TAIL_ENTITY]
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge))
+            textA = self.annotated_text_A.annotate_relation(*(edge))
             example_class = np.random.choice(("share_both", "share_one", "share_none"), p=self.class_probabilities)
             textB = None
             # Get edges with headA as the head

@@ -111,7 +111,7 @@ class MTBDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB, annotation_positions = self.annotated_text_B.annotate(*(edge))
+            textB, annotation_positions = self.annotated_text_B.annotate_relation(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -216,7 +216,7 @@ class MTBDataset(FairseqDataset):
 
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA, annotation_positionsA = self.annotated_text_A.annotate(*(edge.numpy()))
+            textA, annotation_positionsA = self.annotated_text_A.annotate_relation(*(edge.numpy()))
             annotationA = annotation_positionsA
 
             # Sample positive text pair: textA and textB share both head and tail

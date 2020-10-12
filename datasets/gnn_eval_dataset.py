@@ -92,8 +92,8 @@ class GNNEvalDataset(FairseqDataset):
                 return None
 
         item = {
-            'target': self.annotated_text.annotate(*(edge.numpy())),
-            'support': [self.annotated_text.annotate(*(support1)), self.annotated_text.annotate(*(support2))],
+            'target': self.annotated_text.annotate_relation(*(edge.numpy())),
+            'support': [self.annotated_text.annotate_relation(*(support1)), self.annotated_text.annotate_relation(*(support2))],
             'entities': {'A': head, 'B': tail, 'C': chosen_mutual}
         }
 

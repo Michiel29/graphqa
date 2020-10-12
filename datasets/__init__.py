@@ -21,6 +21,7 @@ from .prepend_token_dataset import PrependTokenDataset
 from .probing_prepend_token_dataset import ProbingPrependTokenDataset
 from .rel_inf_dataset import RelInfDataset
 from .gnn_dataset import GNNDataset
+from .entity_prediction_dataset import EntityPredictionDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
 from .shuffled_dataset import ShuffledDataset
 from .subgraph_sampler import SubgraphSampler

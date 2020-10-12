@@ -157,7 +157,7 @@ class SubgraphSampler(object):
                 return RelationStatement(
                     head=head_entity,
                     tail=tail_entity,
-                    sentence=self.annotated_text.annotate(*edges[index]),
+                    sentence=self.annotated_text.annotate_relation(*edges[index]),
                     begin=begin,
                     end=end,
                 )

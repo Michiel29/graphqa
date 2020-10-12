@@ -61,7 +61,7 @@ def sample_subgraph(graph, annotated_text, index, entity_pair_counter, entity_pa
     edge = graph[index]
     head = edge[GraphDataset.HEAD_ENTITY]
     tail = edge[GraphDataset.TAIL_ENTITY]
-    sentence = annotated_text.annotate(*(edge.numpy()))
+    sentence = annotated_text.annotate_relation(*(edge.numpy()))
 
     if not subgraph.add_initial_entity_pair(head, tail, args.max_tokens, args.max_sentences, sentence):
         return None, None

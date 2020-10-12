@@ -127,7 +127,7 @@ class PMTBDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.annotated_text_B.annotate(*(edge))
+            textB = self.annotated_text_B.annotate_relation(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -295,7 +295,7 @@ class PMTBDataset(FairseqDataset):
         tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge.numpy()))
+            textA = self.annotated_text_A.annotate_relation(*(edge.numpy()))
 
             # Sample positive text pair: textA and textB share one target entity
             textB_pos, pos_keep_entity, pos_replace_entity = self.sample_positive(headA, tailA, textA)

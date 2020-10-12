@@ -45,7 +45,7 @@ class BoRDataset(FairseqDataset):
         self.similarity_scores = similarity_scores
         n_entities = len(self.similar_entities.array)
         self.similar_entities.array = np.concatenate((
-            np.expand_dims(np.arange(n_entities), 1), 
+            np.expand_dims(np.arange(n_entities), 1),
             self.similar_entities.array
         ), axis=1)
         self.similarity_scores.array = np.concatenate((
@@ -125,7 +125,7 @@ class BoRDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.annotated_text_B.annotate(*(edge))
+            textB = self.annotated_text_B.annotate_relation(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -198,7 +198,7 @@ class BoRDataset(FairseqDataset):
                     cur_textB = self.sample_text(replace_edges, textA, 'share_two')
                 else:
                     cur_textB = self.sample_text(replace_edges, textA, 'share_one', [entity_ids[entity_replace]])
-                
+
                 if cur_textB is not None:
                     textB.append(cur_textB) # Append cur_textB to textB list
                     textB_entities.append([candidate_head, candidate_tail])
@@ -221,7 +221,7 @@ class BoRDataset(FairseqDataset):
 
         # Check that head and tail are mentioned in at least one training text
         if (
-            self.split == 'train' and len(head_neighbors_idxs) < 2 
+            self.split == 'train' and len(head_neighbors_idxs) < 2
             or self.split == 'valid' and len(head_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- head and tail are not mentioned together in any training text")
@@ -246,7 +246,7 @@ class BoRDataset(FairseqDataset):
 
         # Get edges with keep_entity as the head
         keep_entity_edges = self.graph_B.edges[entity_ids[keep_entity]].numpy().reshape(-1, GraphDataset.EDGE_SIZE)
-       
+
         # Get all indices of keep_entity's neighbors, for which the neighbor is not replace_entity
         candidate_edge_idxs = np.flatnonzero(keep_entity_edges[:, GraphDataset.TAIL_ENTITY] != entity_ids[replace_entity])
 
@@ -329,16 +329,16 @@ class BoRDataset(FairseqDataset):
         tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge.numpy()))
+            textA = self.annotated_text_A.annotate_relation(*(edge.numpy()))
 
             if (
-                np.max(self.similar_entities.array[headA]) == -1 
+                np.max(self.similar_entities.array[headA]) == -1
                 or np.max(self.similar_entities.array[tailA]) == -1
-            ): 
+            ):
                 # Sample MTB candidates
                 textB, textB_entities, use_bor_candidates = self.sample_mtb_candidates(headA, tailA, textA)
 
-            else: 
+            else:
                 # Sample BoR candidates
                 textB, textB_entities, use_bor_candidates = self.sample_bor_candidates(headA, tailA, textA)
 
@@ -359,7 +359,7 @@ class BoRDataset(FairseqDataset):
             'textB': textB,
             'textA_entities': [headA, tailA],
             'textB_entities': textB_entities,
-            'use_bor_candidates': use_bor_candidates, 
+            'use_bor_candidates': use_bor_candidates,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
@@ -400,7 +400,7 @@ class BoRDataset(FairseqDataset):
                 tailA_headB_weight = self.head_tail_weight * tailA_similarity_scores[np.where(tailA_similar_entities == headB[i])[0][0]]
             else:
                 tailA_headB_weight = 0
-                
+
             candidate_weights[i] = headA_headB_weight + tailA_tailB_weight + headA_tailB_weight + tailA_headB_weight
 
         return F.softmax(torch.from_numpy(candidate_weights).float(), dim=0)
@@ -515,14 +515,14 @@ class BoRDataset(FairseqDataset):
             if use_bor_candidates[i]:
                 strong_A2B = A2B_list[textB_idxs[np.logical_not(self_textB_cond)][1:]]
                 candidate_weights[i, :] = self.compute_candidate_weights(
-                    textA_entities[i], 
-                    textB_entities[cur_A2B], 
+                    textA_entities[i],
+                    textB_entities[cur_A2B],
                     textB_entities[strong_A2B][:, 0],
                     textB_entities[strong_A2B][:, 1]
                 )
             else:
                 candidate_weights[i, :] = self.compute_candidate_weights(textA_entities[i], textB_entities[cur_A2B])
-                
+
         A2B = np.concatenate((A2B, A2B_weak_candidates), axis=1).flatten()
 
         batch_dict = {

@@ -264,8 +264,25 @@ class EntityConcatLinear(nn.Module):
 
         entity_rep = x.gather(1, annotation.view(-1, 4, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 4, enc_dim]
         head_tail_concat = entity_rep.view(x.shape[0], -1) # [batch_size, enc_dim * 4]
+        relation_representation = self.linear(head_tail_concat)
 
-        return head_tail_concat
+        return relation_representation
+
+class MentionConcatLinear(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        self.linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+
+
+        mention_representation = x.gather(1, annotation.view(-1, 2, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 2, enc_dim]
+        mention_representation = mention_representation.view(x.shape[0], -1) # [batch_size, enc_dim * 2]
+        mention_representation = self.linear(mention_representation) # [batch_size, entity_dim]
+
+        return mention_representation
 
 class RelationAttentionLayer(nn.Module):
     def __init__(self, encoder_embed_dim, n_heads, dropout, ffn_dim):
@@ -394,6 +411,7 @@ encoder_head_dict = {
     'entity_pooling_first_token': EntityPoolingFirstToken,
     'entity_concat': EntityConcat,
     'entity_concat_linear': EntityConcatLinear,
+    'mention_concat_linear': MentionConcatLinear,
     'entity_concat_attention': EntityConcatAttention,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,

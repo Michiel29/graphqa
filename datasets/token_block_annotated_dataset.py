@@ -78,7 +78,7 @@ class TokenBlockAnnotatedDataset(FairseqDataset):
             head_start_pos, head_end_pos = self.sample_annotation(annotations, head_entity)
             tail_start_pos, tail_end_pos = self.sample_annotation(annotations, tail_entity)
 
-            text = self.dataset.annotate(
+            text = self.dataset.annotate_relation(
                 tail_entity=tail_entity,
                 head_entity=head_entity,
                 head_start_pos=head_start_pos,

@@ -116,7 +116,7 @@ class MTBPlusDataset(FairseqDataset):
                     continue
 
             # Get textB, using the given edge, headB, and tailB
-            textB = self.annotated_text_B.annotate(*(edge))
+            textB = self.annotated_text_B.annotate_relation(*(edge))
 
             # Check that textA and textB are not the same (this may occur for positive pairs).
             # If not, return textB.
@@ -135,7 +135,7 @@ class MTBPlusDataset(FairseqDataset):
 
         # Check that headA and tailA are mentioned in at least one training text
         if (
-            self.split == 'train' and len(headA_neighbors_idxs) < 2 
+            self.split == 'train' and len(headA_neighbors_idxs) < 2
             or self.split == 'valid' and len(headA_neighbors_idxs) < 1
         ):
             raise Exception("POSITIVE -- headA and tailA are not mentioned together in any training text")
@@ -277,7 +277,7 @@ class MTBPlusDataset(FairseqDataset):
         tailA = edge[GraphDataset.TAIL_ENTITY].item()
 
         with data_utils.numpy_seed(9031935, self.seed, self.epoch, index):
-            textA = self.annotated_text_A.annotate(*(edge.numpy()))
+            textA = self.annotated_text_A.annotate_relation(*(edge.numpy()))
 
             # Decide whether to do MTB or PMTB
             task_choice = 'mtb' if np.random.choice(2, size=1, p=[self.mtb_prob, 1-self.mtb_prob]) == 0 else 'pmtb'
@@ -292,7 +292,7 @@ class MTBPlusDataset(FairseqDataset):
                 textB_pos, fixB_pos, newB_pos = self.sample_share_one(task_choice, headA, tailA, textA)
 
             # Check if positive text pair was successfully sampled
-            if textB_pos is None: 
+            if textB_pos is None:
                 return None
 
             # Initialize textB list with textB_pos
@@ -314,7 +314,7 @@ class MTBPlusDataset(FairseqDataset):
 
                 # Append textB_strong_neg to textB list
                 textB.append(textB_strong_neg)
-                
+
 
         item = {
             'textA': textA,
@@ -390,7 +390,7 @@ class MTBPlusDataset(FairseqDataset):
                 cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
                 A2B_dict[cluster_id].append(i * n_textB_init + j)
-            
+
             ntokens += instance['ntokens']
             nsentences += instance['nsentences']
             ntokens_AB += instance['ntokens_AB']
@@ -425,10 +425,10 @@ class MTBPlusDataset(FairseqDataset):
                 )
             )
             weak_neg_candidates = A2B_list[np.flatnonzero(weak_neg_conditions)]
-            cur_bad_weak_negs = batch_size * n_textB_init - n_textB_init - len(weak_neg_candidates) 
+            cur_bad_weak_negs = batch_size * n_textB_init - n_textB_init - len(weak_neg_candidates)
             bad_weak_negs += cur_bad_weak_negs
             weak_negs_init = weak_neg_candidates[torch.randperm(len(weak_neg_candidates)).numpy()]
-            
+
             weak_negs = weak_negs_init
             while len(weak_negs) < k_weak_negs:
                 weak_negs = np.concatenate((weak_negs, weak_negs_init)) # pad to make up for discarded weak negs
