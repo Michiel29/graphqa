@@ -1,8 +1,9 @@
 {
-    "add_configs": ["../roberta/small.json", "../base.json", "../downstream/downstream_small.json"],
+    "add_configs": ["../roberta/small.json", "../base.json"],
 
     "task": "entity_prediction",
     "arch": "encoder_entity_prediction__roberta_small",
+    "eval_downstream": false,
     "scoring_function": null,
     "mlp_layer_sizes": [[256, 2]],
     "mlp_layer_norm": true,

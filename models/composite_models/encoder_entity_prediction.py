@@ -31,7 +31,7 @@ class EncoderEntityPrediction(BaseFairseqModel):
 
         candidate_embeddings = self.entity_embedder(batch['candidates']) # [batch_size, k_candidates, ent_dim]
 
-        scores = (mention_enc * candidate_embeddings).sum(axis=-1)
+        scores = (mention_enc.unsqueeze(1) * candidate_embeddings).sum(axis=-1)
         return scores
 
     @staticmethod

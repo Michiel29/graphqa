@@ -20,24 +20,22 @@ class EntityPredictionDataset(FairseqDataset):
         annotated_text,
         edges,
         dictionary,
+        n_entities,
         total_negatives,
-        max_tokens,
-        max_sentences,
-        num_text_chunks,
+        max_positions,
         num_workers,
         seed,
     ):
         self.annotated_text = annotated_text
         self.edges = edges
         self.dictionary = dictionary
-
+        # Could take len(edges) instead of passing number of entities, but old indexed dataset had extra Null entities
+        self.n_entities = n_entities
         self.total_negatives = total_negatives
 
-        self.max_tokens = max_tokens
-        self.max_sentences = max_sentences
-        self.num_text_chunks = num_text_chunks
         self.seed = seed
         self.epoch = None
+        self._sizes = np.full(len(self), max_positions, dtype=np.int64)
 
         self.num_workers = num_workers
 
@@ -47,12 +45,19 @@ class EntityPredictionDataset(FairseqDataset):
 
     def __getitem__(self, index):
         with numpy_seed('EntityPredictionDataset', self.seed, self.epoch, index):
-            entity = np.random.randint(len(self.edges))
-            passage_idx = np.random.randint(len(self.edges[entity]))
-            edge = self.edges[entity][passage_idx]
+            sampled_edge = None
+            while not sampled_edge:
+                entity = np.random.randint(len(self.edges))
+                n_entity_edges = len(self.edges[entity]) // GraphDataset.EDGE_SIZE
+                if n_entity_edges > 0:
+                    passage_idx = np.random.randint(n_entity_edges)
+                    edge_start = passage_idx * GraphDataset.EDGE_SIZE
+                    edge = self.edges[entity][edge_start:edge_start + GraphDataset.EDGE_SIZE].numpy()
+                    sampled_edge = True
+
             start_pos, end_pos, start_block, end_block = edge[GraphDataset.HEAD_START_POS], edge[GraphDataset.HEAD_END_POS], edge[GraphDataset.START_BLOCK], edge[GraphDataset.END_BLOCK]
             passage, annotation_position = self.annotated_text.annotate_mention(entity, start_pos, end_pos, start_block, end_block)
-            negatives = np.random.choice(len(self.edges), replace=False, size=self.total_negatives)
+            negatives = np.random.choice(self.n_entities, replace=False, size=self.total_negatives)
             candidates = np.concatenate(([entity], negatives))
 
         item = {
@@ -73,10 +78,10 @@ class EntityPredictionDataset(FairseqDataset):
 
     @property
     def sizes(self):
-        return self.graph.sizes
+        return self._sizes
 
     def ordered_indices(self):
-        return self.graph.ordered_indices()
+        return np.random.permutation(len(self))
 
     def collater(self, instances):
         batch_size = len(instances)
@@ -84,12 +89,13 @@ class EntityPredictionDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        text, annotation = [], []
+        text, annotation, candidates = [], [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
             annotation.append(instance['annotation'])
+            candidates.append(instance['candidates'])
             ntokens += len(instance['text'])
             nsentences += 1
 
@@ -104,6 +110,7 @@ class EntityPredictionDataset(FairseqDataset):
             'text': padded_text,
             'target': torch.zeros(batch_size, dtype=torch.int64),
             'annotation': annotation,
+            'candidates': torch.LongTensor(candidates),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': batch_size,

@@ -67,13 +67,13 @@ class EntityPredictionTask(BaseTask):
             annotated_text=annotated_text,
             edges=edges,
             dictionary=self.dictionary,
+            n_entities = len(self.entity_dictionary),
             total_negatives=self.args.total_negatives,
-            max_tokens=self.args.max_tokens - 1, # for bos
-            max_sentences=self.args.max_sentences,
-            num_text_chunks=self.args.num_text_chunks,
+            max_positions = self.args.max_positions,
             num_workers=self.args.num_workers,
             seed=self.args.seed,
         )
+
         if split == 'train' and self.args.epoch_size is not None:
             dataset = EpochSplitDataset(
                 dataset=dataset,

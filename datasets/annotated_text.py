@@ -59,7 +59,7 @@ class AnnotatedText(object):
             end_block=end_block,
         )
 
-    def annotate_mention(self, entity, entity_start_pos, entity_end_pos, start_block, end_block, annotations):
+    def annotate_mention(self, entity, entity_start_pos, entity_end_pos, start_block, end_block, annotations=None):
         text = np.frombuffer(
             self.text_data._bin_buffer,
             dtype=self.text_data._index.dtype,
@@ -247,7 +247,6 @@ class AnnotatedText(object):
             annotations,
             entity,
             start_positions[idx],
-            end_positions[idx],
             None,
             None,
             self.dictionary.blank(),
