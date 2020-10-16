@@ -37,7 +37,7 @@ class CrossEntropy(FairseqCriterion):
         model_output = model(sample)
         target = sample['target']
 
-        # diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
+        diag = Diagnostic(self.task.dictionary, self.task.entity_dictionary, self.task)
         # diag.inspect_batch(sample, scores=model_output)
 
         loss = F.cross_entropy(model_output, target, reduction='sum' if reduce else 'none')

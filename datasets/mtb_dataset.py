@@ -246,9 +246,9 @@ class MTBDataset(FairseqDataset):
 
         item = {
             'textA': textA,
-            'annotationA': annotationA,
+            'annotationA': torch.LongTensor(annotationA) if annotationA else None,
             'textB': textB,
-            'annotationB': annotationB,
+            'annotationB': torch.LongTensor(annotationB) if annotationB else None,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
@@ -340,8 +340,8 @@ class MTBDataset(FairseqDataset):
         A2B = np.concatenate((A2B, A2B_weak_negs), axis=1).flatten()
 
         if len(annotationA_list) > 0 and annotationA_list[0] is not None:
-            annotationA = torch.LongTensor(annotationA_list)
-            annotationB = {key: torch.LongTensor(value) for key, value in annotationB_dict.items()}
+            annotationA = torch.cat(annotationA_list).reshape(-1, 2, 2)
+            annotationB = {key: torch.cat(value).reshape(-1, 2, 2) for key, value in annotationB_dict.items()}
         else:
             annotationA = None
             annotationB = {key: None for key  in annotationB_dict}

@@ -17,8 +17,8 @@ from utils.data_utils import (
 )
 from utils.dictionary import CustomDictionary
 from utils.logging_utils import (
-    compute_confusion_matrix, 
-    reduce_macro_mcm, 
+    compute_confusion_matrix,
+    reduce_macro_mcm,
     MacroF1Meter
 )
 from utils.numpy_utils import MMapNumpyArray
@@ -68,7 +68,7 @@ class KBP37Task(BaseTask):
             dictionary=self.dictionary,
             seed=self.seed,
         )
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text'])
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text'], ['annotation'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:

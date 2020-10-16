@@ -105,9 +105,9 @@ class FewRelDataset(FairseqDataset):
 
         item = {
             'text': target_item,
-            'annotation': target_annotation,
+            'annotation': torch.LongTensor(target_annotation) if target_annotation else None,
             'exemplars': exemplars,
-            'exemplars_annotation': exemplars_annotation,
+            'exemplars_annotation': torch.LongTensor(exemplars_annotation) if exemplars_annotation else None,
             'ntokens': ntokens,
             'nsentences': nsentences,
         }
@@ -159,8 +159,8 @@ class FewRelDataset(FairseqDataset):
         padded_exemplars = pad_sequence(exemplars, batch_first=True, padding_value=self.dictionary.pad())
 
         if len(annotation) > 0 and annotation[0] is not None:
-            annotation = torch.LongTensor(annotation)
-            exemplars_annotation = torch.LongTensor(exemplars_annotation)
+            annotation = torch.cat(annotation).reshape(-1, 2, 2)
+            exemplars_annotation = torch.cat(exemplars_annotation).reshape(-1, self.n_way, 2, 2)
         else:
             annotation = None
             exemplars_annotation = None

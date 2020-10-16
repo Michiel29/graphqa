@@ -38,7 +38,7 @@ class TACREDDataset(FairseqDataset):
 
         item = {
             'text': annot_item,
-            'annotation': annotation,
+            'annotation': torch.LongTensor(annotation) if annotation else None,
             'target': relation
         }
 
@@ -79,7 +79,7 @@ class TACREDDataset(FairseqDataset):
         padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
 
         if len(annotation) > 0 and annotation[0] is not None:
-            annotation = torch.LongTensor(annotation)
+            annotation = torch.cat(annotation).reshape(-1, 2, 2)
         else:
             annotation = None
 

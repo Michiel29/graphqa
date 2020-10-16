@@ -163,7 +163,7 @@ class AnnotatedText(object):
                 tail_end_pos,
             )
         elif self.mask_type == 'start_end':
-            text = self.start_end_mask(
+            text = self.start_end_mask_relation(
                 text,
                 annotations,
                 head_entity,
@@ -253,7 +253,7 @@ class AnnotatedText(object):
             )
 
         replacements.sort()
-        replacements = reversed(replacements)
+        replacements = list(reversed(replacements))
 
         position_idx = np.arange(len(text))
 
@@ -268,7 +268,7 @@ class AnnotatedText(object):
                 text[end_pos:],
             ])
 
-        annotation_positions = [(position_idx[start_positions[idx]], position_idx[end_positions[idx]]) for idx in range(len(start_positions))]
+        annotation_positions = [(position_idx[start_positions[idx]], position_idx[end_positions[idx] - 1]) for idx in range(len(start_positions))]
 
         return text, annotation_positions
 
@@ -318,7 +318,7 @@ class AnnotatedText(object):
                 text[end_pos:],
             ])
 
-        annotation_positions = [(position_idx[head_start_pos], position_idx[head_end_pos]), (position_idx[tail_start_pos], position_idx[tail_end_pos])]
+        annotation_positions = [(position_idx[head_start_pos], position_idx[head_end_pos - 1]), (position_idx[tail_start_pos], position_idx[tail_end_pos - 1])]
 
         return text, annotation_positions
 

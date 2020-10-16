@@ -76,7 +76,7 @@ class FewRelTask(BaseTask):
             if prune_param < 700:
                 dataset.prune_by_num_examples_per_relation(prune_param)
 
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'])
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text', 'exemplars'], ['annotation', 'exemplars_annotation'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:

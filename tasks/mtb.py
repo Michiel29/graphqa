@@ -40,7 +40,7 @@ class MTBTask(RelationInferenceTask):
                             help='whether the sampled candidate entity must be a mutual neighbor of keep_entity and replace_entity')
 
     def load_dataset(self, split, epoch=0, combine=False, **kwargs):
-        
+
         text_data_A = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.text'),
         )
@@ -117,9 +117,10 @@ class MTBTask(RelationInferenceTask):
             )
 
         dataset = PrependTokenDataset(
-            dataset, 
-            self.dictionary.bos(), 
-            ['textA', 'textB']
+            dataset,
+            self.dictionary.bos(),
+            ['textA', 'textB'],
+            ['annotationA', 'annotationB']
         )
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)

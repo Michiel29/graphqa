@@ -62,7 +62,7 @@ class EntityPredictionDataset(FairseqDataset):
 
         item = {
             'text': passage,
-            'annotation': annotation_position,
+            'annotation': torch.LongTensor(annotation_position) if annotation_position else None,
             'candidates': candidates,
         }
         return item
@@ -102,7 +102,7 @@ class EntityPredictionDataset(FairseqDataset):
         padded_text = pad_sequence(text, batch_first=True, padding_value=self.dictionary.pad())
 
         if len(annotation) > 0 and annotation[0] is not None:
-            annotation = torch.LongTensor(annotation)
+            annotation = torch.cat(annotation)
         else:
             annotation = None
 

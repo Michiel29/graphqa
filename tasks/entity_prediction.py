@@ -81,7 +81,7 @@ class EntityPredictionTask(BaseTask):
                 seed=self.args.seed,
             )
 
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text')
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text', ['annotation'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:
