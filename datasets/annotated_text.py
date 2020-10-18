@@ -59,7 +59,7 @@ class AnnotatedText(object):
             end_block=end_block,
         )
 
-    def annotate_mention(self, entity, entity_start_pos, entity_end_pos, start_block, end_block, annotations=None):
+    def annotate_mention(self, entity, entity_start_pos, entity_end_pos, start_block, end_block, annotations=None, return_all_annotations=False):
         text = np.frombuffer(
             self.text_data._bin_buffer,
             dtype=self.text_data._index.dtype,
@@ -72,11 +72,7 @@ class AnnotatedText(object):
             return torch.tensor(text)
 
         if annotations is None:
-            annotations = self.annotations_block(start_block, end_block)
-
-        annotations = self.filter_by_entities(annotations, {entity})
-        assert len(annotations) >= 1
-
+            annotations = np.copy(self.annotations_block(start_block, end_block))
 
         annotations[:, self.INDEX_ANNOTATION_START] = np.maximum(
             annotations[:, self.INDEX_ANNOTATION_START] - start_block,
@@ -86,24 +82,33 @@ class AnnotatedText(object):
             annotations[:, self.INDEX_ANNOTATION_END] - start_block,
             len(text),
         )
+
         entity_start_pos -= start_block
         entity_end_pos -= start_block
 
-        annotation_positions = None
+        mask_annotations = self.filter_by_entities(annotations, {entity})
+        assert len(mask_annotations) >= 1
+
         if self.mask_type == 'concat':
-            text, annotation_positions = self.concat_mask_mention(
+            text, position_idx = self.concat_mask_mention(
                 text,
                 annotations,
-                [entity],
-                [entity_start_pos],
-                [entity_end_pos],
+                entity,
+                entity_start_pos,
             )
         else:
             raise Exception('Unknown mask type: %s' % self.mask_type)
 
+        mask_annotation_positions = [(position_idx[entity_start_pos], position_idx[entity_end_pos - 1])]
         text = torch.tensor(text)
 
-        return text, annotation_positions
+        if return_all_annotations:
+            start_positions = annotations[:,self.INDEX_ANNOTATION_START]
+            end_positions = annotations[:,self.INDEX_ANNOTATION_END]
+            all_annotation_positions = [(position_idx[start_pos], position_idx[end_pos - 1]) for start_pos, end_pos in zip(start_positions, end_positions)]
+            return text, mask_annotation_positions, all_annotation_positions
+
+        return text, mask_annotation_positions
 
     def annotate_relation(
         self,
@@ -237,16 +242,13 @@ class AnnotatedText(object):
     def concat_mask_mention(self,
         text,
         annotations,
-        entities,
-        start_positions,
-        end_positions,
+        entity,
+        start_position,
     ):
-        replacements = []
-        for idx, entity in enumerate(entities):
-            replacements += self.prepare_replacements(text,
+        replacements = self.prepare_replacements(text,
             annotations,
             entity,
-            start_positions[idx],
+            start_position,
             None,
             None,
             self.dictionary.blank(),
@@ -268,9 +270,7 @@ class AnnotatedText(object):
                 text[end_pos:],
             ])
 
-        annotation_positions = [(position_idx[start_positions[idx]], position_idx[end_positions[idx] - 1]) for idx in range(len(start_positions))]
-
-        return text, annotation_positions
+        return text, position_idx
 
     def concat_mask_relation(
         self,
