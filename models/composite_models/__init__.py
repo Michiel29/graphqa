@@ -7,6 +7,7 @@ from .encoder_bor import EncoderBoRModel
 from .encoder_pmtb import EncoderPMTBModel
 from .encoder_mtb_plus import EncoderMTBPlusModel
 from .encoder_entity_prediction import EncoderEntityPrediction
+from .encoder_etp_relation import EncoderETPRelation
 from .encoder_fewrel import EncoderFewRelModel
 from .encoder_kbp37 import EncoderKBP37Model
 from .encoder_semeval2010task8 import EncoderSemEval2010Task8Model

@@ -13,6 +13,7 @@ from .pmtb import PMTBTask
 from .mtb_plus import MTBPlusTask
 from .gnn_task import GNNTask
 from .entity_prediction import EntityPredictionTask
+from .etp_relation import ETPRelation
 from .gnn_eval_task import GNNEvalTask
 from .graph_distance import GraphDistanceTask
 from .triviaqa import TriviaQATask

@@ -12,7 +12,7 @@ from datasets import (
     FixedSizeDataset,
     GraphDataset,
     PrependTokenDataset,
-    EntityPredictionDataset,
+    ETPRelationDataset,
 )
 from utils.data_utils import numpy_seed, safe_load_indexed_dataset
 from utils.numpy_utils import MMapNumpyArray
@@ -21,8 +21,8 @@ from tasks import BaseTask
 logger = logging.getLogger(__name__)
 
 
-@register_task('entity_prediction')
-class EntityPredictionTask(BaseTask):
+@register_task('etp_relation')
+class ETPRelation(BaseTask):
 
     def __init__(self, args, dictionary, entity_dictionary):
         super().__init__(args, dictionary, entity_dictionary)
@@ -58,7 +58,7 @@ class EntityPredictionTask(BaseTask):
             os.path.join(self.args.data_path, split + '.graph'),
         )
 
-        dataset = EntityPredictionDataset(
+        dataset = ETPRelationDataset(
             annotated_text=annotated_text,
             edges=edges,
             dictionary=self.dictionary,
