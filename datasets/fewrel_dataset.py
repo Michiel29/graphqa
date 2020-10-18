@@ -107,7 +107,7 @@ class FewRelDataset(FairseqDataset):
             'text': target_item,
             'annotation': torch.LongTensor(target_annotation) if target_annotation else None,
             'exemplars': exemplars,
-            'exemplars_annotation': torch.LongTensor(exemplars_annotation) if exemplars_annotation else None,
+            'exemplars_annotation': torch.LongTensor(exemplars_annotation) if exemplars_annotation[0] else None,
             'ntokens': ntokens,
             'nsentences': nsentences,
         }

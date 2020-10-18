@@ -243,12 +243,11 @@ class MTBDataset(FairseqDataset):
                 textB.append(textB_strong_neg)
                 annotationB.append(annotation_positionsB_strong_neg)
 
-
         item = {
             'textA': textA,
             'annotationA': torch.LongTensor(annotationA) if annotationA else None,
             'textB': textB,
-            'annotationB': torch.LongTensor(annotationB) if annotationB else None,
+            'annotationB': torch.LongTensor(annotationB) if annotationB[0] else None,
             'ntokens': len(textA),
             'nsentences': 1,
             'ntokens_AB': len(textA) + sum([len(x) for x in textB]),
@@ -306,7 +305,8 @@ class MTBDataset(FairseqDataset):
             for j, cur_textB in enumerate(instance['textB']):
                 cluster_id = textB_clusters[i * n_textB_init + j]
                 textB_dict[cluster_id].append(cur_textB)
-                annotationB_dict[cluster_id].append(instance['annotationB'][j])
+                if instance['annotationB'] is not None:
+                    annotationB_dict[cluster_id].append(instance['annotationB'][j])
                 A2B_dict[cluster_id].append(i * n_textB_init + j)
 
             ntokens += instance['ntokens']
@@ -344,7 +344,7 @@ class MTBDataset(FairseqDataset):
             annotationB = {key: torch.cat(value).reshape(-1, 2, 2) for key, value in annotationB_dict.items()}
         else:
             annotationA = None
-            annotationB = {key: None for key  in annotationB_dict}
+            annotationB = {key: None for key in annotationB_dict}
 
         batch_dict = {
             'textA': padded_textA,

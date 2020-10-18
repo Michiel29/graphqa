@@ -46,9 +46,10 @@ class PrependTokenDataset(BaseWrapperDataset):
                 item = torch.cat([item.new([self.token]), item])
                 ntokens += 1
 
-        for key in self.annotation_keys:
-            if key in item:
-                item[key] = item[key] + 1
+        if self.annotation_keys is not None:
+            for key in self.annotation_keys:
+                if key in item and item[key] is not None:
+                    item[key] = item[key] + 1
 
         if hasattr(item, 'ntokens'):
             item['ntokens'] = ntokens
