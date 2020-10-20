@@ -80,7 +80,7 @@ def create_ft_prefixes(downstream_name, param=None, param_prefix=None, ckpt_idx=
         else:
             ft_train_prefix = '_'.join([ft_train_prefix, '{}{:03d}'.format(param_prefix, param), 'ckpt{}'.format(ckpt_idx)])
             ft_valid_prefix = '_'.join([ft_valid_prefix, '{}{:03d}'.format(param_prefix, param)])
-    
+
     if global_epoch is not None:
         global_ft_valid_prefix = '_'.join([downstream_name, 'ft', 'valid'])
         return ft_train_prefix, ft_valid_prefix, global_ft_valid_prefix
@@ -108,7 +108,7 @@ def setup_ft_args(params, param_type, downstream_args, downstream_task=None):
         ft_args.warmup_updates = round(n_updates * 0.06)
         ft_args_list.append(ft_args)
     return ft_args_list
-    
+
 def setup_ft_tasks(params, param_type, ft_args_list, ft_valid_subsets):
     # Set up ft_task, using ft_args
     ft_task_list = []
@@ -163,7 +163,7 @@ def load_downstream_data(args, samples, model, split, scaler=None, scaler_type=N
             targets = np.concatenate((targets, batch_targets), axis=0)
 
     if split == 'train':
-        # If there are fewer than n_splits examples for a given class, make 
+        # If there are fewer than n_splits examples for a given class, make
         # duplicates of that class' examples, so that each split has at
         # least one example.
         unique_targets, target_counts = np.unique(targets, return_counts=True)
@@ -199,6 +199,9 @@ def load_ft_checkpoint(args, filename, model):
     bexists = PathManager.isfile(filename)
     if bexists:
         state = checkpoint_utils.load_checkpoint_to_cpu(filename)
+
+        if not args.load_custum_output_layer:
+            state["model"] = {key: value for key, value in state["model"].items() if not 'custom_output_layer' in key}
 
         # load model parameters
         try:
