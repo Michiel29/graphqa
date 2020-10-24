@@ -105,8 +105,9 @@ class AnnotatedText(object):
         if return_all_annotations:
             start_positions = annotations[:,self.INDEX_ANNOTATION_START]
             end_positions = annotations[:,self.INDEX_ANNOTATION_END]
+            entity_ids = annotations[:, self.INDEX_ANNOTATION_ENTITY]
             all_annotation_positions = [(position_idx[start_pos], position_idx[end_pos - 1]) for start_pos, end_pos in zip(start_positions, end_positions)]
-            return text, mask_annotation_positions, all_annotation_positions
+            return text, mask_annotation_positions, all_annotation_positions, entity_ids
 
         return text, mask_annotation_positions
 

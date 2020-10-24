@@ -27,11 +27,81 @@ class EncoderETPRelation(BaseFairseqModel):
 
     def forward(self, batch):
 
-        mention_enc, _ = self.encoder(batch['text'], annotation=batch.get('annotation')) # [batch_size, enc_dim]
+        n_annotations = batch['n_annotations']
+        batch_size = len(n_annotations)
+        device = n_annotations.device
 
-        candidate_embeddings = self.entity_embedder(batch['candidates']) # [batch_size, k_candidates, ent_dim]
+        relation_entity_indices_left = batch['relation_entity_indices_left']
+        relation_entity_indices_right = batch['relation_entity_indices_right']
 
-        scores = (mention_enc.unsqueeze(1) * candidate_embeddings).sum(axis=-1)
+        entity_replacements = batch['entity_replacements']
+        n_negatives = entity_replacements.shape[1]
+
+        encoder_output, _ = self.encoder(batch['text'], mask_annotation=batch['mask_annotation'], all_annotations=batch['all_annotations'], n_annotations=n_annotations, relation_entity_indices_left=relation_entity_indices_left, relation_entity_indices_right=relation_entity_indices_right)
+        query_entity_representation, query_relation_representation, query_relation_scores = encoder_output
+
+        float_type = query_entity_representation.dtype
+        selected_relation_indices = torch.arange(len(relation_entity_indices_left), device=device)
+
+        target_embeddings = self.entity_embedder(batch['entity_ids'])
+        replacement_embeddings = self.entity_embedder(entity_replacements)
+        target_relation_inputs = torch.cat((target_embeddings[relation_entity_indices_left[selected_relation_indices]], target_embeddings[relation_entity_indices_right[selected_relation_indices]]), dim=-1)
+
+        target_relation_representation = target_relation_inputs
+
+        replacement_embeddings_repeated = replacement_embeddings[torch.arange(batch_size, device=device).repeat_interleave(n_annotations)]
+
+        target_embeddings_expanded = target_embeddings.unsqueeze(1).expand(-1, n_negatives, -1)
+
+        replacement_relation_input_left = torch.cat((replacement_embeddings_repeated,target_embeddings_expanded), dim=-1)
+
+        replacement_relation_input_right = torch.cat((target_embeddings_expanded, replacement_embeddings_repeated), dim=-1)
+
+        replacement_relation_input_self = torch.cat((replacement_embeddings, replacement_embeddings), dim=-1)
+
+
+        replacement_self_indices = batch['replacement_self_indices']
+        replacement_relation_input_left[replacement_self_indices] = replacement_relation_input_self
+        replacement_relation_input_right[replacement_self_indices] = replacement_relation_input_self
+
+        replacement_relation_representation_left = replacement_relation_input_left
+        replacement_relation_representation_right = replacement_relation_input_right
+
+        replacement_relation_indices_left = batch['replacement_relation_indices_left']
+        replacement_relation_indices_right = batch['replacement_relation_indices_right']
+
+
+
+        target_product = target_relation_representation * query_relation_representation
+        target_sum = target_product.sum(-1)
+
+        # sum element-wise product
+        target_relation_compatibility_scores = target_sum * query_relation_scores
+        put_indices = torch.arange(batch_size, device=device).repeat_interleave(n_annotations * n_annotations)[selected_relation_indices]
+
+        # sum relation scores within sample
+        target_scores = torch.zeros(batch_size, device=device, dtype=float_type)
+        target_scores = target_scores.index_put((put_indices,), target_relation_compatibility_scores[selected_relation_indices], accumulate=True)
+
+        replacement_product_left = replacement_relation_representation_left * query_relation_representation[replacement_relation_indices_left].unsqueeze(1)
+        replacement_sum_left = replacement_product_left.sum(-1)
+
+        replacement_product_right = replacement_relation_representation_right * query_relation_representation[replacement_relation_indices_right].unsqueeze(1)
+        replacement_sum_right = replacement_product_right.sum(-1)
+
+        negative_sum = target_sum.clone().unsqueeze(1).expand(-1, n_negatives)
+
+        negative_sum[replacement_relation_indices_left] = replacement_sum_left
+        negative_sum[replacement_relation_indices_right] = replacement_sum_right
+
+        negative_relation_compatibility_scores = negative_sum * query_relation_scores.unsqueeze(1)
+
+        # sum relation scores within sample
+        negative_scores = torch.zeros(size=(batch_size, n_negatives), device=device, dtype=float_type)
+        negative_scores = negative_scores.index_put((put_indices,), negative_relation_compatibility_scores[selected_relation_indices], accumulate=True)
+
+        scores = torch.cat((target_scores.unsqueeze(1), negative_scores), dim=-1)
+
         return scores
 
     @staticmethod

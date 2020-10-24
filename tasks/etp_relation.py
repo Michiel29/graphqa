@@ -64,6 +64,7 @@ class ETPRelation(BaseTask):
             dictionary=self.dictionary,
             n_entities = len(self.entity_dictionary),
             total_negatives=self.args.total_negatives,
+            mask_negative_prob=self.args.mask_negative_prob,
             max_positions = self.args.max_positions,
             num_workers=self.args.num_workers,
             seed=self.args.seed,
@@ -76,7 +77,7 @@ class ETPRelation(BaseTask):
                 seed=self.args.seed,
             )
 
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text', ['annotation'])
+        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), 'text', ['mask_annotation', 'all_annotations'])
 
         n_examples = getattr(self.args, 'n_' + split + '_examples', None)
         if n_examples is not None:

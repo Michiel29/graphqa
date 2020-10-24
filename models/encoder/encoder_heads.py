@@ -358,28 +358,28 @@ class EntityConcatAttention(nn.Module):
             relation_representation = layer(relation_representation, x)
         return relation_representation
 
-class EntityConcatAllRelation(nn.Module):
+class AllRelation(nn.Module):
     """
     As EntityConcatAttention, but for all pairs of mentions in passage"""
 
     def __init__(self, args, dictionary):
         super().__init__()
+        self.relation_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + args.head_layer_sizes + [(2 * args.entity_dim, 1)])
+        self.score_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + args.head_layer_sizes + [(1, 1)])
 
-    def forward(self, x, src_tokens, annotation, **unused):
+    def forward(self, x, src_tokens, mask_annotation, all_annotations, n_annotations, relation_entity_indices_left, relation_entity_indices_right, **unused):
         # x: [batch_size, length, enc_dim]
-        head_first_tokens = torch.max(annotation == 0, dim=1)[1]
-        tail_first_tokens = torch.max(annotation == 1, dim=1)[1]
-        arange = torch.arange(x.shape[0], device=x.device)
-
-        head_tail_concat = torch.cat(
-            (
-                x[arange, head_first_tokens],
-                x[arange, tail_first_tokens],
-            ),
-            dim=-1,
-        ) # [batch_size, 2 * enc_dim]
-        return head_tail_concat
-
+        batch_size = x.shape[0]
+        encoder_embed_dim = x.shape[-1]
+        idx = torch.arange(batch_size, device=x.device)
+        idx_repeated = idx.repeat_interleave(2 * n_annotations)
+        entity_representation = x[idx_repeated, all_annotations.reshape(1,-1)].reshape(-1, 2 * encoder_embed_dim)
+        entity_representation_repeated_left = entity_representation[relation_entity_indices_left]
+        entity_representation_repeated_right = entity_representation[relation_entity_indices_right]
+        relation_input = torch.cat((entity_representation_repeated_left, entity_representation_repeated_right), dim=-1)
+        relation_representation = self.relation_mlp(relation_input)
+        relation_score = torch.abs(self.score_mlp(relation_input).squeeze())
+        return entity_representation, relation_representation, relation_score
 
 class CLSTokenLinear(nn.Module):
     def __init__(self, args, dictionary):
@@ -413,6 +413,7 @@ encoder_head_dict = {
     'entity_concat_linear': EntityConcatLinear,
     'mention_concat_linear': MentionConcatLinear,
     'entity_concat_attention': EntityConcatAttention,
+    'all_relation': AllRelation,
     'cls_token_linear': CLSTokenLinear,
     'cls_token_layer_norm': CLSTokenLayerNorm,
 }
