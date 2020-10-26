@@ -43,7 +43,7 @@ def numpy_seed(seed, *addl_seeds):
         return hash_input
 
     seed_list = [make_hashable(seed)] + [make_hashable(add_seed) for add_seed in addl_seeds]
-    seed = int(hash(tuple(seed_list)) % 1e6)
+    seed = int(hash(tuple(seed_list)) % 4e9)
     state = np.random.get_state()
     np.random.seed(seed)
     try:
