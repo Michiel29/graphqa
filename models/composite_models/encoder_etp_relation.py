@@ -89,7 +89,7 @@ class EncoderETPRelation(BaseFairseqModel):
         replacement_product_right = replacement_relation_representation_right * query_relation_representation[replacement_relation_indices_right].unsqueeze(1)
         replacement_sum_right = replacement_product_right.sum(-1)
 
-        negative_sum = target_sum.clone().unsqueeze(1).expand(-1, n_negatives)
+        negative_sum = target_sum.clone().unsqueeze(1).expand(-1, n_negatives).clone()
 
         negative_sum[replacement_relation_indices_left] = replacement_sum_left
         negative_sum[replacement_relation_indices_right] = replacement_sum_right

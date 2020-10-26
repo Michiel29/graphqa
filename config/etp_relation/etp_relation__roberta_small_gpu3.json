@@ -1,0 +1,39 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json"],
+
+    "task": "etp_relation",
+    "arch": "encoder_etp_relation__roberta_small",
+    "eval_downstream": false,
+    "scoring_function": null,
+    "mlp_layer_sizes": [[256, 2]],
+    "mlp_layer_norm": true,
+    "entity_dim": 256,
+    "encoder_output_layer_type": "all_relation",
+    "head_layer_sizes": [[256, 2]],
+    "n_relation_layers": 1,
+    "data_path": "../data/selfinf/nki/bin-v5-threshold20-small",
+    // "data_path": "../data/nki/bin-v5-threshold20",
+    // "data_path": "../data/nki/bin-v6",
+
+    "total_negatives": 100,
+    "mask_negative_prob": 0.5,
+
+    "mask_type": "concat",
+    "non_mask_rate": 0.0,
+
+    "epoch_size": 8e5,
+    "n_valid_examples": 20000,
+    "max_epoch": 200,
+    "warmup_updates": 1000,
+    "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "num_workers": 0,
+    "max_sentences": 88,
+    "update_freq": [7],
+    "max_tokens": 1e10,
+    "required_batch_size_multiple": 1,
+
+    "criterion": "cross_entropy_custom",
+    "validate_before_training": false
+}
