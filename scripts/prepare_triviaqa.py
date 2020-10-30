@@ -280,7 +280,7 @@ def main(args):
     question_builder.finalize(os.path.join(output_dir, split+ '.questions_entities' + '.idx'))
     np.save(os.path.join(output_dir, split+'.answer_entities'), answer_entities)
 
-    processed_annotation_path = os.path.join(args.output_dir, args.split+'.processed_annotations.json')
+    processed_annotation_path = os.path.join(output_dir, args.split+'.processed_annotations.json')
     with codecs.open(processed_annotation_path, 'w', 'utf8') as f:
         json.dump(processed_annotations, f, indent=4)
 
