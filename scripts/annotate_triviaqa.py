@@ -55,7 +55,6 @@ def main(args):
         document = types.Document(
         content=question,
         type=enums.Document.Type.PLAIN_TEXT)
-        time.sleep(0.08)
 
         try:
             entities = client.analyze_entities(document=document).entities

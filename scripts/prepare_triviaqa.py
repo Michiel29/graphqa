@@ -13,6 +13,7 @@ from fairseq.data import Dictionary
 from fairseq.data import indexed_dataset
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
+import sys; sys.path.append(os.path.join(sys.path[0], '..'))
 from utils.dictionary import EntityDictionary
 
 TRAINING_TQDM_BAD_FORMAT = (
@@ -73,7 +74,8 @@ class TriviaQAProcessor(object):
         for word_id, word in enumerate(words):
             if len(word.strip()) != 0:
                 new_words.append(word)
-        return new_words
+        new_string = ' '.join(new_words)
+        return new_words, new_string
 
     def apply_gt2_bpe(self, string, annotation):
         global bpe
@@ -94,13 +96,16 @@ class TriviaQAProcessor(object):
     def add_spaces_around_annotations(self, string, annotation):
         new_annotation = []
 
-        for entity in annotation:
+        length_sort_indices = np.argsort([len(entity['name']) for entity in annotation])[::-1]
+        sorted_annotation = [annotation[i] for i in length_sort_indices]
+        for entity in sorted_annotation:
             new_entity = copy.deepcopy(entity)
             if entity['metadata'] is not None and 'year' in entity['metadata']:
                 continue
 
             surface_form = entity['mentions'][0]['content']
-
+            if not surface_form in string:
+                continue
             entity_start = string.index(surface_form)
             entity_end = entity_start + len(surface_form) - 1
             if entity_start > 0:
@@ -179,12 +184,12 @@ class TriviaQAProcessor(object):
     def process(self, string, annotation):
         global vocab
         string, annotation = self.add_spaces_around_annotations(string, annotation)
-        words = self.strip_empty_words(string)
+        words, string = self.strip_empty_words(string)
         ids, word_to_token = self.apply_gt2_bpe(' '.join(words), annotation)
         annotation = self.process_annotation(string, words, annotation, word_to_token)
 
         if len(ids) >= self.max_positions:
-            return None
+            return None, None
         ids_tensor = vocab.encode_line(line=' '.join(ids), append_eos=self.append_eos)
 
         assert len(ids_tensor) == len(ids) + int(self.append_eos)
@@ -229,7 +234,7 @@ def main(args):
     processed_annotations = []
 
     processor.initializer()
-    num_questions, valid_questions, not_in_dict, processing_problem = 0, 0, 0, 0
+    num_questions, valid_questions, no_annotation, not_in_dict, processing_problem = 0, 0, 0, 0, 0
     for i,sample in enumerate(data):
         num_questions += 1
         pbar.update()
@@ -246,6 +251,10 @@ def main(args):
         else:
             continue
 
+        if annotation is None:
+            no_annotation += 1
+            continue
+
         entity_name = entity_name.replace(' ', '_')
 
         # assert entity_name in entity_dict
@@ -254,13 +263,15 @@ def main(args):
             continue
         entity_id = entity_dict.index(entity_name)
 
-        answer_entities.append(entity_id)
 
         ids_tensor, processed_annotation = processor.process(question, annotation)
-        processed_annotations.append(processed_annotation)
         if ids_tensor is None:
             processing_problem += 1
             continue
+        processed_annotations.append(processed_annotation)
+        answer_entities.append(entity_id)
+
+
         question_builder.add_item(ids_tensor)
         valid_questions += 1
 
@@ -272,7 +283,6 @@ def main(args):
     processed_annotation_path = os.path.join(args.root_dir, args.split+'_processed_annotations.json')
     with codecs.open(processed_annotation_path, 'w', 'utf8') as f:
         json.dump(processed_annotations, f, indent=4)
-    a = 3
 
 
 if __name__ == '__main__':
