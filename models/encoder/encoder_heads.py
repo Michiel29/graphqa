@@ -284,6 +284,24 @@ class MentionConcatLinear(nn.Module):
 
         return mention_representation
 
+class MentionConcatMLP(nn.Module):
+
+    def __init__(self, args, dictionary):
+        super().__init__()
+        head_args = args.head_args
+        self.projection_mlp = MLP_factory([[2 * args.encoder_embed_dim, 1]] + head_args['layer_sizes'] + [[args.entity_dim, 1]], layer_norm=head_args['layer_norm'], dropout=head_args['dropout'])
+
+    def forward(self, x, src_tokens, annotation, **unused):
+        # x: [batch_size, length, enc_dim]
+
+
+        mention_representation = x.gather(1, annotation.view(-1, 2, 1).expand(-1, -1, x.shape[-1])) # [batch_size, 2, enc_dim]
+        mention_representation = mention_representation.view(x.shape[0], -1) # [batch_size, enc_dim * 2]
+        mention_representation = self.projection_mlp(mention_representation) # [batch_size, entity_dim]
+
+        return mention_representation
+
+
 class RelationAttentionLayer(nn.Module):
     def __init__(self, encoder_embed_dim, n_heads, dropout, ffn_dim):
         super().__init__()
@@ -364,8 +382,9 @@ class AllRelation(nn.Module):
 
     def __init__(self, args, dictionary):
         super().__init__()
-        self.relation_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + args.head_layer_sizes + [(2 * args.entity_dim, 1)])
-        self.score_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + args.head_layer_sizes + [(1, 1)])
+        head_args = args.head_args
+        self.relation_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + head_args['layer_sizes'] + [(2 * args.entity_dim, 1)], dropout=head_args['dropout'], layer_norm=head_args['layer_norm'])
+        self.score_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + head_args['layer_sizes'] + [(1, 1)], dropout=head_args['dropout'], layer_norm=head_args['layer_norm'])
 
     def forward(self, x, src_tokens, mask_annotation, all_annotations, n_annotations, relation_entity_indices_left, relation_entity_indices_right, **unused):
         # x: [batch_size, length, enc_dim]
@@ -412,6 +431,7 @@ encoder_head_dict = {
     'entity_concat': EntityConcat,
     'entity_concat_linear': EntityConcatLinear,
     'mention_concat_linear': MentionConcatLinear,
+    'mention_concat_mlp': MentionConcatMLP,
     'entity_concat_attention': EntityConcatAttention,
     'all_relation': AllRelation,
     'cls_token_linear': CLSTokenLinear,

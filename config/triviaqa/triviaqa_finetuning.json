@@ -1,0 +1,57 @@
+{
+    "add_configs": ["../roberta/small.json", "../base.json"],
+    "eval_downstream": true,
+    "downstream_dict": {
+        "triviaqa": {
+            "eval_metric": "acc"
+        }
+    },
+
+
+
+    "task": "triviaqa",
+    "task_framing": "predict_mask",
+    "arch": "encoder_entity_prediction__roberta_small",
+    "pretrain_roberta_path": null,
+
+    "encoder_output_layer_type": "mention_concat_linear",
+    "load_custum_output_layer": true,
+    "downstream_mode": true,
+
+    "qa_data_path": "../data/triviaqa/triviaqa/bin",
+
+    "total_negatives": 100,
+
+
+    "entity_dim": 256,
+    "n_valid_examples": 20000,
+
+
+    "data_path": "../data/selfinf/nki/bin-v5-threshold20-small",
+
+    "update_freq": [7],
+    "epoch_size": 2e6,
+    "max_sentences": 88,
+    "max_sentences_valid": 10,
+    "max_tokens": 1e10,
+
+    "num_workers": 0,
+
+    "criterion": "cross_entropy_custom",
+    "mask_type": "concat",
+
+    "max_epoch": 10,
+    // "warmup_updates": 1000,
+    // "total_num_updates": 10000000,
+    "lr": [1e-4],
+
+    "checkpoint_dict": {
+        "42_100": {
+            "checkpoints": [
+                "../save/checkpoints/GRAP-42/checkpoint100.pt"
+            ]
+        }
+
+    }
+
+}

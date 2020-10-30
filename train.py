@@ -126,7 +126,7 @@ def main(args, init_distributed=False):
     if distributed_utils.is_master(args) and not args.debug:
         initialize_neptune(trainer, extra_state, args)
 
-    if args.eval_downstream and len(args.downstream_dict) > 0:
+    if getattr(args, 'eval_downstream', None) and len(args.downstream_dict) > 0:
         downstream_dict = {}
         for downstream_name, downstream_kwargs in args.downstream_dict.items():
             downstream_dict[downstream_name] = create_downstream_dict(args, downstream_name, downstream_kwargs, model)
@@ -170,7 +170,7 @@ def main(args, init_distributed=False):
             valid_losses = validate(args, trainer, task, epoch_itr.epoch, valid_subsets)
 
             # evaluate on downstream tasks
-            if args.eval_downstream:
+            if getattr(args, 'eval_downstream', None):
                 run_downstream(args, downstream_dict, model, criterion, epoch_itr.epoch, trainer.get_num_updates())
         else:
             valid_losses = [None]

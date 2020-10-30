@@ -18,6 +18,7 @@ class EncoderEntityPrediction(BaseFairseqModel):
         super().__init__()
 
         self.args = args
+        self.downstream_mode = getattr(args, 'downstream_mode', None)
 
         self.entity_dim = args.entity_dim
         self.encoder_embed_dim = args.encoder_embed_dim
@@ -29,7 +30,13 @@ class EncoderEntityPrediction(BaseFairseqModel):
 
         mention_enc, _ = self.encoder(batch['text'], annotation=batch.get('annotation')) # [batch_size, enc_dim]
 
-        candidate_embeddings = self.entity_embedder(batch['candidates']) # [batch_size, k_candidates, ent_dim]
+        batch_size = len(mention_enc)
+
+
+        if self.downstream_mode and not self.training:
+            candidate_embeddings = self.entity_embedder.weight.expand(batch_size, -1, self.entity_dim)
+        else:
+            candidate_embeddings = self.entity_embedder(batch['candidates']) # [batch_size, k_candidates, ent_dim]
 
         scores = (mention_enc.unsqueeze(1) * candidate_embeddings).sum(axis=-1)
         return scores

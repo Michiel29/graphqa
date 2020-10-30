@@ -88,7 +88,6 @@ def create_ft_prefixes(downstream_name, param=None, param_prefix=None, ckpt_idx=
         return ft_train_prefix, ft_valid_prefix
 
 def setup_ft_args(params, param_type, downstream_args, downstream_task=None):
-    assert param_type in ['pct_train_examples', 'n_train_relations', 'n_train_examples_per_relation']
     # Set up ft_args -- i.e., copy of downstream_args with n_train_examples updated
     ft_args_list = []
     for param in params:
@@ -104,7 +103,10 @@ def setup_ft_args(params, param_type, downstream_args, downstream_task=None):
         elif param_type == 'n_train_examples_per_relation':
             ft_args.n_train_examples_per_relation = param
             n_train_examples = param * 64
-        n_updates = ceil(n_train_examples / ft_args.max_sentences)
+        else:
+            downstream_task.datasets['train'].set_epoch(0)
+            n_train_examples = len(downstream_task.datasets['train'])
+        n_updates = ceil(n_train_examples / ft_args.max_sentences * ft_args.max_epoch)
         ft_args.warmup_updates = round(n_updates * 0.06)
         ft_args_list.append(ft_args)
     return ft_args_list
