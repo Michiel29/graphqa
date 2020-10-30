@@ -23,7 +23,6 @@ class EntityPredictionDataset(FairseqDataset):
         n_entities,
         total_negatives,
         max_positions,
-        num_workers,
         seed,
     ):
         self.annotated_text = annotated_text
@@ -37,7 +36,6 @@ class EntityPredictionDataset(FairseqDataset):
         self.epoch = None
         self._sizes = np.full(len(self), max_positions, dtype=np.int64)
 
-        self.num_workers = num_workers
 
     def set_epoch(self, epoch):
         self.epoch = epoch

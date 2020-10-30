@@ -65,7 +65,6 @@ class EntityPredictionTask(BaseTask):
             n_entities = len(self.entity_dictionary),
             total_negatives=self.args.total_negatives,
             max_positions = self.args.max_positions,
-            num_workers=self.args.num_workers,
             seed=self.args.seed,
         )
 

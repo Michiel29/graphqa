@@ -78,7 +78,8 @@ is_neptune_initialized = False
 param_prefix_dict = {
     'pct_train_examples': 'pct',
     'n_train_relations': 'rel',
-    'n_train_examples_per_relation': 'epr'
+    'n_train_examples_per_relation': 'epr',
+    None: ''
 }
 
 
@@ -161,12 +162,12 @@ def evaluate_checkpoint(args, ckpt, ckpt_idx, trainer):
     ft_dict = {}
     for ft_name, ft_kwargs in args.downstream_dict.items():
         # Set random seed
-        np.random.seed(args.seed); torch.manual_seed(args.seed) 
+        np.random.seed(args.seed); torch.manual_seed(args.seed)
 
         # Get task_dict for current task
-        ft_dict[ft_name] = create_downstream_dict(args, ft_name, ft_kwargs, trainer.get_model()) 
+        ft_dict[ft_name] = create_downstream_dict(args, ft_name, ft_kwargs, trainer.get_model())
 
-    # Fine-tune model on each downstream task    
+    # Fine-tune model on each downstream task
     for ft_name in ft_dict:
         # Set random seed
         np.random.seed(args.seed); torch.manual_seed(args.seed)
@@ -177,8 +178,8 @@ def evaluate_checkpoint(args, ckpt, ckpt_idx, trainer):
         elif ft_name in ['fewrel_0', 'fewrel_1']:
             param_types = ['n_train_relations', 'n_train_examples_per_relation']
         else:
-            raise NotImplementedError
-        
+            param_types = [None]
+
         # Run fine-tuning for current task
         run_ft(args, ft_dict, ft_name, param_types, ckpt_idx)
 
@@ -188,7 +189,7 @@ def run_ft(args, ft_dict, ft_name, param_types, ckpt_idx):
     ft_args_orig = ft_task_dict['args']
     ft_task_orig = ft_task_dict['task']
     ft_valid_subsets = ft_task_dict['valid_subset']
-    
+
     logger.info('training on {} GPUs'.format(args.distributed_world_size))
     logger.info('max tokens per GPU = {} and max sentences per GPU = {}'.format(
         ft_args_orig.max_tokens,
@@ -211,11 +212,13 @@ def run_ft(args, ft_dict, ft_name, param_types, ckpt_idx):
         elif param_type == 'n_train_examples_per_relation':
             params = sorted(list(set(ft_args_orig.n_train_examples_per_relation)))
             assert all([x >= 5 and x <= 700 for x in params]) # make sure n_train_examples_per_relation vals are within [5, 700]
+        else:
+            params = [None]
 
         # Set up ft_args_list and ft_task_list for each param value
         ft_args_list = setup_ft_args(params, param_type, ft_args_orig, ft_task_orig)
         ft_task_list = setup_ft_tasks(params, param_type, ft_args_list, ft_valid_subsets)
-    
+
         # Iterate through params
         for param_idx, param in enumerate(params):
             # Set random seed
@@ -224,7 +227,7 @@ def run_ft(args, ft_dict, ft_name, param_types, ckpt_idx):
             # Get ft_args and ft_task for current param
             ft_args = ft_args_list[param_idx]
             ft_task = ft_task_list[param_idx]
-            
+
             # Train and validate model for given task and param
             ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_idx)
 
@@ -235,8 +238,8 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_id
 
     # Set up ft prefixes
     ft_train_prefix, ft_valid_prefix = create_ft_prefixes(
-        ft_task_dict['name'], 
-        param, 
+        ft_task_dict['name'],
+        param,
         param_prefix_dict[param_type],
         ckpt_idx
     )
@@ -265,19 +268,19 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_id
 
         # Fine-tune PyTorch classifier on ft_task training set
         downstream_train_pytorch(
-            ft_args, 
-            ft_trainer, 
-            ft_task, 
-            ft_epoch_itr, 
+            ft_args,
+            ft_trainer,
+            ft_task,
+            ft_epoch_itr,
             ft_train_prefix
         )
 
         # Validate PyTorch classifier on ft_task validation set
         ft_valid_loss, ft_valid_score, progress = validate(
-            ft_args, 
-            ft_trainer, 
-            ft_task, 
-            ft_epoch_itr.epoch, 
+            ft_args,
+            ft_trainer,
+            ft_task,
+            ft_epoch_itr.epoch,
             ft_valid_prefix,
             ckpt_idx
         )
@@ -289,7 +292,7 @@ def ft_train_validate(ft_args, ft_task, ft_task_dict, param, param_type, ckpt_id
         # sharded data: get train iterator for next epoch
         reload_dataset = getattr(ft_args, 'reload', False)
         ft_epoch_itr = ft_trainer.get_train_iterator(ft_epoch_itr.next_epoch_idx, load_dataset=reload_dataset)
-    
+
     progress.print({ft_args.eval_metric: max(ft_valid_scores)}, tag=ft_valid_prefix, step=ckpt_idx)
 
     # Stop training timer
@@ -341,8 +344,8 @@ def validate(args, trainer, task, epoch_for_logging, valid_name, ckpt_idx):
     if args.log_valid_progress:
         valid_progress_prefix = '{}_ckpt{}'.format(valid_name, ckpt_idx)
         progress.print(
-            {args.eval_metric: stats[args.eval_metric]}, 
-            tag=valid_progress_prefix, 
+            {args.eval_metric: stats[args.eval_metric]},
+            tag=valid_progress_prefix,
             step=epoch_for_logging
         )
 
