@@ -53,7 +53,7 @@ class ETPDownstreamDataset(BaseWrapperDataset):
         item['target'] = target
 
         text = item['question']
-        mask_token = torch.LongTensor([self.dictionary.mask()])
+        mask_token = torch.LongTensor([self.dictionary.blank()])
         text = torch.cat((text, mask_token), dim=0)
         item['text'] = text
         mask_position = len(text) - 1
@@ -79,13 +79,14 @@ class ETPDownstreamDataset(BaseWrapperDataset):
         if batch_size == 0:
             return None
 
-        text, annotation, candidates = [], [], []
+        text, annotation, candidates, target = [], [], [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
             annotation.append(instance['annotation'])
             candidates.append(instance['candidates'])
+            target.append(instance['target'])
             ntokens += len(instance['text'])
             nsentences += 1
 
@@ -98,7 +99,7 @@ class ETPDownstreamDataset(BaseWrapperDataset):
 
         batch = {
             'text': padded_text,
-            'target': torch.zeros(batch_size, dtype=torch.int64),
+            'target': torch.LongTensor(target),
             'annotation': annotation,
             'candidates': torch.LongTensor(candidates),
             'ntokens': ntokens,

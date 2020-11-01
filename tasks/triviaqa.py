@@ -46,7 +46,7 @@ class TriviaQATask(BaseTask):
             os.path.join(self.args.qa_data_path, split + '.answer_entities.npy'),
         )
 
-        with open(os.path.join(self.args.qa_data_path, split + '.annotations.json')) as f:
+        with open(os.path.join(self.args.qa_data_path, split + '.processed_annotations.json')) as f:
             annotations = json.load(f)
 
         dataset = TriviaQADataset(questions, answers, annotations)
