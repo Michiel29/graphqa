@@ -221,6 +221,14 @@ def load_ft_checkpoint(args, filename, model):
         logger.info(
             "loaded checkpoint {} (epoch {})".format(filename, epoch)
         )
+
+        freeze_parameters = getattr(args, 'freeze_parameters', None)
+        if freeze_parameters:
+            for element in model.named_parameters():
+                for param_prefix in freeze_parameters:
+                    if element[0].startswith(param_prefix):
+                        element[1].requires_grad = False
+
     else:
         raise Exception(
                 "Cannot load checkpoint {}; path does not exist.".format(filename)
