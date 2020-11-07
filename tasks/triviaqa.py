@@ -64,7 +64,6 @@ class TriviaQATask(BaseTask):
                 edges=edges,
                 dictionary=self.dictionary,
                 n_entities=len(self.entity_dictionary),
-                total_negatives=self.args.total_negatives,
                 seed=self.args.seed,
                 split=split,
                 )
