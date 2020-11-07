@@ -55,13 +55,11 @@ class EntityPredictionDataset(FairseqDataset):
 
             start_pos, end_pos, start_block, end_block = edge[GraphDataset.HEAD_START_POS], edge[GraphDataset.HEAD_END_POS], edge[GraphDataset.START_BLOCK], edge[GraphDataset.END_BLOCK]
             passage, annotation_position = self.annotated_text.annotate_mention(entity, start_pos, end_pos, start_block, end_block)
-            negatives = np.random.choice(self.n_entities, replace=False, size=self.total_negatives)
-            candidates = np.concatenate(([entity], negatives))
 
         item = {
             'text': passage,
             'annotation': torch.LongTensor(annotation_position) if annotation_position else None,
-            'candidates': candidates,
+            'target': entity
         }
         return item
 
@@ -87,13 +85,13 @@ class EntityPredictionDataset(FairseqDataset):
         if batch_size == 0:
             return None
 
-        text, annotation, candidates = [], [], []
+        text, annotation, target = [], [], []
         ntokens, nsentences = 0, 0
 
         for instance in instances:
             text.append(instance['text'])
             annotation.append(instance['annotation'])
-            candidates.append(instance['candidates'])
+            target.append(instance['target'])
             ntokens += len(instance['text'])
             nsentences += 1
 
@@ -106,9 +104,8 @@ class EntityPredictionDataset(FairseqDataset):
 
         batch = {
             'text': padded_text,
-            'target': torch.zeros(batch_size, dtype=torch.int64),
+            'target': torch.LongTensor(target),
             'annotation': annotation,
-            'candidates': torch.LongTensor(candidates),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'size': batch_size,
