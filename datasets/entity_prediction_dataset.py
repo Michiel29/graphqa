@@ -21,7 +21,6 @@ class EntityPredictionDataset(FairseqDataset):
         edges,
         dictionary,
         n_entities,
-        total_negatives,
         max_positions,
         seed,
     ):
@@ -30,7 +29,6 @@ class EntityPredictionDataset(FairseqDataset):
         self.dictionary = dictionary
         # Could take len(edges) instead of passing number of entities, but old indexed dataset had extra Null entities
         self.n_entities = n_entities
-        self.total_negatives = total_negatives
 
         self.seed = seed
         self.epoch = None
