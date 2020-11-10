@@ -143,9 +143,7 @@ class ETPRelationDataset(FairseqDataset):
         offset = 0
         for i in range(len(n_annotations)):
 
-
             sample_replacement_indices_left = offset + replacement_positions[i] * n_annotations[i] + torch.arange(n_annotations[i])
-
             sample_replacement_indices_right = offset + replacement_positions[i] + torch.arange(0, n_annotations[i]**2, n_annotations[i])
             replacement_relation_indices_left.append(sample_replacement_indices_left)
             replacement_relation_indices_right.append(sample_replacement_indices_right)

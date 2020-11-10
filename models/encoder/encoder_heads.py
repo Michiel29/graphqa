@@ -383,10 +383,11 @@ class AllRelation(nn.Module):
     def __init__(self, args, dictionary):
         super().__init__()
         head_args = args.head_args
+        self.mention_linear = nn.Linear(2 * args.encoder_embed_dim, args.entity_dim)
         self.relation_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + head_args['layer_sizes'] + [(2 * args.entity_dim, 1)], dropout=head_args['dropout'], layer_norm=head_args['layer_norm'])
         self.score_mlp = MLP_factory([(args.encoder_embed_dim * 4, 1)] + head_args['layer_sizes'] + [(1, 1)], dropout=head_args['dropout'], layer_norm=head_args['layer_norm'])
 
-    def forward(self, x, src_tokens, mask_annotation, all_annotations, n_annotations, relation_entity_indices_left, relation_entity_indices_right, **unused):
+    def forward(self, x, src_tokens, all_annotations, n_annotations, relation_entity_indices_left, relation_entity_indices_right, **unused):
         # x: [batch_size, length, enc_dim]
         batch_size = x.shape[0]
         encoder_embed_dim = x.shape[-1]
@@ -398,7 +399,9 @@ class AllRelation(nn.Module):
         relation_input = torch.cat((entity_representation_repeated_left, entity_representation_repeated_right), dim=-1)
         relation_representation = self.relation_mlp(relation_input)
         relation_score = torch.abs(self.score_mlp(relation_input).squeeze())
-        return entity_representation, relation_representation, relation_score
+
+        mention_representation = self.mention_linear(entity_representation)
+        return mention_representation, relation_representation, relation_score
 
 class CLSTokenLinear(nn.Module):
     def __init__(self, args, dictionary):

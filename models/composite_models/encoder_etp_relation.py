@@ -35,9 +35,10 @@ class EncoderETPRelation(BaseFairseqModel):
         relation_entity_indices_right = batch['relation_entity_indices_right']
 
         entity_replacements = batch['entity_replacements']
+        replacement_positions = batch['replacement_positions']
         n_negatives = entity_replacements.shape[1]
 
-        encoder_output, _ = self.encoder(batch['text'], mask_annotation=batch['mask_annotation'], all_annotations=batch['all_annotations'], n_annotations=n_annotations, relation_entity_indices_left=relation_entity_indices_left, relation_entity_indices_right=relation_entity_indices_right)
+        encoder_output, _ = self.encoder(batch['text'], all_annotations=batch['all_annotations'], n_annotations=n_annotations, relation_entity_indices_left=relation_entity_indices_left, relation_entity_indices_right=relation_entity_indices_right)
         query_entity_representation, query_relation_representation, query_relation_scores = encoder_output
 
         float_type = query_entity_representation.dtype
@@ -70,10 +71,7 @@ class EncoderETPRelation(BaseFairseqModel):
         replacement_relation_indices_left = batch['replacement_relation_indices_left']
         replacement_relation_indices_right = batch['replacement_relation_indices_right']
 
-
-
-        target_product = target_relation_representation * query_relation_representation
-        target_sum = target_product.sum(-1)
+        target_sum = torch.einsum('ij,ij->i', [target_relation_representation, query_relation_representation])
 
         # sum element-wise product
         target_relation_compatibility_scores = target_sum * query_relation_scores
@@ -83,11 +81,13 @@ class EncoderETPRelation(BaseFairseqModel):
         target_scores = torch.zeros(batch_size, device=device, dtype=float_type)
         target_scores = target_scores.index_put((put_indices,), target_relation_compatibility_scores[selected_relation_indices], accumulate=True)
 
-        replacement_product_left = replacement_relation_representation_left * query_relation_representation[replacement_relation_indices_left].unsqueeze(1)
-        replacement_sum_left = replacement_product_left.sum(-1)
+        mention_target_scores = torch.einsum('ij,ij->i', [target_embeddings, query_entity_representation])
+        mention_put_indices = torch.arange(batch_size, device=device).repeat_interleave(n_annotations)
+        target_scores = target_scores.index_put((mention_put_indices,), mention_target_scores, accumulate=True)
 
-        replacement_product_right = replacement_relation_representation_right * query_relation_representation[replacement_relation_indices_right].unsqueeze(1)
-        replacement_sum_right = replacement_product_right.sum(-1)
+        replacement_sum_left = torch.einsum('ijk,ik->ij', [replacement_relation_representation_left, query_relation_representation[replacement_relation_indices_left]])
+
+        replacement_sum_right = torch.einsum('ijk,ik->ij', [replacement_relation_representation_right, query_relation_representation[replacement_relation_indices_right]])
 
         negative_sum = target_sum.clone().unsqueeze(1).expand(-1, n_negatives).clone()
 
@@ -100,7 +100,18 @@ class EncoderETPRelation(BaseFairseqModel):
         negative_scores = torch.zeros(size=(batch_size, n_negatives), device=device, dtype=float_type)
         negative_scores = negative_scores.index_put((put_indices,), negative_relation_compatibility_scores[selected_relation_indices], accumulate=True)
 
+        negative_embeddings = target_embeddings.unsqueeze(1).expand(-1, n_negatives, -1).contiguous()
+        offsets = torch.zeros_like(n_annotations)
+        offsets[1:] = n_annotations.cumsum(0)[:-1]
+        replacement_positions = replacement_positions + offsets
+        negative_embeddings[replacement_positions] = replacement_embeddings
+        mention_negative_scores = torch.einsum('ijk,ik->ij', [negative_embeddings, query_entity_representation])
+        negative_scores = negative_scores.index_put((mention_put_indices,), mention_negative_scores, accumulate=True)
+
         scores = torch.cat((target_scores.unsqueeze(1), negative_scores), dim=-1)
+
+
+
 
         return scores
 
