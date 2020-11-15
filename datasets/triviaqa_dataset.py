@@ -33,7 +33,6 @@ class TriviaQADataset(FairseqDataset):
             'question': self.questions[index],
             'answer': self.answers.array[index],
             'annotation': self.annotations[index],
-
         }
 
         return item

@@ -8,6 +8,7 @@ from tasks import BaseTask
 from datasets import (
     TriviaQADataset,
     ETPDownstreamDataset,
+    ETPRelationDownstreamDataset,
     FixedSizeDataset,
     PrependTokenDataset,
 )
@@ -53,8 +54,6 @@ class TriviaQATask(BaseTask):
 
         task_framing = self.args.task_framing
 
-        dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['question'])
-
         if task_framing == 'predict_mask':
             edges = safe_load_indexed_dataset(
             os.path.join(self.args.data_path, split + '.graph'),
@@ -67,6 +66,21 @@ class TriviaQATask(BaseTask):
                 seed=self.args.seed,
                 split=split,
                 )
+            dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text'], ['annotation'])
+
+        elif task_framing == 'predict_mask_relation':
+            edges = safe_load_indexed_dataset(
+            os.path.join(self.args.data_path, split + '.graph'),
+        )
+            dataset = ETPRelationDownstreamDataset(
+                dataset=dataset,
+                edges=edges,
+                dictionary=self.dictionary,
+                n_entities=len(self.entity_dictionary),
+                seed=self.args.seed,
+                split=split,
+                )
+            dataset = PrependTokenDataset(dataset, self.dictionary.bos(), ['text'], ['mask_annotation', 'all_annotations'])
         else:
             raise Exception
 

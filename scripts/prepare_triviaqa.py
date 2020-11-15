@@ -23,12 +23,12 @@ TRAINING_TQDM_BAD_FORMAT = (
 
 
 class TriviaQAProcessor(object):
-    def __init__(self, roberta_dir, entity_path, dataset_impl, append_eos, max_positions):
+    def __init__(self, roberta_dir, entity_dict, dataset_impl, append_eos, max_positions):
         self.dataset_impl = dataset_impl
         self.append_eos = append_eos
         self.roberta_dir = roberta_dir
         assert os.path.isdir(self.roberta_dir)
-        self.entity_path = entity_path
+        self.entity_dict = entity_dict
 
         self.max_positions = max_positions
 
@@ -154,6 +154,7 @@ class TriviaQAProcessor(object):
             word_ends.append(cumulative_characters + len(word))
             cumulative_characters += len(word)
         already_done = []
+        new_annotation = []
         for entity in annotation:
             surface_form = entity['mentions'][0]['content']
             surface_strip = surface_form.replace(' ', '')
@@ -176,10 +177,19 @@ class TriviaQAProcessor(object):
             if word_position is None:
                 continue
 
-            start_token = word_to_token[word_position[0]]
-            end_token = word_to_token[word_position[1]]
+            start_token = word_to_token[word_position[0]][0]
+            end_token = word_to_token[word_position[1]][1]
             entity['position'] = (start_token, end_token)
-        return annotation
+
+            if entity['metadata'] is not None and 'wikipedia_url' in entity['metadata']:
+                url = entity['metadata']['wikipedia_url']
+                entity_name = url.split('/')[-1]
+                if entity_name in self.entity_dict:
+                    entity_id = self.entity_dict.index(entity_name)
+                    entity['entity_id'] = entity_id
+
+            new_annotation.append(entity)
+        return new_annotation
 
     def process(self, string, annotation):
         global vocab
@@ -206,9 +216,11 @@ def main(args):
         annotations = json.load(f)
     print('-- Loaded data from %s' % data_path)
 
+    entity_dict = EntityDictionary.load(args.entity_path)
+
     processor = TriviaQAProcessor(
         args.roberta_dir,
-        args.entity_path,
+        entity_dict,
         args.dataset_impl,
         args.append_eos,
         args.max_positions
@@ -224,7 +236,6 @@ def main(args):
         os.mkdir(output_dir)
     split = args.split if args.split != 'dev' else 'valid'
     vocab = Dictionary.load(os.path.join(args.roberta_dir, 'roberta.base', 'dict.txt'))
-    entity_dict = EntityDictionary.load(args.entity_path)
     question_builder = indexed_dataset.make_builder(
         os.path.join(output_dir, split + '.questions_entities' + '.bin'),
         impl=args.dataset_impl,

@@ -24,6 +24,7 @@ from .gnn_dataset import GNNDataset
 from .entity_prediction_dataset import EntityPredictionDataset
 from .etp_downstream_dataset import ETPDownstreamDataset
 from .etp_relation_dataset import ETPRelationDataset
+from .etp_relation_downstream_dataset import ETPRelationDownstreamDataset
 from .select_dictionary_dataset import SelectDictionaryDataset
 from .shuffled_dataset import ShuffledDataset
 from .subgraph_sampler import SubgraphSampler
