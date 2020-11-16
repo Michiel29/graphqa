@@ -43,8 +43,13 @@ def create_downstream_dict(args, downstream_name, downstream_kwargs, model):
         downstream_task.load_dataset(split, combine=False, epoch=1)
 
     # Set up downstream eval model
-    encoder = model.encoder if hasattr(model, 'encoder') else model
-    downstream_model = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task, encoder)
+    encoder_only = getattr(downstream_args, 'encoder_only', False)
+
+    if encoder_only:
+        encoder = model.encoder if hasattr(model, 'encoder') else model
+        downstream_model = ARCH_MODEL_REGISTRY[downstream_args.arch].build_model(downstream_args, downstream_task, encoder)
+    else:
+        downstream_model = model
 
     # Set up downstream eval criterion
     downstream_criterion = downstream_task.build_criterion(downstream_args)
