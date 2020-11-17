@@ -40,13 +40,15 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
         relation_entity_indices_left = batch['relation_entity_indices_left']
         relation_entity_indices_right = batch['relation_entity_indices_right']
 
-        # attention - all_annotations include mask?
+        # Generate mention and relation encodings
         encoder_output, _ = self.encoder(batch['text'], mask_annotation=batch['mask_annotation'], all_annotations=batch['all_annotations'], n_annotations=n_annotations_inclusive, relation_entity_indices_left=relation_entity_indices_left, relation_entity_indices_right=relation_entity_indices_right)
         query_entity_representation_inclusive, query_relation_representation_inclusive, query_relation_scores_inclusive = encoder_output
 
         float_type = query_entity_representation_inclusive.dtype
         int_type = relation_entity_indices_left.dtype
 
+
+        # Separate representation into representation for inline annotations and mask annotation
         mask_entity_indices = n_annotations.cumsum(0) - 1
         non_mask_bool_entity = torch.ones(len(query_entity_representation_inclusive), dtype=int_type, device=device)
         non_mask_bool_entity[mask_entity_indices] = 0
@@ -76,15 +78,14 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
 
         mask_relation_offsets = (n_annotations * 2).cumsum(0) - 2 * n_annotations
 
-        # attention - query entity representation layer?
+        # For each mention, compare similarity with entity dictionary
         entity_scores = torch.einsum('ij,kj->ik', [query_entity_representation, self.entity_embedder.weight])
         top_entity_scores, top_entities = entity_scores.topk(self.choice_size, dim=1, sorted=True)
 
         mask_entity_scores = torch.einsum('ij,kj->ik', [mask_entity_representation, self.entity_embedder.weight])
         top_mask_entity_scores, top_mask_entities = mask_entity_scores.topk(self.choice_size, dim=1, sorted=True)
 
-        # # Add correct answer to top mask entities.
-
+        # In case correct answer is not in top mask entities, replace lowest scoring top entity with correct answer (training only)
         prediction_equals_target = (top_mask_entity_scores - target.unsqueeze(1))
         contained_sample_idx, contained_target_choice_idx = torch.nonzero((prediction_equals_target==0), as_tuple=True)
         not_contained_sample_idx, _ = torch.nonzero((prediction_equals_target), as_tuple=True)
@@ -94,7 +95,6 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
 
         top_mask_entities = top_mask_entities.index_put(put_indices, target[not_contained_sample_idx])
 
-        # If in train mode, add with its score, otherwise add with negative inf to avoid cheating validation
         if self.training:
             top_mask_entity_scores = top_mask_entity_scores.index_put(put_indices, mask_entity_scores[(not_contained_sample_idx, target[not_contained_sample_idx])])
         else:
@@ -115,19 +115,8 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
             entity_end = entity_ends[idx]
             n_ent = entity_end - entity_start
 
-            relation_idx = torch.arange(n_ent**2, dtype=int_type, device=device).reshape(n_ent, n_ent) + relation_offsets[idx]
-
-            threshold = 0.5 * (query_relation_scores[relation_idx].max() + query_relation_scores[relation_idx].mean())
-            indices_selected_boolean = query_relation_scores[relation_idx] > threshold
-
-            relation_score_normalization = (2 * self.args.entity_dim * n_ent**2)
-            entity_score_normalization = (self.args.entity_dim * n_ent)
-
-            # first step calculate scores once for beam=1 to avoid duplicates
-
-            beam = entity_ids[entity_start:entity_end].clone()
-            choice_scores = top_entity_scores[entity_start:entity_end]
-            n_assigned = len(torch.nonzero((beam >= 0)))
+            relation_score_normalization = (2 * self.args.entity_dim * n_ent * (n_ent + 1))
+            entity_score_normalization = (self.args.entity_dim * (n_ent + 1))
 
             # Just do entity prediction if no other annotations exist
             if n_annotations[idx] == 0:
@@ -135,8 +124,20 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
                 target_scores = target_scores.index_copy(0, torch.empty(1, dtype=int_type, device=device).fill_(idx), choice_scores)
                 continue
 
+            relation_idx = torch.arange(n_ent**2, dtype=int_type, device=device).reshape(n_ent, n_ent) + relation_offsets[idx]
 
-            if n_assigned > 0:
+            threshold = 0.5 * (query_relation_scores[relation_idx].max() + query_relation_scores[relation_idx].mean())
+            indices_selected_boolean = query_relation_scores[relation_idx] > threshold
+
+
+            # first step calculate scores once for beam=1 to avoid duplicates
+
+            beam = entity_ids[entity_start:entity_end].clone()
+            choice_scores = top_entity_scores[entity_start:entity_end]
+            n_assigned = len(torch.nonzero((beam >= 0)))
+
+            # If some annotations are already linked, take these into account when constructing initial beam
+            if n_assigned > 0 and n_assigned < n_annotations[idx]:
 
                 assigned_entities = torch.nonzero((beam>=0)).reshape(n_assigned, 1).expand( -1, n_ent).reshape(-1)
                 choice_positions = torch.arange(n_ent, dtype=int_type, device=device).unsqueeze(0).expand(n_assigned, -1).reshape(-1)
@@ -144,59 +145,27 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
                 relation_indices_local = (torch.cat((assigned_entities, choice_positions)), torch.cat((choice_positions, assigned_entities)))
                 indices_selected_local = indices_selected_boolean[relation_indices_local].nonzero(as_tuple=True)[0]
 
-                indices_selected_global = relation_idx[relation_indices_local][indices_selected_local]
+                if len(indices_selected_local) > 0:
 
-                initial_query_relation_representation = query_relation_representation[indices_selected_global]
-                initial_query_relation_scores = query_relation_scores[indices_selected_global]
+                    indices_selected_global = relation_idx[relation_indices_local][indices_selected_local]
 
-                current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(n_assigned, 1, 1).expand(-1, n_ent, self.choice_size).reshape(-1, self.choice_size)
-                choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, n_ent, self.choice_size).expand(n_assigned, -1, -1).reshape(-1, self.choice_size)
-                initial_kb_relation_indices_left = torch.stack((current_embedding_ids, choice_embedding_ids), dim=-1)
-                initial_kb_relation_indices_right = torch.stack((choice_embedding_ids, current_embedding_ids), dim=-1)
-                initial_kb_relation_indices = torch.cat((initial_kb_relation_indices_left, initial_kb_relation_indices_right))
+                    initial_query_relation_representation = query_relation_representation[indices_selected_global]
+                    initial_query_relation_scores = query_relation_scores[indices_selected_global]
 
-                initial_kb_relation_indices_selected = initial_kb_relation_indices[indices_selected_local]
+                    current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(n_assigned, 1, 1).expand(-1, n_ent, self.choice_size).reshape(-1, self.choice_size)
+                    choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, n_ent, self.choice_size).expand(n_assigned, -1, -1).reshape(-1, self.choice_size)
+                    initial_kb_relation_indices_left = torch.stack((current_embedding_ids, choice_embedding_ids), dim=-1)
+                    initial_kb_relation_indices_right = torch.stack((choice_embedding_ids, current_embedding_ids), dim=-1)
+                    initial_kb_relation_indices = torch.cat((initial_kb_relation_indices_left, initial_kb_relation_indices_right))
 
-                initial_kb_relation_representation = self.entity_embedder(initial_kb_relation_indices_selected).reshape(-1, self.choice_size, 2 * self.entity_dim)
+                    initial_kb_relation_indices_selected = initial_kb_relation_indices[indices_selected_local]
 
-                initial_relation_compatibility_scores = torch.einsum('rd,rcd->rc', [initial_query_relation_representation * initial_query_relation_scores.unsqueeze(1), initial_kb_relation_representation]) / relation_score_normalization
+                    initial_kb_relation_representation = self.entity_embedder(initial_kb_relation_indices_selected).reshape(-1, self.choice_size, 2 * self.entity_dim)
 
-                initial_relation_put_indices = (torch.cat((choice_positions, choice_positions))[indices_selected_local],)
-                choice_scores = choice_scores.index_put(initial_relation_put_indices, initial_relation_compatibility_scores, accumulate=True)
+                    initial_relation_compatibility_scores = torch.einsum('rd,rcd->rc', [initial_query_relation_representation * initial_query_relation_scores.unsqueeze(1), initial_kb_relation_representation]) / relation_score_normalization
 
-
-
-                # .reshape(n_assigned, 1, 1, 1, 1).expand(-1, n_ent, -1, self.choice_size, -1)
-                # choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, n_ent, 1, self.choice_size, 1).expand(n_assigned, -1, -1, -1, -1)
-
-                # initial_kb_relation_indices_left = torch.cat((current_embedding_ids, choice_embedding_ids), dim=-1)
-                # initial_kb_relation_indices_right = torch.cat((choice_embedding_ids, current_embedding_ids), dim=-1)
-
-
-                # initial_relation_indices_left = relation_idx[assigned_entities, choice_positions].reshape(n_assigned, n_ent, 1)
-                # initial_relation_indices_right = relation_idx[choice_positions, assigned_entities].reshape(n_assigned, n_ent, 1)
-
-                # initial_relation_indices = torch.cat((initial_relation_indices_left, initial_relation_indices_right), dim=-1)
-
-                # initial_query_relation_representation = query_relation_representation[initial_relation_indices]
-                # initial_query_relation_scores = query_relation_scores[initial_relation_indices]
-
-
-                # current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(n_assigned, 1, 1, 1, 1).expand(-1, n_ent, -1, self.choice_size, -1)
-                # choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, n_ent, 1, self.choice_size, 1).expand(n_assigned, -1, -1, -1, -1)
-
-                # initial_kb_relation_indices_left = torch.cat((current_embedding_ids, choice_embedding_ids), dim=-1)
-                # initial_kb_relation_indices_right = torch.cat((choice_embedding_ids, current_embedding_ids), dim=-1)
-
-                # initial_kb_relation_indices = torch.cat((initial_kb_relation_indices_left, initial_kb_relation_indices_right), dim=-3)
-
-                # # only selected indices
-
-                # initial_kb_relation_representation = self.entity_embedder(initial_kb_relation_indices).reshape(n_assigned, n_ent, 2, self.choice_size, -1)
-
-                # initial_relation_scores = torch.einsum('jkld,jklcd->jklc', [initial_query_relation_representation, initial_kb_relation_representation])
-
-                # choice_scores = choice_scores + torch.einsum('jkl,jklc->kc', [initial_query_relation_scores, initial_relation_scores]) / relation_score_normalization
+                    initial_relation_put_indices = (torch.cat((choice_positions, choice_positions))[indices_selected_local],)
+                    choice_scores = choice_scores.index_put(initial_relation_put_indices, initial_relation_compatibility_scores, accumulate=True)
 
                 non_zero_put_indices = (beam>=0).nonzero(as_tuple=True)
                 # mask scores of already assigned positions
@@ -225,6 +194,8 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
             start_step = len(torch.nonzero((beam[0] >= 0)))
             for step in range(start_step, n_ent):
 
+                choice_scores = beam_scores.reshape(self.beam_size, 1, 1).expand(-1, n_ent, self.choice_size).contiguous()
+
                 non_zero_indices = torch.nonzero((beam>=0), as_tuple=True)
                 assigned_entities = non_zero_indices[1].reshape(-1, step, 1).expand(-1, -1, n_ent).reshape(-1)
 
@@ -233,60 +204,34 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
                 relation_indices_local = (torch.cat((assigned_entities, choice_positions)), torch.cat((choice_positions, assigned_entities)))
                 indices_selected_local = indices_selected_boolean[relation_indices_local].nonzero(as_tuple=True)[0]
 
-                indices_selected_global = relation_idx[relation_indices_local][indices_selected_local]
+                if len(indices_selected_local) > 0:
 
-                step_query_relation_representation = query_relation_representation[indices_selected_global]
-                step_query_relation_scores = query_relation_scores[indices_selected_global]
+                    indices_selected_global = relation_idx[relation_indices_local][indices_selected_local]
 
-                current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(self.beam_size, step, 1, 1).expand(-1, -1, n_ent, self.choice_size).reshape(-1, self.choice_size)
-                choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, 1, n_ent, self.choice_size).expand(self.beam_size, step, -1, -1).reshape(-1, self.choice_size)
+                    step_query_relation_representation = query_relation_representation[indices_selected_global]
+                    step_query_relation_scores = query_relation_scores[indices_selected_global]
 
-                step_kb_relation_indices_left = torch.stack((current_embedding_ids, choice_embedding_ids), dim=-1)
-                step_kb_relation_indices_right = torch.stack((choice_embedding_ids, current_embedding_ids), dim=-1)
-                step_kb_relation_indices = torch.cat((step_kb_relation_indices_left, step_kb_relation_indices_right))
+                    current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(self.beam_size, step, 1, 1).expand(-1, -1, n_ent, self.choice_size).reshape(-1, self.choice_size)
+                    choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, 1, n_ent, self.choice_size).expand(self.beam_size, step, -1, -1).reshape(-1, self.choice_size)
 
-                step_kb_relation_indices_selected = step_kb_relation_indices[indices_selected_local]
+                    step_kb_relation_indices_left = torch.stack((current_embedding_ids, choice_embedding_ids), dim=-1)
+                    step_kb_relation_indices_right = torch.stack((choice_embedding_ids, current_embedding_ids), dim=-1)
+                    step_kb_relation_indices = torch.cat((step_kb_relation_indices_left, step_kb_relation_indices_right))
 
-                step_kb_relation_representation = self.entity_embedder(step_kb_relation_indices_selected).reshape(-1, self.choice_size, 2 * self.entity_dim)
+                    step_kb_relation_indices_selected = step_kb_relation_indices[indices_selected_local]
+
+                    step_kb_relation_representation = self.entity_embedder(step_kb_relation_indices_selected).reshape(-1, self.choice_size, 2 * self.entity_dim)
 
 
-                step_relation_compatibility_scores = torch.einsum('rd,rcd->rc', [step_query_relation_representation * step_query_relation_scores.unsqueeze(1), step_kb_relation_representation]) / relation_score_normalization
+                    step_relation_compatibility_scores = torch.einsum('rd,rcd->rc', [step_query_relation_representation * step_query_relation_scores.unsqueeze(1), step_kb_relation_representation]) / relation_score_normalization
 
-                beam_indices_half = torch.arange(self.beam_size, device=device).repeat_interleave(n_ent * step)
-                beam_indices = torch.cat((beam_indices_half, beam_indices_half))[indices_selected_local]
-                position_indices = torch.cat((choice_positions, choice_positions))[indices_selected_local]
-                step_relation_put_indices = (beam_indices, position_indices)
+                    beam_indices_half = torch.arange(self.beam_size, device=device).repeat_interleave(n_ent * step)
+                    beam_indices = torch.cat((beam_indices_half, beam_indices_half))[indices_selected_local]
+                    position_indices = torch.cat((choice_positions, choice_positions))[indices_selected_local]
+                    step_relation_put_indices = (beam_indices, position_indices)
+                    choice_scores = choice_scores.index_put(step_relation_put_indices, step_relation_compatibility_scores, accumulate=True)
 
-                choice_scores = beam_scores.reshape(self.beam_size, 1, 1).expand(-1, n_ent, self.choice_size).contiguous()
-                choice_scores = choice_scores.index_put(step_relation_put_indices, step_relation_compatibility_scores, accumulate=True)
-
-                # step_relation_indices_left = relation_idx[assigned_entities, choice_positions].reshape(self.beam_size, step, n_ent, 1)
-                # step_relation_indices_right = relation_idx[choice_positions, assigned_entities].reshape(self.beam_size, step, n_ent, 1)
-
-                # step_relation_indices = torch.cat((step_relation_indices_left, step_relation_indices_right), dim=-1)
-
-                # step_query_relation_representation = query_relation_representation[step_relation_indices]
-
-                # step_query_relation_scores = query_relation_scores[step_relation_indices]
-
-                # current_embedding_ids = beam[(beam>=0).nonzero(as_tuple=True)].reshape(self.beam_size, step, 1, 1, 1).expand(-1, -1, n_ent, -1, self.choice_size)
-                # choice_embedding_ids = top_entities[entity_start:entity_end].reshape(1, 1, n_ent, 1, self.choice_size).expand(self.beam_size, step, -1, -1, -1)
-
-                # current_embedding_values = self.entity_embedder(current_embedding_ids)
-                # choice_embedding_values = self.entity_embedder(choice_embedding_ids)
-
-                # step_kb_relation_representation_left = torch.cat((current_embedding_values, choice_embedding_values), dim=-1)
-
-                # step_kb_relation_representation_right = torch.cat((current_embedding_values, choice_embedding_values), dim=-1)
-
-                # step_kb_relation_representation = torch.cat((step_kb_relation_representation_left, step_kb_relation_representation_right), dim=-3)
-
-                # step_relation_scores = torch.einsum('ijkld,ijklcd->ijklc', [step_query_relation_representation, step_kb_relation_representation])
-
-                # choice_scores = torch.einsum('ijkl,ijklc->ikc', [step_query_relation_scores, step_relation_scores]) / relation_score_normalization
                 choice_scores = choice_scores + top_entity_scores[entity_start:entity_end].unsqueeze(0).expand(self.beam_size, -1, -1) / entity_score_normalization
-                # choice_scores = choice_scores + beam_scores
-
 
                 # mask scores of already assigned positions
                 non_zero_put_indices = (beam>=0).nonzero(as_tuple=True)
@@ -311,36 +256,48 @@ class EncoderETPRelationDownstream(BaseFairseqModel):
                 best_entity_ids = top_entities[(best_position_indices + entity_start, best_score_indices[:, 2])]
 
                 beam = beam.index_select(0, best_score_indices[:, 0])
-
+                assert len(best_position_indices) == self.beam_size
                 # populate beam
                 beam = beam.index_put((torch.arange(self.beam_size, dtype=int_type, device=device), best_position_indices), best_entity_ids)
 
 
             # decode most likely mask positions, add answer
 
-            current_embedding_ids = beam.reshape(self.beam_size, n_ent, 1, 1).expand(-1, -1, -1, self.choice_size)
-            choice_embedding_ids = top_mask_entities[idx].reshape(1, 1, 1, self.choice_size).expand(self.beam_size, n_ent, -1, -1)
-
-            current_embedding_values = self.entity_embedder(current_embedding_ids)
-            choice_embedding_values = self.entity_embedder(choice_embedding_ids)
-
-            kb_relation_representation_left = torch.cat((current_embedding_values, choice_embedding_values), dim=-1)
-            kb_relation_representation_right = torch.cat((choice_embedding_values, current_embedding_values), dim=-1)
-
-            kb_relation_representation = torch.cat((kb_relation_representation_left, kb_relation_representation_right), dim=-3)
 
             instance_mask_relation_indices_left = (torch.arange(n_annotations[idx], device=device) + mask_relation_offsets[idx]).reshape(n_ent, 1)
             instance_mask_relation_indices_right = (torch.arange(n_annotations[idx], device=device) + n_annotations[idx] + mask_relation_offsets[idx]).reshape(n_ent, 1)
-            instance_mask_relation_indices = torch.cat((instance_mask_relation_indices_left, instance_mask_relation_indices_right), dim=-1)
+            instance_mask_relation_indices = torch.cat((instance_mask_relation_indices_left, instance_mask_relation_indices_right)).reshape(1, -1).expand(self.beam_size, -1).reshape(-1)
 
-            instance_mask_relation_representation = mask_relation_representation[instance_mask_relation_indices]
             instance_mask_relation_scores = mask_relation_scores[instance_mask_relation_indices]
+            non_zero_indices = (instance_mask_relation_scores > threshold).nonzero(as_tuple=True)
+            if len(non_zero_indices[0]) > 0:
 
-            instance_scores = torch.einsum('bpacd,pad->bpac', [kb_relation_representation, instance_mask_relation_representation])
+                instance_mask_relation_indices_selected = instance_mask_relation_indices[non_zero_indices[0]]
+                instance_mask_relation_scores_selected = instance_mask_relation_scores[non_zero_indices[0]]
+                instance_mask_relation_representation = mask_relation_representation[instance_mask_relation_indices_selected]
 
-            instance_scores = torch.einsum('pa,bpac->bc', [instance_mask_relation_scores, instance_scores]) / relation_score_normalization
+                current_embedding_ids = beam.reshape(self.beam_size, n_ent, 1, 1).expand(-1, -1, -1, self.choice_size).reshape(-1, self.choice_size)
+                choice_embedding_ids = top_mask_entities[idx].reshape(1, 1, 1, self.choice_size).expand(self.beam_size, n_ent, -1, -1).reshape(-1, self.choice_size)
 
-            choice_scores = beam_scores.unsqueeze(1) + instance_scores
+                instance_mask_kb_relation_indices_left = torch.stack((current_embedding_ids, choice_embedding_ids), dim=-1)
+                instance_mask_kb_relation_indices_right = torch.stack((choice_embedding_ids, current_embedding_ids), dim=-1)
+                instance_mask_kb_relation_indices = torch.cat((instance_mask_kb_relation_indices_left, instance_mask_kb_relation_indices_right))
+
+                instance_mask_kb_relation_indices_selected = instance_mask_kb_relation_indices[non_zero_indices[0]]
+
+                instance_mask_kb_relation_representation = self.entity_embedder(instance_mask_kb_relation_indices_selected).reshape(-1, self.choice_size, 2 * self.entity_dim)
+
+
+                mask_relation_compatibility_scores = torch.einsum('rd,rcd->rc', [instance_mask_relation_representation * instance_mask_relation_scores_selected.unsqueeze(1), instance_mask_kb_relation_representation]) / relation_score_normalization
+
+                choice_scores = beam_scores.unsqueeze(1).expand(-1, self.choice_size)
+
+                beam_indices_half = torch.arange(self.beam_size, device=device).repeat_interleave(n_ent)
+                beam_indices = (torch.cat((beam_indices_half, beam_indices_half))[non_zero_indices[0]],)
+                choice_scores = choice_scores.index_put(beam_indices, mask_relation_compatibility_scores, accumulate=True)
+            else:
+                choice_scores = beam_scores.unsqueeze(1).expand(-1, self.choice_size)
+
             choice_scores = choice_scores + top_mask_entity_scores[idx] / entity_score_normalization
             choice_scores = choice_scores.max(0, keepdim=True).values
 
